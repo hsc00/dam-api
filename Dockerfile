@@ -2,29 +2,21 @@ FROM php:8.5-fpm-alpine
 
 # Install only runtime-required native extensions and their build deps.
 # Build tools (gcc, make) are available on Alpine for pecl but removed from the final layer.
-RUN apk add --no-cache \
-        libzip-dev \
-        icu-dev \
-        libssl3 \
+RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+      libzip-dev icu-dev zlib-dev openssl-dev \
     && docker-php-ext-install -j$(nproc) pdo_mysql intl mbstring zip \
-    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
     && pecl install redis \
     && docker-php-ext-enable redis \
     && apk del .build-deps \
-    # OPcache + JIT — optimised for production.
-    # For local development the source tree is bind-mounted; opcache.revalidate_freq=0
-    # means file changes are NOT picked up without an FPM reload. This is intentional:
-    # run `docker compose exec app kill -USR2 1` to reload FPM after code changes, or
-    # set opcache.revalidate_freq=2 in a dev override if you prefer automatic revalidation.
     && { \
-        echo 'opcache.enable=1'; \
-        echo 'opcache.enable_cli=1'; \
-        echo 'opcache.memory_consumption=128'; \
-        echo 'opcache.interned_strings_buffer=16'; \
-        echo 'opcache.max_accelerated_files=100000'; \
-        echo 'opcache.revalidate_freq=0'; \
-        echo 'opcache.jit_buffer_size=100M'; \
-        echo 'opcache.jit=tracing'; \
+      echo 'opcache.enable=1'; \
+      echo 'opcache.enable_cli=1'; \
+      echo 'opcache.memory_consumption=128'; \
+      echo 'opcache.interned_strings_buffer=16'; \
+      echo 'opcache.max_accelerated_files=100000'; \
+      echo 'opcache.revalidate_freq=0'; \
+      echo 'opcache.jit_buffer_size=100M'; \
+      echo 'opcache.jit=tracing'; \
     } > /usr/local/etc/php/conf.d/opcache.ini
 
 WORKDIR /var/www/html
