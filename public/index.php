@@ -4,9 +4,16 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
+$projectRoot = dirname(__DIR__);
+$envFile = $projectRoot . '/.env';
+
+if (is_file($envFile)) {
+    \Dotenv\Dotenv::createImmutable($projectRoot)->safeLoad();
+}
+
 if (php_sapi_name() === 'cli-server') {
     $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
-    $resolved    = realpath(__DIR__ . $requestPath);
+    $resolved = realpath(__DIR__ . $requestPath);
     if ($resolved !== false
         && str_starts_with($resolved, __DIR__ . DIRECTORY_SEPARATOR)
         && is_file($resolved)

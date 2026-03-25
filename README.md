@@ -94,9 +94,22 @@ cp .env.example .env
 docker compose up
 ```
 
+On Windows PowerShell, use:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up
+```
+
 API is available at **`http://localhost:8000/graphql`**.
 
 This is the canonical local development path. `docker compose up` starts PHP-FPM + Nginx + MySQL 8 + Redis 7, runs DB migrations, and exposes the GraphQL endpoint.
+
+Local host bindings used by Docker Compose:
+
+- GraphQL HTTP: `localhost:8000`
+- MySQL from host machine: `127.0.0.1:${DB_HOST_PORT}` (default `3307`)
+- Redis from host machine: `127.0.0.1:${REDIS_HOST_PORT}` (default `6380`)
 
 > **TTFHW** is a principle of this project. Every change to infrastructure, tooling, or configuration must preserve the two-command setup above.
 
@@ -115,8 +128,10 @@ composer install
 3. Verify PHP → MySQL connectivity:
 
 ```bash
-php -r 'new PDO("mysql:host=127.0.0.1;dbname=dam;charset=utf8mb4","root","DB_PASSWORD"); echo "PDO ok\n";'
+php -r 'new PDO("mysql:host=127.0.0.1;port=3307;dbname=dam;charset=utf8mb4","root","root"); echo "PDO ok\n";'
 ```
+
+Adjust the host, port, username and password to match your `.env` values if you changed them.
 
 4. Start the built-in server:
 
