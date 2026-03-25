@@ -1,9 +1,16 @@
 FROM php:8.5-fpm-alpine
 
-# Install only runtime-required native extensions and their build deps.
-# Build tools (gcc, make) are available on Alpine for pecl but removed from the final layer.
-RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
-      libzip-dev icu-dev zlib-dev openssl-dev \
+# Keep runtime libraries installed after extension compilation.
+RUN apk add --no-cache \
+      icu-libs \
+      libzip \
+      oniguruma \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS \
+      icu-dev \
+      libzip-dev \
+      oniguruma-dev \
+      openssl-dev \
+      zlib-dev \
     && docker-php-ext-install -j$(nproc) pdo_mysql intl mbstring zip \
     && pecl install redis \
     && docker-php-ext-enable redis \
@@ -23,13 +30,8 @@ WORKDIR /var/www/html
 
 COPY --chown=www-data:www-data . /var/www/html
 
-# Install Composer — used to run `composer install` below and available for dev convenience.
-# In a production image pipeline, prefer a multi-stage build that copies only vendor/.
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Install PHP dependencies without dev packages.
-# The vendor/ directory from this step is overridden by the docker-compose.yaml
-# bind-mount in local dev — composer install still runs via `docker compose run app composer install`.
 RUN composer install --no-interaction --no-dev --optimize-autoloader --prefer-dist
 
 USER www-data
