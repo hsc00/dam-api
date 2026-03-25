@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run Trivy filesystem scan
-        uses: aquasecurity/trivy-action@v0.30.0
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
         with:
           scan-type: fs
           scan-ref: .
@@ -43,7 +43,7 @@ jobs:
       - name: Build Docker image for scanning
         run: docker build -t dam-app:ci .
       - name: Run Trivy container image scan
-        uses: aquasecurity/trivy-action@v0.30.0
+        uses: aquasecurity/trivy-action@6c175e9c4083a92bbca2f9724c8a5e33bc2d97a5
         with:
           scan-type: image
           image-ref: dam-app:ci
