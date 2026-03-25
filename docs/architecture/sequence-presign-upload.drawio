@@ -1,128 +1,138 @@
 <mxfile host="app.diagrams.net" version="21.0.0">
-  <diagram id="seq-presign-upload" name="Sequence — Presign Upload Flow">
-    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+  <diagram id="seq-presign-upload" name="Sequence — Start Upload Flow">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        <!-- Title -->
-        <mxCell id="2" value="&lt;b&gt;Sequence Diagram — Presign Upload Flow&lt;/b&gt;&#xa;(MockStorageAdapter — no real S3/GCS)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=14;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="100" y="15" width="1100" height="45" as="geometry" />
+        <mxCell id="2" value="&lt;b&gt;Sequence Diagram — Start Upload Flow&lt;/b&gt;&#xa;Chunk-aware batch initiation with partial success and errors[]" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="180" y="15" width="1200" height="45" as="geometry" />
         </mxCell>
 
-        <!-- Participant headers -->
         <mxCell id="10" value="&lt;b&gt;API Client&lt;/b&gt;" style="rounded=1;fillColor=#08427b;fontColor=#ffffff;strokeColor=#073b6f;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="40" y="70" width="120" height="45" as="geometry" />
         </mxCell>
-        <mxCell id="11" value="&lt;b&gt;Http Layer&lt;/b&gt;&#xa;AuthMiddleware → GraphQLHandler" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="210" y="70" width="160" height="45" as="geometry" />
+        <mxCell id="11" value="&lt;b&gt;Http Layer&lt;/b&gt;&#xa;AuthMiddleware to GraphQLHandler" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="240" y="70" width="170" height="45" as="geometry" />
         </mxCell>
-        <mxCell id="12" value="&lt;b&gt;GraphQL Layer&lt;/b&gt;&#xa;PresignAssetMutationResolver" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="420" y="70" width="160" height="45" as="geometry" />
+        <mxCell id="12" value="&lt;b&gt;GraphQL Layer&lt;/b&gt;&#xa;StartUploadMutationResolver" style="rounded=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="490" y="70" width="170" height="45" as="geometry" />
         </mxCell>
-        <mxCell id="13" value="&lt;b&gt;Application&lt;/b&gt;&#xa;PresignService" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="630" y="70" width="150" height="45" as="geometry" />
+        <mxCell id="13" value="&lt;b&gt;Application&lt;/b&gt;&#xa;StartUploadService" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="740" y="70" width="170" height="45" as="geometry" />
         </mxCell>
-        <mxCell id="14" value="&lt;b&gt;MockStorageAdapter&lt;/b&gt;&#xa;(in-memory, local dev only)" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="830" y="70" width="170" height="45" as="geometry" />
+        <mxCell id="14" value="&lt;b&gt;MockStorageAdapter&lt;/b&gt;&#xa;one link per chunk" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="990" y="70" width="170" height="45" as="geometry" />
         </mxCell>
-        <mxCell id="15" value="&lt;b&gt;MySQLAssetRepository&lt;/b&gt;&#xa;PDO prepared statements" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
-          <mxGeometry x="1050" y="70" width="170" height="45" as="geometry" />
+        <mxCell id="15" value="&lt;b&gt;MySQLAssetRepository&lt;/b&gt;&#xa;lookup and save" style="rounded=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="70" width="170" height="45" as="geometry" />
         </mxCell>
 
-        <!-- Lifelines -->
         <mxCell id="20" value="" style="endArrow=none;strokeColor=#08427b;strokeWidth=1;dashed=1;" edge="1" parent="1">
-          <mxGeometry x="100" y="115" as="geometry"><Array as="points"><mxPoint x="100" y="850" /></Array></mxGeometry>
+          <mxGeometry x="100" y="115" as="geometry"><Array as="points"><mxPoint x="100" y="1110" /></Array></mxGeometry>
         </mxCell>
         <mxCell id="21" value="" style="endArrow=none;strokeColor=#d6b656;strokeWidth=1;dashed=1;" edge="1" parent="1">
-          <mxGeometry x="290" y="115" as="geometry"><Array as="points"><mxPoint x="290" y="850" /></Array></mxGeometry>
+          <mxGeometry x="325" y="115" as="geometry"><Array as="points"><mxPoint x="325" y="1110" /></Array></mxGeometry>
         </mxCell>
         <mxCell id="22" value="" style="endArrow=none;strokeColor=#9673a6;strokeWidth=1;dashed=1;" edge="1" parent="1">
-          <mxGeometry x="500" y="115" as="geometry"><Array as="points"><mxPoint x="500" y="850" /></Array></mxGeometry>
+          <mxGeometry x="575" y="115" as="geometry"><Array as="points"><mxPoint x="575" y="1110" /></Array></mxGeometry>
         </mxCell>
         <mxCell id="23" value="" style="endArrow=none;strokeColor=#6c8ebf;strokeWidth=1;dashed=1;" edge="1" parent="1">
-          <mxGeometry x="705" y="115" as="geometry"><Array as="points"><mxPoint x="705" y="850" /></Array></mxGeometry>
+          <mxGeometry x="825" y="115" as="geometry"><Array as="points"><mxPoint x="825" y="1110" /></Array></mxGeometry>
         </mxCell>
         <mxCell id="24" value="" style="endArrow=none;strokeColor=#d6b656;strokeWidth=1;dashed=1;" edge="1" parent="1">
-          <mxGeometry x="915" y="115" as="geometry"><Array as="points"><mxPoint x="915" y="850" /></Array></mxGeometry>
+          <mxGeometry x="1075" y="115" as="geometry"><Array as="points"><mxPoint x="1075" y="1110" /></Array></mxGeometry>
         </mxCell>
         <mxCell id="25" value="" style="endArrow=none;strokeColor=#d6b656;strokeWidth=1;dashed=1;" edge="1" parent="1">
-          <mxGeometry x="1135" y="115" as="geometry"><Array as="points"><mxPoint x="1135" y="850" /></Array></mxGeometry>
+          <mxGeometry x="1325" y="115" as="geometry"><Array as="points"><mxPoint x="1325" y="1110" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 1: Client → Http -->
-        <mxCell id="30" value="1. mutation presignAsset(accountId, fileName, mimeType)" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="100" y="155" as="geometry"><Array as="points"><mxPoint x="100" y="165" /><mxPoint x="290" y="165" /></Array></mxGeometry>
+        <mxCell id="30" value="1. mutation startUpload(files[{clientFileId, fileName, mimeType, chunkCount}])" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="100" y="155" as="geometry"><Array as="points"><mxPoint x="100" y="165" /><mxPoint x="325" y="165" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 2: Http self — validate JWT -->
-        <mxCell id="31" value="2. validate Bearer token → 401 if invalid" style="text;html=1;strokeColor=#d6b656;fillColor=#fff2cc;fontSize=10;align=left;" vertex="1" parent="1">
-          <mxGeometry x="298" y="178" width="290" height="25" as="geometry" />
+        <mxCell id="31" value="2. validate Bearer token and account context" style="text;html=1;strokeColor=#d6b656;fillColor=#fff2cc;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="333" y="180" width="290" height="25" as="geometry" />
         </mxCell>
 
-        <!-- Step 3: Http → GraphQL -->
-        <mxCell id="32" value="3. dispatch to webonyx schema" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="290" y="215" as="geometry"><Array as="points"><mxPoint x="290" y="225" /><mxPoint x="500" y="225" /></Array></mxGeometry>
+        <mxCell id="32" value="3. dispatch to schema" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="325" y="215" as="geometry"><Array as="points"><mxPoint x="325" y="225" /><mxPoint x="575" y="225" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 4: GraphQL → Application -->
-        <mxCell id="33" value="4. presign(PresignAssetCommand{accountId, fileName, mimeType})" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="500" y="255" as="geometry"><Array as="points"><mxPoint x="500" y="265" /><mxPoint x="705" y="265" /></Array></mxGeometry>
+        <mxCell id="33" value="4. startUpload(StartUploadCommand{files, accountId})" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="575" y="255" as="geometry"><Array as="points"><mxPoint x="575" y="265" /><mxPoint x="825" y="265" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 5: Application self — construct VO + Entity -->
-        <mxCell id="34" value="5. new UploadId(uuid) + new Asset(uploading)" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=10;align=left;" vertex="1" parent="1">
-          <mxGeometry x="713" y="278" width="290" height="25" as="geometry" />
+        <mxCell id="34" value="5. validate batch size: at least 1 file and no more than 20" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="833" y="278" width="360" height="25" as="geometry" />
         </mxCell>
 
-        <!-- Step 6: Application → MockStorageAdapter -->
-        <mxCell id="35" value="6. generatePresignedUrl(uploadId, mimeType)" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="705" y="315" as="geometry"><Array as="points"><mxPoint x="705" y="325" /><mxPoint x="915" y="325" /></Array></mxGeometry>
+        <mxCell id="35" value="If batch invalid: return payload with files=[] and friendly top-level errors[]" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;fontSize=10;fillColor=#f8f8f8;strokeColor=#aaaaaa;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="250" width="250" height="70" as="geometry" />
         </mxCell>
 
-        <!-- Step 7: MockStorageAdapter → Application (return) -->
-        <mxCell id="36" value="7. returns mock://uploads/{uploadId}  (no expiry)" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="915" y="355" as="geometry"><Array as="points"><mxPoint x="915" y="365" /><mxPoint x="705" y="365" /></Array></mxGeometry>
+        <mxCell id="36" value="6. for each file: validate chunkCount in 1..100" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="833" y="325" width="320" height="25" as="geometry" />
         </mxCell>
 
-        <!-- Step 8: Application → MySQLAssetRepository -->
-        <mxCell id="37" value="8. save(Asset{id, accountId, uploadId, status=uploading})" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="705" y="395" as="geometry"><Array as="points"><mxPoint x="705" y="405" /><mxPoint x="1135" y="405" /></Array></mxGeometry>
+        <mxCell id="37" value="7. find existing file/client identifier for same account" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="825" y="365" as="geometry"><Array as="points"><mxPoint x="825" y="375" /><mxPoint x="1325" y="375" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 9: Repository self — INSERT -->
-        <mxCell id="38" value="9. INSERT INTO assets (PDO::prepare + execute)" style="text;html=1;strokeColor=#d6b656;fillColor=#ffe6cc;fontSize=10;align=left;" vertex="1" parent="1">
-          <mxGeometry x="1143" y="418" width="200" height="25" as="geometry" />
+        <mxCell id="38" value="8. duplicate? return file-scoped error only; continue other files" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="1325" y="405" as="geometry"><Array as="points"><mxPoint x="1325" y="415" /><mxPoint x="825" y="415" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 9 reply -->
-        <mxCell id="39" value="ok" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="1135" y="455" as="geometry"><Array as="points"><mxPoint x="1135" y="465" /><mxPoint x="705" y="465" /></Array></mxGeometry>
+        <mxCell id="39" value="9. valid file: new UploadId + Asset(status=uploading / upload started)" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="833" y="445" width="390" height="25" as="geometry" />
         </mxCell>
 
-        <!-- Step 10: Application self — dispatch event -->
-        <mxCell id="40" value="10. dispatch AssetStatusChangedEvent(uploading)" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=10;align=left;" vertex="1" parent="1">
-          <mxGeometry x="713" y="478" width="320" height="25" as="geometry" />
+        <mxCell id="40" value="10. generateChunkUploadUrls(uploadId, chunkCount, mimeType)" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="825" y="485" as="geometry"><Array as="points"><mxPoint x="825" y="495" /><mxPoint x="1075" y="495" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 11: Application → GraphQL (return PresignResult) -->
-        <mxCell id="41" value="11. PresignResult{uploadId, presignedUrl, expiresAt=null}" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="705" y="515" as="geometry"><Array as="points"><mxPoint x="705" y="525" /><mxPoint x="500" y="525" /></Array></mxGeometry>
+        <mxCell id="41" value="11. return N distinct links: mock://uploads/{uploadId}/chunks/{n}" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="1075" y="525" as="geometry"><Array as="points"><mxPoint x="1075" y="535" /><mxPoint x="825" y="535" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 12: GraphQL → Http -->
-        <mxCell id="42" value='12. { data: { presignAsset: { uploadId, presignedUrl } } }' style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="500" y="555" as="geometry"><Array as="points"><mxPoint x="500" y="565" /><mxPoint x="290" y="565" /></Array></mxGeometry>
+        <mxCell id="42" value="12. save asset record for valid file" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="825" y="565" as="geometry"><Array as="points"><mxPoint x="825" y="575" /><mxPoint x="1325" y="575" /></Array></mxGeometry>
         </mxCell>
 
-        <!-- Step 13: Http → Client -->
-        <mxCell id="43" value="13. HTTP 200 JSON" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
-          <mxGeometry x="290" y="595" as="geometry"><Array as="points"><mxPoint x="290" y="605" /><mxPoint x="100" y="605" /></Array></mxGeometry>
+        <mxCell id="43" value="13. INSERT with PDO::prepare and execute" style="text;html=1;strokeColor=#d6b656;fillColor=#ffe6cc;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1333" y="588" width="220" height="25" as="geometry" />
         </mxCell>
 
-        <!-- Note box -->
-        <mxCell id="50" value="&lt;b&gt;Note:&lt;/b&gt; MockStorageAdapter returns a fake URL&#xa;immediately with no network call.&#xa;Real adapters (S3/GCS) would be wired&#xa;here without changing any other layer." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;fontSize=10;fillColor=#f8f8f8;strokeColor=#aaaaaa;" vertex="1" parent="1">
-          <mxGeometry x="830" y="490" width="240" height="80" as="geometry" />
+        <mxCell id="44" value="ok" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="1325" y="625" as="geometry"><Array as="points"><mxPoint x="1325" y="635" /><mxPoint x="825" y="635" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="45" value="14. append file result {uploadId, chunkUploadUrls[], expiresAt?} or file error" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="833" y="655" width="420" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="46" value="15. build payload with files[] and errors[] (always present)" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;fontSize=10;align=left;" vertex="1" parent="1">
+          <mxGeometry x="833" y="700" width="390" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="47" value="16. StartUploadPayload{files, errors}" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="825" y="740" as="geometry"><Array as="points"><mxPoint x="825" y="750" /><mxPoint x="575" y="750" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="48" value="17. HTTP 200 payload with partial success allowed" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="575" y="780" as="geometry"><Array as="points"><mxPoint x="575" y="790" /><mxPoint x="325" y="790" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="49" value="18. client receives one entry per valid file and friendly errors for rejected files" style="edgeStyle=orthogonalEdgeStyle;endArrow=open;endFill=0;dashed=1;fontSize=10;html=1;" edge="1" parent="1">
+          <mxGeometry x="325" y="820" as="geometry"><Array as="points"><mxPoint x="325" y="830" /><mxPoint x="100" y="830" /></Array></mxGeometry>
+        </mxCell>
+
+        <mxCell id="50" value="&lt;b&gt;Examples&lt;/b&gt;&#xa;Valid file result: uploadId plus one chunk URL per piece&#xa;Rejected file result: errors explain duplicate identifier or invalid chunkCount&#xa;Top-level errors: empty batch or too many files" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;fontSize=10;fillColor=#f8f8f8;strokeColor=#aaaaaa;" vertex="1" parent="1">
+          <mxGeometry x="980" y="880" width="360" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="51" value="&lt;b&gt;Note&lt;/b&gt;: MockStorageAdapter is still local-dev friendly, but the flow is now chunk-aware and batch-aware so the logic matches US-001a, US-001b, and US-006." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;fontSize=10;fillColor=#f8f8f8;strokeColor=#aaaaaa;" vertex="1" parent="1">
+          <mxGeometry x="980" y="1015" width="360" height="80" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>

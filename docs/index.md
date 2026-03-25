@@ -1,6 +1,6 @@
-# Frontify DAM — Documentation
+# DAM — Documentation
 
-Welcome to the documentation for the Frontify DAM presign + status challenge.
+Welcome to the documentation for the DAM presign + status challenge.
 
 - ADRs and architecture decisions are under **ADRs**.
 - Developer quickstart and CI instructions are in the repository `README.md`.
