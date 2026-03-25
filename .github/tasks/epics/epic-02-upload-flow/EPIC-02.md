@@ -6,6 +6,6 @@ Provide a robust, chunked upload initiation and completion flow that supports la
 
 ## Included tasks:
 
-- [US-04: Start multi-file upload](.github/tasks/epics/epic-02-upload-flow/US-04-chunk-aware-upload-initiation.md) — ask the system for one upload link per chunk for each file in a batch
-- [US-05: Upload request validation](.github/tasks/epics/epic-02-upload-flow/US-05-upload-initiation-validation.md) — report friendly validation errors for invalid upload requests
-- [US-06: Mark upload as complete](.github/tasks/epics/epic-02-upload-flow/US-06-complete-upload-trigger.md) — notify the system that all parts of a file have been uploaded
+- [US-04: Start multi-file upload](https://github.com/hsc00/dam-api/issues/18) — ask the system for one upload link per chunk for each file in a batch
+- [US-05: Upload request validation](https://github.com/hsc00/dam-api/issues/19) — report friendly validation errors for invalid upload requests
+- [US-06: Mark upload as complete](https://github.com/hsc00/dam-api/issues/20) — notify the system that all parts of a file have been uploaded

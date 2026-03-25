@@ -48,4 +48,4 @@ Then  the response is null and no error is thrown
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
 
-[EPIC-03: Background Processing](.github/tasks/epics/epic-03-background-processing/EPIC-03.md)
+[EPIC-03: Background Processing](https://github.com/hsc00/dam-api/issues/16)

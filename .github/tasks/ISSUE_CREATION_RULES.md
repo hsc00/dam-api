@@ -9,8 +9,8 @@ These rules are used by automation and contributors when turning `.github/tasks/
    - Epic body format and requirements:
      - Every epic MUST include an `Objective:` paragraph near the top describing the measurable goal of the epic in one or two sentences.
      - Every epic MUST include an `Included tasks:` section that lists the child story references as Markdown links. The conversion tool should:
-       - Prefer linking to the created issue URL (for example: `[US-01: Agree API Schema](https://github.com/<owner>/<repo>/issues/12)`).
-       - If the issue does not yet exist, link to the source story file under `.github/tasks/` (for example: `[US-01: Agree API Schema](.github/tasks/US-000-bootstrap-schema-domain-scaffold.md)`).
+     - Link to the created GitHub Issue URL for each child story (for example: `[US-01: Agree API Schema](https://github.com/<owner>/<repo>/issues/12)`).
+     - Not leave local `.github/tasks/*.md` file links in the epic `Included tasks` list. If a child issue does not yet exist, create the issue first and then update the epic to reference the issue URL.
      - The `Included tasks:` list should contain each story on its own line, prefixed with the story number and title (for example: `- [US-01: Agree API Schema](...) — define a single human-readable schema for messages and types`).
      - Epic status propagation rule:
        - An epic MUST NOT remain labelled `backlog` if any of its child stories is labelled `in-progress`.
@@ -40,9 +40,9 @@ These rules are used by automation and contributors when turning `.github/tasks/
    - Child issues must include the label `epic/<NN>-<slug>` that identifies their epic (e.g. `epic/01-bootstrap`) and `backlog` by default.
    - The body of the child issue MUST follow this exact format:
      - It must be the exact contents of the corresponding story file under `.github/tasks/` (preserve headings, sections, acceptance criteria, DoD, etc.).
-     - Immediately after the story content append a single line containing the hyperlinked epic text, for example:
+     - Immediately after the story content append a single line containing the hyperlinked epic issue (not a local file link), for example:
        - `[EPIC-01: Bootstrap — Schema, Domain & Infrastructure](https://github.com/<owner>/<repo>/issues/11)`
-     - Do NOT add any other text, annotations, or metadata to the issue body. The issue body must match the story file content plus the single hyperlinked epic line.
+     - Do NOT add any other text, annotations, or metadata to the issue body. The issue body must match the story file content plus the single hyperlinked epic issue URL line.
 
 3. Labels and status
    - All new issues are labeled `backlog` by default.

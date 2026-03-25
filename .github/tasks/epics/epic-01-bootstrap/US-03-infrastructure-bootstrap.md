@@ -12,4 +12,4 @@ so that **the application can run locally without third-party storage dependenci
 
 - [ ] Implementation complete
 
-[EPIC-01: Bootstrap — Schema, Domain & Infrastructure](.github/tasks/epics/epic-01-bootstrap/EPIC-01.md)
+[EPIC-01: Bootstrap — Schema, Domain & Infrastructure](https://github.com/hsc00/dam-api/issues/11)

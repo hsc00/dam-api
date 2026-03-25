@@ -6,6 +6,6 @@ Establish the core domain model, database schema, and initial infrastructure sca
 
 ## Included tasks:
 
-- [US-01: Bootstrap schema & domain scaffold](.github/tasks/epics/epic-01-bootstrap/US-01-bootstrap-schema-domain-scaffold.md) — initial domain and schema
-- [US-02: Domain model — core objects](.github/tasks/epics/epic-01-bootstrap/US-02-domain-model-scaffold.md) — define entities and value objects
-- [US-03: Data & local storage setup](.github/tasks/epics/epic-01-bootstrap/US-03-infrastructure-bootstrap.md) — DB, local storage adapters, migrations
+- [US-01: Bootstrap schema & domain scaffold](https://github.com/hsc00/dam-api/issues/27) — initial domain and schema
+- [US-02: Domain model — core objects](https://github.com/hsc00/dam-api/issues/28) — define entities and value objects
+- [US-03: Data & local storage setup](https://github.com/hsc00/dam-api/issues/29) — DB, local storage adapters, migrations

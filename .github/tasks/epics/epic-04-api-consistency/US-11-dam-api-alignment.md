@@ -48,4 +48,4 @@ Then the violation is represented in the user-facing errors list and not as an u
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
 
-[EPIC-04: API Consistency](.github/tasks/epics/epic-04-api-consistency/EPIC-04.md)
+[EPIC-04: API Consistency](https://github.com/hsc00/dam-api/issues/17)

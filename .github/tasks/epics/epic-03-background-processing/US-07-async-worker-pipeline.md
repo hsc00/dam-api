@@ -51,4 +51,4 @@ Then  the job is discarded and an error is logged for operator review
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
 
-[EPIC-03: Background Processing](.github/tasks/epics/epic-03-background-processing/EPIC-03.md)
+[EPIC-03: Background Processing](https://github.com/hsc00/dam-api/issues/16)

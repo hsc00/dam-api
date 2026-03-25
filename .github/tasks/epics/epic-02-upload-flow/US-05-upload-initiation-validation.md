@@ -57,4 +57,4 @@ Then  the response contains a friendly top-level error explaining the batch size
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
 
-[EPIC-02: Upload Flow](.github/tasks/epics/epic-02-upload-flow/EPIC-02.md)
+[EPIC-02: Upload Flow](https://github.com/hsc00/dam-api/issues/15)
