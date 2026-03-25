@@ -1,0 +1,58 @@
+name: Trivy Filesystem & Container Scan
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * *"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  trivy-fs-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@v0.30.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: sarif
+          output: trivy-fs-results.sarif
+      - name: Upload Trivy filesystem SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-fs-results.sarif
+
+  trivy-image-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image for scanning
+        run: docker build -t dam-app:ci .
+      - name: Run Trivy container image scan
+        uses: aquasecurity/trivy-action@v0.30.0
+        with:
+          scan-type: image
+          image-ref: dam-app:ci
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          format: sarif
+          output: trivy-image-results.sarif
+      - name: Upload Trivy image SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-image-results.sarif

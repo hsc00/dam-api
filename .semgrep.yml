@@ -1,0 +1,50 @@
+rules:
+  - id: php-avoid-eval
+    patterns:
+      - pattern: eval($X)
+    message: Avoid using eval() — it is dangerous and hard to secure.
+    languages: [php]
+    severity: ERROR
+
+  - id: php-sql-concat
+    patterns:
+      - pattern: $DB->query($X . $Y)
+      - pattern: $DB->exec($X . $Y)
+      - pattern: $DB->prepare($X . $Y)
+      - pattern: $PDO->query($X . $Y)
+      - pattern: $PDO->exec($X . $Y)
+      - pattern: $PDO->prepare($X . $Y)
+    message: >
+      Possible SQL injection when concatenating SQL strings.
+      Use PDO::prepare() with named parameters instead of string concatenation.
+    languages: [php]
+    severity: ERROR
+
+  - id: php-possible-credentials
+    patterns:
+      - pattern-regex: "(?i)(api_key|secret|access_token|password)\\s*[=:]\\s*[\"']?[A-Za-z0-9\\-_=+/]{8,}[\"']?"
+    message: Possible hardcoded credential — move to environment or secrets manager.
+    languages: [php]
+    severity: ERROR
+
+  - id: php-unsafe-file-upload
+    patterns:
+      - pattern: move_uploaded_file($SRC, $DEST)
+    message: Check uploaded file handling for path traversal and validate file types/extensions.
+    languages: [php]
+    severity: WARNING
+
+  # Narrow XSS rule: only flag echo when the value originates from a superglobal
+  # or an HTTP header, not generic JSON API output which is safe in a GraphQL context.
+  - id: php-xss-superglobal-echo
+    patterns:
+      - pattern: echo $_GET[$X]
+      - pattern: echo $_POST[$X]
+      - pattern: echo $_REQUEST[$X]
+      - pattern: echo $_SERVER[$X]
+      - pattern: echo $_COOKIE[$X]
+    message: >
+      Direct echo of superglobal value — escape with htmlspecialchars()
+      or ensure Content-Type prevents browser interpretation as HTML.
+    languages: [php]
+    severity: ERROR

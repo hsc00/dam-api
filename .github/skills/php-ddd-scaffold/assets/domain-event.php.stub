@@ -1,0 +1,28 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Domain\{{Namespace}};
+
+final readonly class {{EventName}}
+{
+    public function __construct(
+        public readonly {{AggregateRoot}}Id ${{AggregateRootLower}}Id,
+        public readonly {{AggregateRoot}}Status $previousStatus,
+        public readonly {{AggregateRoot}}Status $newStatus,
+        public readonly \DateTimeImmutable $occurredAt,
+    ) {}
+
+    public static function occurred(
+        {{AggregateRoot}}Id ${{AggregateRootLower}}Id,
+        {{AggregateRoot}}Status $previousStatus,
+        {{AggregateRoot}}Status $newStatus,
+    ): self {
+        return new self(
+            {{AggregateRootLower}}Id: ${{AggregateRootLower}}Id,
+            previousStatus: $previousStatus,
+            newStatus: $newStatus,
+            occurredAt: new \DateTimeImmutable(),
+        );
+    }
+}

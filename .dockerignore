@@ -1,0 +1,13 @@
+vendor
+.git
+.env
+.env.*
+!.env.example
+tests/
+docs/
+*.md
+.github/
+.semgrep.yml
+.gitleaks.toml
+build/
+.vscode/

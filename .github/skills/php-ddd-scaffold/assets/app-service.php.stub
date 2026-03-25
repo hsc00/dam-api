@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Application\{{Namespace}};
+
+final class {{ServiceName}}
+{
+    public function __construct(
+        private readonly {{AggregateRoot}}RepositoryInterface $repository,
+    ) {}
+
+    public function handle({{CommandName}} $command): {{ServiceName}}Result
+    {
+        $id = {{AggregateRoot}}Id::generate();
+        ${{AggregateRootLower}} = {{AggregateRoot}}::create(id: $id, initialStatus: {{StatusEnum}});
+        $this->repository->save(${{AggregateRootLower}});
+        return new {{ServiceName}}Result(id: $id->value);
+    }
+}

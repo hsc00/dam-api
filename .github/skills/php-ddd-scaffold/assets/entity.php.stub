@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Domain\{{Namespace}};
+
+final class {{AggregateRoot}}
+{
+    private function __construct(
+        private readonly {{AggregateRoot}}Id $id,
+        private {{AggregateRoot}}Status $status,
+        private readonly \DateTimeImmutable $createdAt,
+        private \DateTimeImmutable $updatedAt,
+    ) {}
+
+    public static function create(
+        {{AggregateRoot}}Id $id,
+        {{AggregateRoot}}Status $initialStatus,
+    ): self {
+        $now = new \DateTimeImmutable();
+        return new self(id: $id, status: $initialStatus, createdAt: $now, updatedAt: $now);
+    }
+
+    public static function reconstitute(
+        {{AggregateRoot}}Id $id,
+        {{AggregateRoot}}Status $status,
+        \DateTimeImmutable $createdAt,
+        \DateTimeImmutable $updatedAt,
+    ): self {
+        return new self(id: $id, status: $status, createdAt: $createdAt, updatedAt: $updatedAt);
+    }
+
+    public function transitionTo({{AggregateRoot}}Status $newStatus): void
+    {
+        $this->status = $newStatus;
+        $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function id(): {{AggregateRoot}}Id { return $this->id; }
+    public function status(): {{AggregateRoot}}Status { return $this->status; }
+    public function createdAt(): \DateTimeImmutable { return $this->createdAt; }
+    public function updatedAt(): \DateTimeImmutable { return $this->updatedAt; }
+}

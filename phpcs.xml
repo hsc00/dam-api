@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<ruleset name="DAM PHP API">
+    <description>Project-specific coding standards for the DAM PHP API.</description>
+
+    <file>src</file>
+    <file>tests</file>
+
+    <exclude-pattern>*/vendor/*</exclude-pattern>
+    <exclude-pattern>*/build/*</exclude-pattern>
+
+    <!-- Enforce PSR-12 as the baseline -->
+    <rule ref="PSR12"/>
+
+    <!-- DDD naming conventions -->
+
+    <!-- Entities must be in Domain/ and named without suffixes -->
+    <!-- Value Objects must be final and readonly -->
+    <!-- Repository interfaces must end in RepositoryInterface -->
+    <!-- Application Services must end in Service -->
+    <!-- Domain Events must end in Event -->
+    <!-- Commands must end in Command -->
+
+    <!-- Enforce class visibility declarations -->
+    <rule ref="PSR12.Classes.ClassInstantiation"/>
+
+    <!-- No PHP 4-style constructors -->
+    <rule ref="Generic.NamingConventions.ConstructorName"/>
+
+    <!-- Disallow long lines >120 chars -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="150"/>
+        </properties>
+    </rule>
+
+    <!-- No trailing whitespace -->
+    <rule ref="Squiz.WhiteSpace.SuperfluousWhitespace"/>
+
+    <!-- Enforce declare(strict_types=1) on every file -->
+    <rule ref="Generic.PHP.RequireStrictTypes"/>
+
+    <!-- Disallow eval() -->
+    <rule ref="Squiz.PHP.Eval"/>
+
+    <!-- No silenced errors (@function_call) -->
+    <rule ref="Generic.PHP.NoSilencedErrors"/>
+</ruleset>

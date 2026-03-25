@@ -1,0 +1,17 @@
+{
+  "pre-commit": {
+    "enabled": true,
+    "actions": [
+      { "action": "vendor/bin/php-cs-fixer fix --dry-run --diff" },
+      { "action": "vendor/bin/phpstan analyse -c phpstan.neon" }
+    ]
+  },
+  "pre-push": {
+    "enabled": true,
+    "actions": [
+      {
+        "action": "vendor/bin/phpunit --configuration phpunit.xml --testsuite=unit"
+      }
+    ]
+  }
+}

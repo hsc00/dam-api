@@ -1,0 +1,50 @@
+# Composer / dependencies
+/vendor/
+/composer.phar
+
+# Environment
+.env
+.env.*.local
+.env.local
+
+# Build / artifacts
+/build/
+/dist/
+/coverage/
+/build-*/
+
+# PHPUnit
+.phpunit.result.cache
+
+# Logs
+/logs/
+*.log
+
+# Cache / temp
+/.cache/
+/tmp/
+
+# Public uploads / runtime files
+/public/uploads/
+/var/
+/storage/
+
+# IDEs
+/.idea/
+/.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Semgrep / scan outputs
+semgrep.sarif
+.semgrep.sarif
+
+# Secrets / keys
+*.pem
+*.key
+*.crt
+
+# Docker
+docker-compose.override.yml

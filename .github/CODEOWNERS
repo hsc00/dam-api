@@ -1,0 +1,39 @@
+# Code Owners
+
+# Global fallback — all files require at least one review
+
+- @hsc00/dam-php-maintainers
+
+# Application source code — any change requires a backend review
+
+/src/ @hsc00/dam-php-backend
+
+# Security-sensitive paths — require security-reviewer sign-off
+
+/src/Http/ @hsc00/dam-php-security
+/src/Infrastructure/ @hsc00/dam-php-security
+/Dockerfile @hsc00/dam-php-security
+/docker-compose.yaml @hsc00/dam-php-security
+/docker/ @hsc00/dam-php-security
+/.semgrep.yml @hsc00/dam-php-security
+/SECURITY.md @hsc00/dam-php-security
+
+# Domain layer — architect sign-off required for any change
+
+/src/Domain/ @hsc00/dam-php-backend @hsc00/dam-php-security
+
+# Database migrations — require DBA or lead review
+
+/migrations/ @hsc00/dam-php-backend @hsc00/dam-php-security
+
+# CI/CD workflows — require both security and DevOps sign-off
+
+# (last-rule-wins: combined here so both teams receive ownership notifications)
+
+/.github/workflows/ @hsc00/dam-php-security @hsc00/dam-php-devops
+
+# Documentation
+
+/docs/ @hsc00/dam-php-tech-writers
+/mkdocs.yml @hsc00/dam-php-tech-writers
+/README.md @hsc00/dam-php-tech-writers

@@ -1,0 +1,5 @@
+vendor/
+migrations/
+public/
+tests/
+build/

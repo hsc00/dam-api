@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Domain\{{Namespace}};
+
+interface {{AggregateRoot}}RepositoryInterface
+{
+    /**
+     * Persist a new or updated {{AggregateRoot}} to the store.
+     */
+    public function save({{AggregateRoot}} ${{AggregateRootLower}}): void;
+
+    /**
+     * Find a {{AggregateRoot}} by its identity.
+     * Returns null if not found — never throws for missing records.
+     */
+    public function findById({{AggregateRoot}}Id $id): ?{{AggregateRoot}};
+
+    /**
+     * Find all {{AggregateRoot}} records matching the given criteria.
+     *
+     * @return list<{{AggregateRoot}}>
+     */
+    public function findByStatus({{AggregateRoot}}Status $status): array;
+
+    /**
+     * Remove a {{AggregateRoot}} from the store permanently.
+     * No-op if the record does not exist.
+     */
+    public function delete({{AggregateRoot}}Id $id): void;
+}

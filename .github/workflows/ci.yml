@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      mysql:
+        image: mysql:8.0.39
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.CI_MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: dam
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=3
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [8.5]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_mysql, mbstring, json, pcov
+          ini-values: pcov.enabled=1
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+        env:
+          CAPTAINHOOK_DISABLE: "1"
+      - name: Discover scaffold tests
+        id: test-discovery
+        shell: bash
+        run: |
+          if find tests/Unit -type f -name '*Test.php' | grep -q .; then
+            echo "has_unit_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_unit_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          if find tests/Integration -type f -name '*Test.php' | grep -q .; then
+            echo "has_integration_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_integration_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse -c phpstan.neon
+      - name: Run PHP CS Fixer (check)
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+      - name: Run PHPUnit (unit)
+        if: steps.test-discovery.outputs.has_unit_tests == 'true'
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: dam
+          DB_USER: root
+          DB_PASSWORD: ${{ secrets.CI_MYSQL_ROOT_PASSWORD }}
+        run: |
+          vendor/bin/phpunit \
+            --configuration phpunit.xml \
+            --testsuite=unit \
+            --coverage-clover build/coverage.xml \
+            --log-junit build/junit.xml
+      - name: Skip PHPUnit (unit)
+        if: steps.test-discovery.outputs.has_unit_tests != 'true'
+        run: |
+          echo "Skipping unit suite for scaffold: no unit test files found."
+      - name: Run PHPUnit (integration)
+        if: steps.test-discovery.outputs.has_integration_tests == 'true'
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: dam
+          DB_USER: root
+          DB_PASSWORD: ${{ secrets.CI_MYSQL_ROOT_PASSWORD }}
+        run: vendor/bin/phpunit --configuration phpunit.xml --testsuite=integration
+      - name: Skip PHPUnit (integration)
+        if: steps.test-discovery.outputs.has_integration_tests != 'true'
+        run: |
+          echo "Skipping integration suite for scaffold: no integration test files found."
+      - name: Upload test report
+        if: always() && steps.test-discovery.outputs.has_unit_tests == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-php${{ matrix.php }}
+          path: |
+            build/junit.xml
+            build/coverage.xml
+          retention-days: 14
+      - name: Composer audit
+        run: composer audit --no-interaction
+
+  codeql:
+    runs-on: ubuntu-latest
+    needs: [tests]
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: php
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/analyze@v3

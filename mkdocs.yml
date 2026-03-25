@@ -1,0 +1,16 @@
+site_name: DAM API Docs
+site_description: Documentation and ADRs for the DAM API
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - Architecture:
+      - C4 Context Diagram: architecture/c4-context.drawio
+      - C4 Container Diagram: architecture/c4-container.drawio
+      - Clean Architecture Layers: architecture/clean-arch-layers.drawio
+      - Presign Upload Sequence: architecture/sequence-presign-upload.drawio
+  - ADRs:
+      - Tooling: adr/01-tooling-choices.md
+      - Security: adr/02-security-choices.md
+plugins:
+  - search

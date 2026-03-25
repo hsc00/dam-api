@@ -1,0 +1,96 @@
+<mxfile host="app.diagrams.net" version="21.0.0">
+  <diagram id="c4-container-dam-api" name="C4 Container — DAM API">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="2" value="&lt;b&gt;Container Diagram — DAM API&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="500" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Person: API Client (outside system boundary, left) -->
+        <mxCell id="3" value="&lt;b&gt;API Client&lt;/b&gt;&#xa;[Person]&#xa;&#xa;Web or mobile&#xa;application" style="shape=mxgraph.c4.person2;whiteSpace=wrap;html=1;fillColor=#08427b;fontColor=#ffffff;strokeColor=#073b6f;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="20" y="330" width="110" height="130" as="geometry" />
+        </mxCell>
+
+        <!-- System Boundary Swimlane -->
+        <mxCell id="4" value="DAM API [System Boundary]" style="swimlane;startSize=30;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="180" y="70" width="760" height="660" as="geometry" />
+        </mxCell>
+
+        <!-- Http Layer — yellow, top-left inside boundary -->
+        <mxCell id="5" value="&lt;b&gt;Http Layer&lt;/b&gt;&#xa;[Container: PHP]&#xa;&#xa;AuthMiddleware&#xa;CorsMiddleware&#xa;RateLimitMiddleware&#xa;GraphQLHandler" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="4">
+          <mxGeometry x="20" y="60" width="160" height="185" as="geometry" />
+        </mxCell>
+
+        <!-- GraphQL Layer — purple, top-centre -->
+        <mxCell id="6" value="&lt;b&gt;GraphQL Layer&lt;/b&gt;&#xa;[Container: PHP + webonyx]&#xa;&#xa;SchemaFactory&#xa;PresignAssetMutationResolver&#xa;UpdateAssetStatusMutationResolver&#xa;AssetQueryResolver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="4">
+          <mxGeometry x="220" y="60" width="200" height="185" as="geometry" />
+        </mxCell>
+
+        <!-- Application Layer — blue, middle-centre -->
+        <mxCell id="7" value="&lt;b&gt;Application Layer&lt;/b&gt;&#xa;[Container: PHP]&#xa;&#xa;PresignService&#xa;AssetService&#xa;PresignAssetCommand&#xa;UpdateAssetStatusCommand" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="4">
+          <mxGeometry x="220" y="285" width="200" height="165" as="geometry" />
+        </mxCell>
+
+        <!-- Domain Layer — green, bottom-centre -->
+        <mxCell id="8" value="&lt;b&gt;Domain Layer&lt;/b&gt;&#xa;[Container: PHP — zero external deps]&#xa;&#xa;Asset (Entity)&#xa;UploadId · AccountId (Value Objects)&#xa;AssetRepositoryInterface&#xa;StorageAdapterInterface&#xa;AssetStatusChangedEvent" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="4">
+          <mxGeometry x="220" y="490" width="200" height="155" as="geometry" />
+        </mxCell>
+
+        <!-- Infrastructure Layer — orange, middle-right -->
+        <mxCell id="9" value="&lt;b&gt;Infrastructure Layer&lt;/b&gt;&#xa;[Container: PHP]&#xa;&#xa;MySQLAssetRepository&#xa;CachedAssetRepository&#xa;(Redis decorator)&#xa;MockStorageAdapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d6b656;fontSize=10;" vertex="1" parent="4">
+          <mxGeometry x="470" y="285" width="200" height="165" as="geometry" />
+        </mxCell>
+
+        <!-- MySQL 8 (outside boundary, right) -->
+        <mxCell id="10" value="&lt;b&gt;MySQL 8&lt;/b&gt;&#xa;[Database]&#xa;&#xa;Asset metadata&#xa;and status records" style="shape=mxgraph.flowchart.database;whiteSpace=wrap;html=1;fillColor=#999999;fontColor=#ffffff;strokeColor=#8a8a8a;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="970" y="400" width="175" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Redis 7 (outside boundary, right) -->
+        <mxCell id="11" value="&lt;b&gt;Redis 7&lt;/b&gt;&#xa;[Cache — optional]&#xa;&#xa;Read cache with TTL jitter&#xa;degrades gracefully if absent" style="shape=mxgraph.flowchart.database;whiteSpace=wrap;html=1;fillColor=#999999;fontColor=#ffffff;strokeColor=#8a8a8a;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="970" y="205" width="175" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: API Client → Http Layer (crosses boundary) -->
+        <mxCell id="12" value="GraphQL over HTTP/JSON" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" source="3" target="5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Http → GraphQL (inside boundary) -->
+        <mxCell id="13" value="dispatches request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" source="5" target="6" parent="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: GraphQL → Application (inside boundary) -->
+        <mxCell id="14" value="calls Application service" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" source="6" target="7" parent="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Application → Domain (inside boundary) -->
+        <mxCell id="15" value="uses domain objects" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" source="7" target="8" parent="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Application → Infrastructure (dashed = via domain interface) -->
+        <mxCell id="16" value="via repository / storage interface" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;fontSize=10;" edge="1" source="7" target="9" parent="4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Infrastructure → MySQL (crosses boundary) -->
+        <mxCell id="17" value="PDO prepared statements" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" source="9" target="10" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edge: Infrastructure → Redis (dashed = optional, crosses boundary) -->
+        <mxCell id="18" value="cache reads / writes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;fontSize=10;" edge="1" source="9" target="11" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

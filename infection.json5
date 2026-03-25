@@ -1,0 +1,27 @@
+{
+    "source": {
+        "directories": ["src"]
+    },
+    "testFramework": "phpunit",
+    "testFrameworkOptions": "--testsuite=unit",
+    // Start at 0 and raise incrementally as the test suite grows.
+    // Target: minMsi >= 80, minCoveredMsi >= 85.
+    "minMsi": 0,
+    "minCoveredMsi": 0,
+    "threads": "max",
+    "logs": {
+        "text": "build/infection.log",
+        "html": "build/infection.html",
+        "summary": "build/infection-summary.log"
+    },
+    "mutators": {
+        "@arithmetic": true,
+        "@boolean": true,
+        "@conditional_boundary": true,
+        "@conditional_negotiation": true,
+        "@equal": true,
+        "@nullSafe": true,
+        "@return_value": true,
+        "@unwrap": true
+    }
+}

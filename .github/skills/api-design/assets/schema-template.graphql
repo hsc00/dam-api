@@ -1,0 +1,117 @@
+"""
+DAM API — GraphQL Schema Template
+Replace placeholder types/fields below with feature-specific names.
+"""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Scalars
+# ─────────────────────────────────────────────────────────────────────────────
+
+"ISO 8601 datetime string (e.g. 2024-01-15T10:30:00Z)"
+scalar DateTime
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Enums
+# ─────────────────────────────────────────────────────────────────────────────
+
+"Lifecycle status of an asset in the DAM system"
+enum AssetStatus {
+  "Upload URL has been issued; upload has not completed yet"
+  PENDING
+  "Binary file has been successfully uploaded to storage"
+  UPLOADED
+  "Asset has been rejected or manually archived"
+  ARCHIVED
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Object Types
+# ─────────────────────────────────────────────────────────────────────────────
+
+"Represents a tracked digital asset in the DAM system"
+type Asset {
+  "Unique identifier of the asset (UUID)"
+  id: ID!
+  "Current lifecycle status"
+  status: AssetStatus!
+  "ISO 8601 datetime when the asset record was created"
+  createdAt: DateTime!
+  "ISO 8601 datetime of the most recent status change"
+  updatedAt: DateTime!
+}
+
+"A user-facing business error returned by a mutation"
+type UserError {
+  "Machine-readable error code (e.g. ASSET_NOT_FOUND, INVALID_MIME_TYPE)"
+  code: String!
+  "Human-readable message describing the error"
+  message: String!
+  "Optional: which input field caused the error"
+  field: String
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Queries
+# ─────────────────────────────────────────────────────────────────────────────
+
+type Query {
+  "Retrieve a single asset by its unique ID. Returns null if not found."
+  asset(id: ID!): Asset
+
+  "Retrieve all assets with an optional status filter."
+  assets(status: AssetStatus): [Asset!]!
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mutations — Presign Upload
+# ─────────────────────────────────────────────────────────────────────────────
+
+"Input for the presignAsset mutation"
+input PresignAssetInput {
+  "The account requesting the upload"
+  accountId: ID!
+  "MIME type of the file to be uploaded (e.g. image/jpeg)"
+  mimeType: String!
+  "Original filename, for metadata only (not used for storage key)"
+  filename: String!
+}
+
+"Result of the presignAsset mutation"
+type PresignAssetPayload {
+  "The newly created asset record (null if errors occurred)"
+  asset: Asset
+  "A time-limited presigned URL for the client to PUT the binary to"
+  presignedUrl: String
+  "Expiry datetime of the presigned URL (ISO 8601)"
+  urlExpiresAt: DateTime
+  "Business validation errors (empty on success)"
+  userErrors: [UserError!]!
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mutations — Update Status
+# ─────────────────────────────────────────────────────────────────────────────
+
+"Input for the updateAssetStatus mutation"
+input UpdateAssetStatusInput {
+  "ID of the asset whose status should be updated"
+  assetId: ID!
+  "The new lifecycle status to transition to"
+  newStatus: AssetStatus!
+}
+
+"Result of the updateAssetStatus mutation"
+type UpdateAssetStatusPayload {
+  "The updated asset record (null if errors occurred)"
+  asset: Asset
+  "Business validation errors (empty on success)"
+  userErrors: [UserError!]!
+}
+
+type Mutation {
+  "Generate a presigned upload URL and create an asset record in PENDING status"
+  presignAsset(input: PresignAssetInput!): PresignAssetPayload!
+
+  "Transition an existing asset to a new lifecycle status"
+  updateAssetStatus(input: UpdateAssetStatusInput!): UpdateAssetStatusPayload!
+}

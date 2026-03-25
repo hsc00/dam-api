@@ -1,0 +1,71 @@
+<mxfile host="app.diagrams.net" version="21.0.0">
+  <diagram id="c4-context-dam" name="C4 Context — DAM API">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- Title -->
+        <mxCell id="2" value="&lt;b&gt;System Context — DAM API&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="400" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Person: API Client -->
+        <mxCell id="3" value="&lt;b&gt;API Client&lt;/b&gt;&#xa;[Person]&#xa;&#xa;Web or mobile application&#xa;consuming the DAM API" style="shape=mxgraph.c4.person2;whiteSpace=wrap;html=1;fillColor=#08427b;fontColor=#ffffff;strokeColor=#073b6f;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="240" width="120" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- System: DAM API (internal) -->
+        <mxCell id="4" value="&lt;b&gt;DAM API&lt;/b&gt;&#xa;[Software System]&#xa;&#xa;Framework-free PHP 8.5 GraphQL&#xa;API for presigned upload and&#xa;asset status tracking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1168bd;fontColor=#ffffff;strokeColor=#0b4884;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="420" y="230" width="220" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- External System: Object Storage -->
+        <mxCell id="5" value="&lt;b&gt;Object Storage&lt;/b&gt;&#xa;[External System]&#xa;&#xa;S3 / GCS / Mock&#xa;Stores binary assets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#999999;fontColor=#ffffff;strokeColor=#8a8a8a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="780" y="120" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- External System: MySQL -->
+        <mxCell id="6" value="&lt;b&gt;MySQL 8&lt;/b&gt;&#xa;[External System]&#xa;&#xa;Stores asset metadata&#xa;and status records" style="shape=mxgraph.flowchart.database;whiteSpace=wrap;html=1;fillColor=#999999;fontColor=#ffffff;strokeColor=#8a8a8a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="780" y="270" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- External System: Redis -->
+        <mxCell id="7" value="&lt;b&gt;Redis 7&lt;/b&gt;&#xa;[External System]&#xa;&#xa;Asset read cache&#xa;(optional — degrades gracefully)" style="shape=mxgraph.flowchart.database;whiteSpace=wrap;html=1;fillColor=#999999;fontColor=#ffffff;strokeColor=#8a8a8a;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="780" y="420" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Relationship: Client → DAM API -->
+        <mxCell id="8" value="GraphQL over HTTP/JSON&#xa;(queries and mutations)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" source="3" target="4" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Relationship: DAM API → Object Storage -->
+        <mxCell id="9" value="Generates presigned URLs&#xa;(upload / download)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" source="4" target="5" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Relationship: DAM API → MySQL -->
+        <mxCell id="10" value="Reads / writes asset records&#xa;(PDO, prepared statements)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;fontSize=10;" edge="1" source="4" target="6" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Relationship: DAM API → Redis -->
+        <mxCell id="11" value="Cache reads / writes&#xa;(TTL with jitter)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;dashed=1;fontSize=10;" edge="1" source="4" target="7" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="12" value="&lt;b&gt;Legend&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="500" width="100" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="Internal System" style="rounded=1;fillColor=#1168bd;fontColor=#ffffff;strokeColor=#0b4884;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="80" y="530" width="130" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="External System / DB" style="rounded=1;fillColor=#999999;fontColor=#ffffff;strokeColor=#8a8a8a;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="230" y="530" width="150" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

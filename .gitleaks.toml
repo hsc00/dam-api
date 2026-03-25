@@ -1,0 +1,15 @@
+title = "gitleaks config"
+
+[[rules]]
+description = "AWS Access Key"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["key","AWS"]
+
+[[rules]]
+description = "Generic private key"
+regex = '''-----BEGIN (RSA )?PRIVATE KEY-----'''
+tags = ["key","private"]
+
+[allowlist]
+description = "Ignore only generated vendor code"
+files = ["vendor/*"]
