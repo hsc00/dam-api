@@ -32,7 +32,7 @@ COPY --chown=www-data:www-data . /var/www/html
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-RUN composer install --no-interaction --no-dev --optimize-autoloader --prefer-dist
+RUN composer install --no-interaction --no-dev --no-scripts --optimize-autoloader --prefer-dist
 
 USER www-data
 
