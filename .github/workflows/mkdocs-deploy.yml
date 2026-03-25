@@ -3,6 +3,11 @@ name: Build and deploy docs
 on:
   push:
     branches: [main]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - README.md
+      - requirements.txt
 
 permissions:
   contents: read
