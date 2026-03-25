@@ -1,4 +1,4 @@
-# US-001b: Upload request validation
+# US-05: Upload request validation
 
 ## User Story
 
@@ -47,7 +47,7 @@ Then  the response contains a friendly top-level error explaining the batch size
 
 ## Out of Scope
 
-- Core multi-file upload flow (US-001a)
+- Core multi-file upload flow (US-04)
 - Detailed file metadata validation such as mime type or filename length
 
 ---
@@ -56,10 +56,5 @@ Then  the response contains a friendly top-level error explaining the batch size
 
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
-- [ ] PHPUnit coverage ≥ 80% for new code
-- [ ] PHPStan level 8 passes
-- [ ] CS Fixer reports no violations
-- [ ] Architect approved API/DB design
-- [ ] QA engineer approved test coverage
-- [ ] Security reviewer approved (no OWASP Top 10 findings)
-- [ ] Tech writer updated API docs
+
+[EPIC-02: Upload Flow](.github/tasks/epics/epic-02-upload-flow/EPIC-02.md)

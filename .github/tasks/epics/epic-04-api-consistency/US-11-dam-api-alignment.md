@@ -1,4 +1,4 @@
-# US-006: Consistent mutation responses
+# US-11: Consistent mutation responses
 
 ## User Story
 
@@ -43,21 +43,9 @@ Then the violation is represented in the user-facing errors list and not as an u
 
 ---
 
-## Out of Scope
-
-- Query return types (read-only queries may follow different patterns)
-- Client SDK changes
-
----
-
 ## Definition of Done
 
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
-- [ ] PHPUnit coverage ≥ 80% for new code
-- [ ] PHPStan level 8 passes
-- [ ] CS Fixer reports no violations
-- [ ] Architect approved API/DB design
-- [ ] QA engineer approved test coverage
-- [ ] Security reviewer approved (no OWASP Top 10 findings)
-- [ ] Tech writer updated API docs
+
+[EPIC-04: API Consistency](.github/tasks/epics/epic-04-api-consistency/EPIC-04.md)

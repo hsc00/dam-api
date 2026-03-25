@@ -1,4 +1,4 @@
-# US-003b: Failed-job handling
+# US-08: Failed-job handling
 
 ## User Story
 
@@ -45,22 +45,9 @@ Then  the entry contains the original job payload and the final retry count
 
 ---
 
-## Out of Scope
-
-- Replay tools for failed jobs
-- Monitoring or alerting for failed-jobs depth
-- Complex back-off strategies
-
----
-
 ## Definition of Done
 
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
-- [ ] PHPUnit coverage ≥ 80% for new code
-- [ ] PHPStan level 8 passes
-- [ ] CS Fixer reports no violations
-- [ ] Architect approved API/DB design
-- [ ] QA engineer approved test coverage
-- [ ] Security reviewer approved (no OWASP Top 10 findings)
-- [ ] Tech writer updated API docs
+
+[EPIC-03: Background Processing](.github/tasks/epics/epic-03-background-processing/EPIC-03.md)

@@ -1,4 +1,4 @@
-# US-002: Mark upload as complete
+# US-06: Mark upload as complete
 
 ## User Story
 
@@ -30,7 +30,7 @@ Then  the file is recorded as "processing"
 
 ```
 Given the provided file identifier does not exist
-When  the user marks that file as complete
+When the user marks that file as complete
 Then  the response contains a friendly error explaining the file was not found
  And  no background job is scheduled
 ```
@@ -39,7 +39,7 @@ Then  the response contains a friendly error explaining the file was not found
 
 ```
 Given a file is already being processed or is already ready or failed
-When  the user marks it as complete
+When the user marks it as complete
 Then  the response contains a friendly error explaining the action is invalid
  And  no new background job is scheduled
 ```
@@ -50,10 +50,5 @@ Then  the response contains a friendly error explaining the action is invalid
 
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
-- [ ] PHPUnit coverage ≥ 80% for new code
-- [ ] PHPStan level 8 passes
-- [ ] CS Fixer reports no violations
-- [ ] Architect approved API/DB design
-- [ ] QA engineer approved test coverage
-- [ ] Security reviewer approved (no OWASP Top 10 findings)
-- [ ] Tech writer updated API docs
+
+[EPIC-02: Upload Flow](.github/tasks/epics/epic-02-upload-flow/EPIC-02.md)

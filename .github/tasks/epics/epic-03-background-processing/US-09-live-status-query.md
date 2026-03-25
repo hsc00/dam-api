@@ -1,4 +1,4 @@
-# US-004: Check file status
+# US-09: Check file status
 
 ## User Story
 
@@ -47,10 +47,5 @@ Then  the response is null and no error is thrown
 
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
-- [ ] PHPUnit coverage ≥ 80% for new code
-- [ ] PHPStan level 8 passes
-- [ ] CS Fixer reports no violations
-- [ ] Architect approved API/DB design
-- [ ] QA engineer approved test coverage
-- [ ] Security reviewer approved (no OWASP Top 10 findings)
-- [ ] Tech writer updated API docs
+
+[EPIC-03: Background Processing](.github/tasks/epics/epic-03-background-processing/EPIC-03.md)

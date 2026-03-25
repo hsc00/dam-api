@@ -1,4 +1,4 @@
-# US-005: Search files by name
+# US-10: Search files by name
 
 ## User Story
 
@@ -45,22 +45,9 @@ Then  only ready files that belong to my account are returned
 
 ---
 
-## Out of Scope
-
-- Searching other fields such as tags or metadata
-- Fuzzy or typo-tolerant matching
-- External search engine integration
-
----
-
 ## Definition of Done
 
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
-- [ ] PHPUnit coverage ≥ 80% for new code
-- [ ] PHPStan level 8 passes
-- [ ] CS Fixer reports no violations
-- [ ] Architect approved API/DB design
-- [ ] QA engineer approved test coverage
-- [ ] Security reviewer approved (no OWASP Top 10 findings)
-- [ ] Tech writer updated API docs
+
+[EPIC-04: API Consistency](.github/tasks/epics/epic-04-api-consistency/EPIC-04.md)

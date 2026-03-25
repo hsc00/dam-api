@@ -1,5 +1,5 @@
 {
-  "name": "frontify/dam-php",
+  "name": "dam/dam-php",
   "description": "DAM-style presign + status service — GraphQL + PHP 8.5 + MySQL",
   "type": "project",
   "require": {

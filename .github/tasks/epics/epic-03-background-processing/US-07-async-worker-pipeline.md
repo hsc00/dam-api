@@ -1,4 +1,4 @@
-# US-003a: Background job processing
+# US-07: Background job processing
 
 ## User Story
 
@@ -46,21 +46,9 @@ Then  the job is discarded and an error is logged for operator review
 
 ---
 
-## Out of Scope
-
-- Moving repeatedly failing jobs to a separate failed-jobs list (US-003b)
-- Worker container orchestration details
-
----
-
 ## Definition of Done
 
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
-- [ ] PHPUnit coverage ≥ 80% for new code
-- [ ] PHPStan level 8 passes
-- [ ] CS Fixer reports no violations
-- [ ] Architect approved API/DB design
-- [ ] QA engineer approved test coverage
-- [ ] Security reviewer approved (no OWASP Top 10 findings)
-- [ ] Tech writer updated API docs
+
+[EPIC-03: Background Processing](.github/tasks/epics/epic-03-background-processing/EPIC-03.md)

@@ -1,4 +1,4 @@
-# US-001a: Start multi-file upload
+# US-04: Start multi-file upload
 
 ## User Story
 
@@ -40,8 +40,8 @@ Then  I receive a list with one entry per file and the expected number of piece 
 
 ```
 Given one file in my batch uses an identifier already in the system
-When  I request upload links for the batch
-Then  the response includes a helpful error for that file only
+When I request upload links for the batch
+Then the response includes a helpful error for that file only
  And  other files in the same request succeed and return links
 ```
 
@@ -49,7 +49,7 @@ Then  the response includes a helpful error for that file only
 
 ## Out of Scope
 
-- Input validation for chunk counts and batch size (see US-001b)
+- Input validation for chunk counts and batch size (see US-05)
 - The actual transfer of bytes using the returned links
 
 ---
@@ -58,10 +58,5 @@ Then  the response includes a helpful error for that file only
 
 - [ ] Implementation complete
 - [ ] PHPUnit unit tests pass
-- [ ] PHPUnit coverage ≥ 80% for new code
-- [ ] PHPStan level 8 passes
-- [ ] CS Fixer reports no violations
-- [ ] Architect approved API/DB design
-- [ ] QA engineer approved test coverage
-- [ ] Security reviewer approved (no OWASP Top 10 findings)
-- [ ] Tech writer updated API docs
+
+[EPIC-02: Upload Flow](.github/tasks/epics/epic-02-upload-flow/EPIC-02.md)
