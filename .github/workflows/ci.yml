@@ -130,6 +130,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: php
+          tools: latest
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
       - name: Run CodeQL analysis
