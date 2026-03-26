@@ -1,0 +1,200 @@
+"""
+Minimal upload contract for the DAM API.
+"""
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+"""
+ISO 8601 timestamp.
+"""
+scalar DateTime
+
+"""
+Non-negative file size in bytes. Supports values beyond GraphQL Int range.
+"""
+scalar ByteCount
+
+"""
+Lifecycle status of an asset in the upload flow.
+"""
+enum AssetStatus {
+  "The upload has started but is not complete."
+  PENDING
+
+  "The upload has been completed successfully."
+  UPLOADED
+
+  "The upload failed."
+  FAILED
+}
+
+"""
+Supported HTTP method for the upload request in v1.
+"""
+enum UploadHttpMethod {
+  PUT
+}
+
+"""
+Where the client reads the completion proof from in v1.
+"""
+enum UploadCompletionProofSource {
+  RESPONSE_HEADER
+}
+
+"""
+One required name/value pair for an upload request.
+"""
+type UploadParameter {
+  "Parameter name."
+  name: String!
+
+  "Parameter value."
+  value: String!
+}
+
+"""
+Minimal tracked asset resource.
+"""
+type Asset {
+  "Asset identifier."
+  id: ID!
+
+  "Current upload status."
+  status: AssetStatus!
+}
+
+"""
+How the client identifies the upload proof required by completeUpload.
+"""
+type UploadCompletionProofDescriptor {
+  "Proof name the client must read from the upload response."
+  name: String!
+
+  "Where the client must read that proof in the upload response."
+  source: UploadCompletionProofSource!
+}
+
+"""
+Full client request instructions for uploading one file.
+"""
+type UploadTarget {
+  "Time-limited upload URL."
+  url: String!
+
+  "HTTP method the client must use for the upload request."
+  method: UploadHttpMethod!
+
+  "Authorization-critical headers that must be sent exactly as issued."
+  signedHeaders: [UploadParameter!]!
+
+  "Descriptor for the upload proof the client must capture and echo to completeUpload."
+  completionProof: UploadCompletionProofDescriptor!
+
+  "When this upload target expires."
+  expiresAt: DateTime!
+}
+
+"""
+A business validation error.
+"""
+type UserError {
+  "Machine-readable error code."
+  code: String!
+
+  "Human-readable error message."
+  message: String!
+
+  "Related input field, when applicable."
+  field: String
+}
+
+"""
+Input for starting one upload.
+"""
+input StartUploadInput {
+  "Original client file name."
+  fileName: String!
+
+  "Client-supplied media type."
+  mimeType: String!
+
+  "Declared file size in bytes."
+  fileSizeBytes: ByteCount!
+
+  "Base64-encoded SHA-256 checksum of the file content."
+  checksumSha256: String!
+}
+
+"""
+Successful result of startUpload.
+"""
+type StartUploadSuccess {
+  "Created asset status."
+  asset: Asset!
+
+  "Upload target for the started upload."
+  uploadTarget: UploadTarget!
+
+  "Server-issued grant required to complete this upload."
+  uploadGrant: String!
+}
+
+"""
+Payload for startUpload.
+"""
+type StartUploadPayload {
+  "Successful result when the operation completes without business errors."
+  success: StartUploadSuccess
+
+  "Business validation errors."
+  userErrors: [UserError!]!
+}
+
+"""
+Input for completing one upload.
+"""
+input CompleteUploadInput {
+  "Asset identifier returned by startUpload."
+  assetId: ID!
+
+  "Server-issued grant returned by startUpload."
+  uploadGrant: String!
+
+  "Captured upload proof value named by uploadTarget.completionProof."
+  completionProof: String!
+}
+
+"""
+Successful result of completeUpload.
+"""
+type CompleteUploadSuccess {
+  "Updated asset status."
+  asset: Asset!
+}
+
+"""
+Payload for completeUpload.
+"""
+type CompleteUploadPayload {
+  "Successful result when the operation completes without business errors."
+  success: CompleteUploadSuccess
+
+  "Business validation errors."
+  userErrors: [UserError!]!
+}
+
+type Query {
+  "Fetch the status of one asset by id."
+  asset(id: ID!): Asset
+}
+
+type Mutation {
+  "Start one upload and receive its upload target."
+  startUpload(input: StartUploadInput!): StartUploadPayload!
+
+  "Complete one upload after the file is sent."
+  completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!
+}
