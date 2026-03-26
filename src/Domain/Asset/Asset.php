@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Domain\Asset;
 
-use DateTimeImmutable;
-use App\Domain\Asset\ValueObject\UploadId;
-use App\Domain\Asset\ValueObject\AccountId;
 use App\Domain\Asset\Exception\AssetDomainException;
+use App\Domain\Asset\ValueObject\AccountId;
+use App\Domain\Asset\ValueObject\UploadId;
+use DateTimeImmutable;
 
 final class Asset
 {
@@ -34,14 +34,37 @@ final class Asset
     public static function createPending(UploadId $uploadId, AccountId $accountId): self
     {
         $now = new DateTimeImmutable();
-        return new self(\Ramsey\Uuid\Uuid::uuid4()->toString(), $uploadId, $accountId, AssetStatus::PENDING, $now);
+
+        return new self(id: self::generateUuidV4(), uploadId: $uploadId, accountId: $accountId, status: AssetStatus::PENDING, now: $now);
     }
 
-    public function markUploaded(string $filename, string $contentType, int $size):void
+    private static function generateUuidV4(): string
     {
-        if($this->status === AssetStatus::UPLOADED) {
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
+
+        $hex = bin2hex($bytes);
+
+        return sprintf(
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12),
+        );
+    }
+
+    /**
+     * @throws AssetDomainException
+     */
+    public function markUploaded(string $filename, string $contentType, int $size): void
+    {
+        if ($this->status === AssetStatus::UPLOADED) {
             throw new AssetDomainException('Asset already uploaded');
         }
+
         $this->filename = $filename;
         $this->contentType = $contentType;
         $this->size = $size;
@@ -49,23 +72,55 @@ final class Asset
         $this->updatedAt = new DateTimeImmutable();
     }
 
-    public function markFailed(): void{
-        if($this->status === AssetStatus::UPLOADED) {
+    /**
+     * @throws AssetDomainException
+     */
+    public function markFailed(): void
+    {
+        if ($this->status === AssetStatus::UPLOADED) {
             throw new AssetDomainException('Cannot mark an uploaded asset as failed');
         }
+
         $this->status = AssetStatus::FAILED;
         $this->updatedAt = new DateTimeImmutable();
     }
 
-    public function getId(): string { return $this->id; }
-    public function getUploadId(): UploadId { return $this->uploadId; }
-    public function getAccountId(): AccountId { return $this->accountId; }
-    public function getStatus(): AssetStatus { return $this->status; }
-    public function getFilename(): ?string { return $this->filename; }
-    public function getContentType(): ?string { return $this->contentType; }
-    public function getSize(): ?int { return $this->size; }
-    public function getCreatedAt(): DateTimeImmutable { return $this->createdAt; }
-    public function getUpdatedAt(): DateTimeImmutable { return $this->updatedAt; }
+    public function getId(): string
+    {
+        return $this->id;
+    }
+    public function getUploadId(): UploadId
+    {
+        return $this->uploadId;
+    }
+    public function getAccountId(): AccountId
+    {
+        return $this->accountId;
+    }
+    public function getStatus(): AssetStatus
+    {
+        return $this->status;
+    }
+    public function getFilename(): ?string
+    {
+        return $this->filename;
+    }
+    public function getContentType(): ?string
+    {
+        return $this->contentType;
+    }
+    public function getSize(): ?int
+    {
+        return $this->size;
+    }
+    public function getCreatedAt(): DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+    public function getUpdatedAt(): DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
 
     public function equals(Asset $other): bool
     {
@@ -73,4 +128,3 @@ final class Asset
     }
 
 }
-

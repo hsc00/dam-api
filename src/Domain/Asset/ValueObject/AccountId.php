@@ -6,14 +6,22 @@ namespace App\Domain\Asset\ValueObject;
 
 final readonly class AccountId
 {
+    /**
+     * @throws \InvalidArgumentException
+     */
     public function __construct(public string $value)
     {
-        if (!preg_match('/^[0-9a-fA-F\-]{36}$/', $value)) {
-            throw new \InvalidArgumentException('Invalid AccountId format');
+        $value = trim($value);
+
+        if ($value === '') {
+            throw new \InvalidArgumentException('AccountId cannot be empty');
         }
+
+        $this->value = $value;
     }
 
-    public function __toString(): string {
+    public function __toString(): string
+    {
         return $this->value;
     }
 }
