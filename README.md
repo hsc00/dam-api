@@ -3,9 +3,7 @@
 [![CI](https://github.com/hsc00/dam-api/actions/workflows/ci.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/ci.yml)
 [![SonarCloud Quality Gate](https://sonarcloud.io/api/project_badges/quality_gate?project=hsc00_dam-api)](https://sonarcloud.io/dashboard?id=hsc00_dam-api)
 [![Trivy Scan](https://github.com/hsc00/dam-api/actions/workflows/trivy.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/trivy.yml)
-
 [![Security Checks](https://github.com/hsc00/dam-api/actions/workflows/security.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/security.yml)
-
 [![Docs Deploy](https://github.com/hsc00/dam-api/actions/workflows/mkdocs-deploy.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/mkdocs-deploy.yml)
 
 A challenge showcasing a production-grade, framework-free PHP 8 service for a Digital Asset Management (DAM) presign-upload and asset-status-tracking API. Built with GraphQL, MySQL, and an optional Redis cache layer.
