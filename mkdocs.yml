@@ -4,6 +4,8 @@ theme:
   name: material
 nav:
   - Home: index.md
+  - API:
+      - US-01 Agree API Schema: api/01-agree-api-schema.md
   - Architecture:
       - C4 Context Diagram: architecture/c4-context.drawio
       - C4 Container Diagram: architecture/c4-container.drawio
@@ -12,5 +14,8 @@ nav:
   - ADRs:
       - Tooling: adr/01-tooling-choices.md
       - Security: adr/02-security-choices.md
+      - Domain-first Modeling and Idempotent Upload Flow: adr/03-domain-first-idempotent-upload.md
+  - Implementation Logs:
+      - US-01 Agree API Schema: logs/01-agree-api-schema.md
 plugins:
   - search
