@@ -74,6 +74,13 @@ jobs:
           vendor/bin/phpstan analyse -c phpstan.neon src
       - name: Run PHP CS Fixer (check)
         run: vendor/bin/php-cs-fixer fix --dry-run --diff
+      - name: Setup PHP with Xdebug (for coverage)
+        if: steps.test-discovery.outputs.has_unit_tests == 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: xdebug
+          extensions: pdo_mysql, mbstring, json, xdebug
       - name: Run PHPUnit (unit)
         if: steps.test-discovery.outputs.has_unit_tests == 'true'
         env:
@@ -105,6 +112,14 @@ jobs:
         if: steps.test-discovery.outputs.has_integration_tests != 'true'
         run: |
           echo "Skipping integration suite for scaffold: no integration test files found."
+      - name: SonarCloud Scan
+        if: always() && steps.test-discovery.outputs.has_unit_tests == 'true'
+        uses: sonarsource/sonarcloud-github-action@v1
+        with:
+          args: >
+            -Dsonar.php.coverage.reportPaths=build/coverage.xml
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: Upload test report
         if: always() && steps.test-discovery.outputs.has_unit_tests == 'true'
         uses: actions/upload-artifact@v4
@@ -116,4 +131,3 @@ jobs:
           retention-days: 14
       - name: Composer audit
         run: composer audit --no-interaction
-
