@@ -49,3 +49,11 @@ semgrep.sarif
 
 # Docker
 docker-compose.override.yml
+
+# Psalm
+/.psalm_cache
+
+# PHPUnit
+/.phpunit.cache
+
+*.cache
