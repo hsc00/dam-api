@@ -89,34 +89,42 @@ final class Asset
     {
         return $this->id;
     }
+
     public function getUploadId(): UploadId
     {
         return $this->uploadId;
     }
+
     public function getAccountId(): AccountId
     {
         return $this->accountId;
     }
+
     public function getStatus(): AssetStatus
     {
         return $this->status;
     }
+
     public function getFilename(): ?string
     {
         return $this->filename;
     }
+
     public function getContentType(): ?string
     {
         return $this->contentType;
     }
+
     public function getSize(): ?int
     {
         return $this->size;
     }
+
     public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
     }
+
     public function getUpdatedAt(): DateTimeImmutable
     {
         return $this->updatedAt;
@@ -126,5 +134,4 @@ final class Asset
     {
         return $this->id === $other->id;
     }
-
 }

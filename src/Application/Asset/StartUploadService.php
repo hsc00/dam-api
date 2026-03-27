@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Application\Asset;
 
-use App\Domain\Asset\AssetRepositoryInterface;
-use App\Domain\Asset\ValueObject\UploadId;
-use App\Domain\Asset\ValueObject\AccountId;
 use App\Domain\Asset\Asset;
+use App\Domain\Asset\AssetRepositoryInterface;
+use App\Domain\Asset\ValueObject\AccountId;
+use App\Domain\Asset\ValueObject\UploadId;
 
 final class StartUploadService
 {

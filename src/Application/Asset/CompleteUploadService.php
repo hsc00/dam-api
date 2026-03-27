@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Application\Asset;
 
-use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\Asset;
+use App\Domain\Asset\AssetRepositoryInterface;
 
 final class CompleteUploadService
 {

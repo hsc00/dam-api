@@ -6,18 +6,20 @@ namespace App\Domain\Asset\ValueObject;
 
 final readonly class AccountId
 {
+    public string $value;
+
     /**
      * @throws \InvalidArgumentException
      */
-    public function __construct(public string $value)
+    public function __construct(string $value)
     {
-        $value = trim($value);
+        $trimmedValue = trim($value);
 
-        if ($value === '') {
+        if ($trimmedValue === '') {
             throw new \InvalidArgumentException('AccountId cannot be empty');
         }
 
-        $this->value = $value;
+        $this->value = $trimmedValue;
     }
 
     public function __toString(): string
