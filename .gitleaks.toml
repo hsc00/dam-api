@@ -2,11 +2,13 @@ title = "gitleaks config"
 
 [[rules]]
 description = "AWS Access Key"
+id = "aws-access-key"
 regex = '''AKIA[0-9A-Z]{16}'''
 tags = ["key","AWS"]
 
 [[rules]]
 description = "Generic private key"
+id = "private-key"
 regex = '''-----BEGIN (RSA )?PRIVATE KEY-----'''
 tags = ["key","private"]
 
