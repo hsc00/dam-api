@@ -7,6 +7,10 @@ description: "Run a comprehensive cross-agent code review on a specified file or
 
 Run a comprehensive code review on the following target:
 
+The `${input:review_target}` placeholder is populated by the slash-command input. If you are editing this prompt manually, replace it with the actual review target.
+
+Load the `feature-delivery-workflow` skill before orchestrating the review.
+
 > ${input:review_target}
 > (e.g. a file path like `src/Application/Asset/PresignService.php`, a PR branch name, or a feature name)
 

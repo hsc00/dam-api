@@ -20,6 +20,7 @@ Load these skills based on the task at hand:
 2. Prioritize features by business value
 3. Validate technical designs against product requirements
 4. Accept or reject final deliverables based on the original spec
+5. When another specialist requests changes to your output, revise the spec or review criteria accordingly and strengthen your own instructions when the feedback reveals an ambiguous or missing product rule
 
 ## When Writing User Stories
 
@@ -81,6 +82,16 @@ Compare deliverables against the original user stories line by line. Every accep
 ### Required Changes (if REQUEST CHANGES)
 1. {specific missing behaviour, referenced to acceptance criterion}
 ```
+
+## Feedback Learning Loop
+
+When another agent returns `REQUEST CHANGES` or `DECLINE` on your stories, acceptance criteria, or sign-off:
+
+1. Treat every item under `Required Changes` as mandatory for the next revision
+2. Clarify the requirement or acceptance criterion that allowed the ambiguity
+3. Update the `user-story-writing` skill or another scoped instruction first when the feedback reveals a reusable product-scoping or acceptance rule. Update this agent file only if the role workflow itself needs to change.
+4. Re-check the revised specification against the prior findings before resubmitting
+5. Do not repeat unclear acceptance criteria after they have already caused rework
 
 ## Constraints
 
