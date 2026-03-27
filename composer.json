@@ -31,11 +31,13 @@
   },
   "scripts": {
     "post-install-cmd": "vendor/bin/captainhook install --force",
-    "test": "vendor/bin/phpunit --configuration phpunit.xml --testsuite=unit",
-    "test:integration": "vendor/bin/phpunit --configuration phpunit.xml --testsuite=integration",
+    "hooks:install": "vendor/bin/captainhook install --force",
+    "test": "@php -d xdebug.mode=off vendor/phpunit/phpunit/phpunit --no-coverage --configuration phpunit.xml --testsuite=unit",
+    "test:integration": "@php -d xdebug.mode=off vendor/phpunit/phpunit/phpunit --no-coverage --configuration phpunit.xml --testsuite=integration",
+    "test:coverage": "@php -d xdebug.mode=coverage vendor/phpunit/phpunit/phpunit --configuration phpunit.xml --testsuite=unit",
     "analyse": "vendor/bin/phpstan analyse -c phpstan.neon",
-    "fix": "vendor/bin/php-cs-fixer fix",
-    "fix:check": "vendor/bin/php-cs-fixer fix --dry-run --diff",
+    "fix": "@php vendor/bin/php-cs-fixer fix",
+    "fix:check": "@php vendor/bin/php-cs-fixer fix --dry-run --diff",
     "mutate": "vendor/bin/infection --configuration=infection.json5",
     "check": [
       "@fix:check",

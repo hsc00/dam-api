@@ -2,15 +2,16 @@
   "pre-commit": {
     "enabled": true,
     "actions": [
-      { "action": "vendor/bin/php-cs-fixer fix --dry-run --diff" },
-      { "action": "vendor/bin/phpstan analyse -c phpstan.neon" }
+      { "action": "php vendor/bin/php-cs-fixer fix --using-cache=no" },
+      { "action": "git add -A" },
+      { "action": "php vendor/bin/phpstan analyse -c phpstan.neon" }
     ]
   },
   "pre-push": {
     "enabled": true,
     "actions": [
       {
-        "action": "vendor/bin/phpunit --configuration phpunit.xml --testsuite=unit"
+        "action": "php -d xdebug.mode=off vendor/phpunit/phpunit/phpunit --no-coverage --configuration phpunit.xml --testsuite=unit"
       }
     ]
   }

@@ -1,0 +1,57 @@
+name: PHPUnit Coverage
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phpunit-coverage:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          extensions: xdebug
+          ini-values: xdebug.mode=coverage
+          coverage: xdebug
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+        env:
+          CAPTAINHOOK_DISABLE: "1"
+
+      - name: Run project checks
+        run: composer check
+
+      - name: Run PHPUnit with coverage
+        run: |
+          mkdir -p build/logs
+          vendor/bin/phpunit --configuration phpunit.xml --coverage-clover build/logs/clover.xml --coverage-html build/coverage --coverage-text
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: phpunit-coverage
+          path: |
+            build/logs/clover.xml
+            build/coverage
+          retention-days: 14

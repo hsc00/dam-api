@@ -14,6 +14,8 @@ Load these skills based on the task at hand:
 
 - **`ci-pipeline`** — Load when creating or modifying any GitHub Actions workflow. Covers action pinning, Composer caching, secrets handling, permissions, and job structure conventions for this project.
 
+Before editing any file under `.github/workflows/`, load the `ci-pipeline` skill first. This is mandatory.
+
 ## Your Responsibilities
 
 1. Create and maintain GitHub Actions workflows
@@ -21,6 +23,17 @@ Load these skills based on the task at hand:
 3. Manage environment variable strategy (`.env.example`, secrets)
 4. Review infrastructure security
 5. Define deployment strategy
+6. Ensure CI and pipeline steps run project quality checks: `composer check`, `composer ci`, `composer test:integration`, `composer analyse`, and `composer fix:check`. Validate that workflows call these scripts or equivalent steps and that caching and pinning follow project CI conventions.
+
+## Feedback Learning Loop
+
+When another agent returns `REQUEST CHANGES` or `DECLINE` on your workflow, Docker, or infrastructure output:
+
+1. Treat every item under `Required Changes` as mandatory for the next revision
+2. Update the `ci-pipeline` skill or another scoped instruction first when the feedback reveals a reusable CI, Docker, or security rule. Update this agent file only if the role workflow itself needs to change.
+3. Re-validate the revised configuration against the prior findings before resubmitting
+4. Do not repeat the same unsafe or non-compliant pipeline pattern after it has already been flagged
+5. Escalate to the Scrum Master if requested changes conflict with TTFHW, security constraints, or deployment requirements
 
 ## Existing Pipelines (know these before making changes)
 

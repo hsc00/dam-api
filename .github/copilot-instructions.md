@@ -70,6 +70,15 @@ This project uses a SCRUM-like agent team. For all feature work, use **@scrum-ma
 
 Quick-launch prompts (type `/` in chat): `/new-feature`, `/review-code`, `/draw-architecture`
 
+## Token Efficiency
+
+- Prefer the smallest workflow that fits the task. Do not run the full SCRUM ceremony for narrow edits that do not change product scope, architecture, schema, or infrastructure.
+- After the first response, communicate deltas only. Do not restate unchanged requirements, prior findings, or full plans.
+- Reviews should focus on `ISSUE` and `BLOCKER` items. Include `PASS` items only when needed to justify an approval or clarify a tradeoff.
+- Keep specialist outputs compact by default: concise summary, concrete file list, and only the checks that were actually run.
+- Load only the skills and files required for the current task. Avoid broad context gathering when a targeted read is sufficient.
+- When a reusable implementation rule is discovered, prefer updating a scoped instruction or skill first. Update an agent file only when the role, delegation flow, or review behavior itself needs to change.
+
 ## Build & Test
 
 ```bash

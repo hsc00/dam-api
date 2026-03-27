@@ -7,6 +7,8 @@ description: "Generate one or more draw.io architecture diagrams for the DAM API
 
 Generate architecture diagrams for the DAM API project.
 
+The `${input:diagram_description}` placeholder is populated by the slash-command input. If you are editing this prompt manually, replace it with the actual diagram request.
+
 Diagram request:
 
 > ${input:diagram_description}

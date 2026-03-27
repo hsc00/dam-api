@@ -1,5 +1,13 @@
 # DAM PHP API — Presign + Status (GraphQL + MySQL)
 
+[![CI](https://github.com/hsc00/dam-api/actions/workflows/ci.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/ci.yml)
+[![SonarCloud Quality Gate](https://sonarcloud.io/api/project_badges/quality_gate?project=hsc00_dam-api)](https://sonarcloud.io/dashboard?id=hsc00_dam-api)
+[![Trivy Scan](https://github.com/hsc00/dam-api/actions/workflows/trivy.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/trivy.yml)
+
+<!--[![Security Checks](https://github.com/hsc00/dam-api/actions/workflows/security.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/security.yml)-->
+
+[![Docs Deploy](https://github.com/hsc00/dam-api/actions/workflows/mkdocs-deploy.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/mkdocs-deploy.yml)
+
 A challenge showcasing a production-grade, framework-free PHP 8 service for a Digital Asset Management (DAM) presign-upload and asset-status-tracking API. Built with GraphQL, MySQL, and an optional Redis cache layer.
 
 ---
@@ -156,14 +164,20 @@ Four GitHub Actions workflows cover quality, security and code review:
 
 ## Pre-commit Hooks
 
-Git hooks are managed by [CaptainHook](https://github.com/captainhookphp/captainhook), a Composer dev dependency. Hooks install automatically as part of `composer install` — no extra tooling needed.
+Git hooks are managed by [CaptainHook](https://github.com/captainhookphp/captainhook).
+On every commit CaptainHook:
 
-On every commit, three checks run and block the commit if any fail:
+1. Runs `php-cs-fixer fix --using-cache=no` to automatically fix formatting and then stages fixes with `git add -A` so fixes are included in the same commit.
+2. Runs `phpstan analyse -c phpstan.neon` and aborts the commit on any errors.
 
-1. **PHP CS Fixer** — coding style (dry-run, no auto-fix)
-2. **PHPStan** — static analysis
-3. **PHPUnit** — unit test suite
+Unit tests (`phpunit`) continue to run on `pre-push` to avoid slowing every commit.
 
-> Use `composer check` to run CS Fixer + PHPStan on demand without committing.
+Use the existing helper scripts to run checks manually:
 
-> Branch protection on `main` requires all CI checks to pass + 1 code owner approval.
+```bash
+composer check        # runs php-cs-fixer (dry-run) + phpstan
+composer fix          # runs php-cs-fixer to apply fixes
+composer analyse      # runs phpstan
+```
+
+Branch protection on `main` requires all CI checks to pass + one code owner approval.
