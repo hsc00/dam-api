@@ -1,7 +1,7 @@
 # DAM PHP API — Presign + Status (GraphQL + MySQL)
 
 [![CI](https://github.com/hsc00/dam-api/actions/workflows/ci.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/ci.yml)
-[![SonarCloud Quality Gate](https://sonarcloud.io/api/project_badges/quality_gate?project=hsc00_dam-api)](https://sonarcloud.io/dashboard?id=hsc00_dam-api)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=hsc00_dam-api&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=hsc00_dam-api)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=hsc00_dam-api&metric=bugs)](https://sonarcloud.io/summary/new_code?id=hsc00_dam-api)
 [![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=hsc00_dam-api&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=hsc00_dam-api)
 [![Trivy Scan](https://github.com/hsc00/dam-api/actions/workflows/trivy.yml/badge.svg)](https://github.com/hsc00/dam-api/actions/workflows/trivy.yml)
