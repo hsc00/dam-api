@@ -121,6 +121,8 @@ jobs:
         with:
           args: >
             -Dsonar.php.coverage.reportPaths=build/coverage.xml
+            -Dsonar.projectKey=hsc00_dam-api
+            -Dsonar.organization=hsc00
             -Dsonar.verbose=true
       - name: Upload test report
         if: always() && steps.test-discovery.outputs.has_unit_tests == 'true'
