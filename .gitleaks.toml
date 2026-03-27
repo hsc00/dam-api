@@ -2,12 +2,14 @@ title = "gitleaks config"
 
 [[rules]]
 description = "AWS Access Key"
+id = "aws-access-key"
 regex = '''AKIA[0-9A-Z]{16}'''
 tags = ["key","AWS"]
 
 [[rules]]
 description = "Generic private key"
-regex = '''-----BEGIN (RSA )?PRIVATE KEY-----'''
+id = "private-key"
+regex = '''-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----'''
 tags = ["key","private"]
 
 [allowlist]

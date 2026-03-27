@@ -1,1 +1,0 @@
-{"version":2,"defects":[],"times":{"App\\Tests\\Unit\\Domain\\Asset\\UploadIdTest::itThrowsInvalidArgumentExceptionWhenInputIsEmpty":0.024,"App\\Tests\\Unit\\Domain\\Asset\\UploadIdTest::itReturnsValueWhenInputIsValid":0.003,"App\\Tests\\Integration\\Http\\HealthControllerSmokeTest::itReturnsHealthyJsonWhenServiceAndControllerAreWired":0.024}}
