@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../../architecture/sequence-presign-upload.drawio">
+        <link rel="prev" href="../02-security-choices/">
       
       
-        <link rel="next" href="../02-security-choices/">
+        <link rel="next" href="../../logs/01-agree-api-schema/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Tooling - DAM API Docs</title>
+        <title>Domain-first Modeling and Idempotent Upload Flow - DAM API Docs</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tooling-choices" class="md-skip">
+        <a href="#adr-03-domain-first-modeling-and-idempotent-upload-flow" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Tooling
+              Domain-first Modeling and Idempotent Upload Flow
             
           </span>
         </div>
@@ -519,37 +519,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tooling
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../01-tooling-choices/" class="md-nav__link">
         
   
   
@@ -565,214 +538,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#context" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Context
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#decisions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Decisions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Decisions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#webonyxgraphql-php" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        webonyx/graphql-php
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#monologmonolog" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        monolog/monolog
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vlucasphpdotenv" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        vlucas/phpdotenv
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phpstanphpstan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        phpstan/phpstan
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phpunitphpunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        phpunit/phpunit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#friendsofphpphp-cs-fixer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        friendsofphp/php-cs-fixer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vimeopsalm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        vimeo/psalm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#squizlabsphp_codesniffer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        squizlabs/php_codesniffer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#infectioninfection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        infection/infection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#github-codeql" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub CodeQL
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#composer-audit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        composer audit
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-docker-compose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker / docker-compose
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#consequences" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Consequences
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Consequences">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#local-development-and-ttfhw" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local development and TTFHW
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -810,10 +575,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../03-domain-first-idempotent-upload/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Domain-first Modeling and Idempotent Upload Flow
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -829,6 +621,59 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Context
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decision
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consequences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consequences
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -961,148 +806,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#decisions" class="md-nav__link">
+  <a href="#decision" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decisions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Decisions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#webonyxgraphql-php" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        webonyx/graphql-php
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#monologmonolog" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        monolog/monolog
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vlucasphpdotenv" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        vlucas/phpdotenv
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phpstanphpstan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        phpstan/phpstan
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phpunitphpunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        phpunit/phpunit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#friendsofphpphp-cs-fixer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        friendsofphp/php-cs-fixer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vimeopsalm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        vimeo/psalm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#squizlabsphp_codesniffer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        squizlabs/php_codesniffer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#infectioninfection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        infection/infection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#github-codeql" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub CodeQL
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#composer-audit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        composer audit
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-docker-compose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker / docker-compose
+        Decision
       
     </span>
   </a>
@@ -1117,23 +824,6 @@
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Consequences">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#local-development-and-ttfhw" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local development and TTFHW
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1154,44 +844,66 @@
 
 
 
-<h1 id="tooling-choices">Tooling Choices</h1>
+<h1 id="adr-03-domain-first-modeling-and-idempotent-upload-flow">ADR-03: Domain-first modeling and Idempotent upload flow</h1>
 <h2 id="context">Context</h2>
-<p>This project is a challenge that mirrors a DAM (Digital Asset Management) stack using PHP, GraphQL and MySQL with no framework. We need a consistent set of tools for quality, safety and CI.</p>
-<h2 id="decisions">Decisions</h2>
-<h3 id="webonyxgraphql-php">webonyx/graphql-php</h3>
-<p>The de facto PHP GraphQL server library. Lets us build a schema without pulling in a framework. Matches the kind of stack we want to match.</p>
-<h3 id="monologmonolog">monolog/monolog</h3>
-<p>Structured logging library for PHP. Used to emit JSON log lines to stdout/stderr, making logs consumable by any log aggregator (Loki, CloudWatch, etc.) without coupling to a specific platform.</p>
-<h3 id="vlucasphpdotenv">vlucas/phpdotenv</h3>
-<p>Standard way to load <code>.env</code> files into PHP's <code>$_ENV</code>/<code>getenv()</code>. Keeps credentials out of source code and makes the app configurable across environments with no extra infrastructure.</p>
-<h3 id="phpstanphpstan">phpstan/phpstan</h3>
-<p>Static analyser for PHP. Fast and integrates well with CI.</p>
-<h3 id="phpunitphpunit">phpunit/phpunit</h3>
-<p>The PHP testing standard. Integrates with coverage reporting, mutation testing and CI natively. No learning overhead for reviewers.</p>
-<h3 id="friendsofphpphp-cs-fixer">friendsofphp/php-cs-fixer</h3>
-<p>Automatically enforces a consistent code style (PSR-12 by default). Running in <code>--dry-run</code> mode in CI blocks style regressions without requiring opinion from reviewers.</p>
-<h3 id="vimeopsalm">vimeo/psalm</h3>
-<p>Adds taint analysis on top of static analysis, catching SQL injection and XSS paths that phpstan alone does not cover. Used as a secondary security-focused analysis pass.</p>
-<h3 id="squizlabsphp_codesniffer">squizlabs/php_codesniffer</h3>
-<p>Complements php-cs-fixer by enforcing project-specific standards (doc blocks, naming conventions) that a formatter alone cannot check.</p>
-<h3 id="infectioninfection">infection/infection</h3>
-<p>Mutation testing tool that measures test quality, not just coverage. Introduces small code mutations and checks that at least one test fails, ensuring tests actually guard against regressions.</p>
-<h3 id="github-codeql">GitHub CodeQL</h3>
-<p>Free SAST built into GitHub Actions. Scans for OWASP Top 10 patterns (SQL injection, XSS, SSRF, etc.) in PHP without requiring a separate external service.</p>
-<h3 id="composer-audit">composer audit</h3>
-<p>Built-in Composer command that checks installed packages against the PHP Security Advisories database.</p>
-<h2 id="docker-docker-compose">Docker / docker-compose</h2>
-<p>Provide a reproducible local development stack using <code>docker-compose</code> that includes MySQL and Redis. Local developers and reviewers can boot the same services the CI uses, lowering configuration friction and avoiding environment-specific bugs.</p>
-<p>This decision directly supports the project's <strong>TTFHW</strong> <em>(Time To First Hello World)</em> principle: a developer must be able to go from a fresh clone to a running API with exactly two commands:</p>
-<pre><code class="language-bash">cp .env.example .env
-docker compose up
-</code></pre>
-<h2 id="consequences">Consequences</h2>
-<h3 id="local-development-and-ttfhw">Local development and TTFHW</h3>
-<p>Local development is supported by <code>docker-compose.yaml</code>, which brings up <code>app</code>, <code>nginx</code>, <code>db</code> (MySQL),
-and <code>redis</code>. This enables the repository's CI and local checks to run without external services.</p>
+<p>This project implements a presigned-upload + asset status tracking flow. We must make small but durable architectural
+choices for the PoC that: preserve the TTFHW (Time to First Hello World) principle, keep business logic independent of infrastructure, and make the
+presign/upload flow safe to call repeatedly from unreliable clients or retrying networks.
+Constraints and forces:</p>
 <ul>
-<li>Mutation testing (<code>infection</code>) may be slow on large suites — run on schedule, not every push.</li>
+<li>No framework — small, testable PHP code (PHP 8.5).</li>
+<li><code>docker compose up</code> must produce a runnable system (migrations automated).</li>
+<li>Clients may retry presign/create calls — the system must avoid creating duplicate assets.</li>
+</ul>
+<h2 id="decision">Decision</h2>
+<ol>
+<li>Domain-first modeling: the canonical model will be the Domain layer. We will define:</li>
+<li><code>Asset</code> (aggregate root)</li>
+<li><code>UploadId</code>, <code>AccountId</code> (value objects)</li>
+<li><code>AssetStatus</code> (enum)</li>
+<li><code>AssetRepositoryInterface</code> (Domain contract)</li>
+</ol>
+<p>The domain objects and invariants are the source of truth; persistence and GraphQL are adapters implemented against
+   the Domain model.</p>
+<ol>
+<li>
+<p>Idempotency by <code>uploadId</code> + DB uniqueness: the <code>uploadId</code> is an internal idempotency key candidate for the
+   presign/create operation.
+   The persistence schema will enforce <code>UNIQUE(upload_id)</code> so the database is authoritative about duplicates.</p>
+</li>
+<li>
+<p>UUIDs for identities: use UUID v4 for <code>uploadId</code>.</p>
+</li>
+<li>
+<p>Application behavior (presign/create): the application service that implements the presign flow will follow this
+   pattern:</p>
+</li>
+<li>Attempt to find an existing <code>Asset</code> by <code>uploadId</code> and return it if found.</li>
+<li>Otherwise create <code>Asset</code> in-memory and persist via the repository.</li>
+<li>
+<p>If the repository/DB insert fails with a unique-key conflict, the service will re-query by <code>uploadId</code> and return
+     the existing <code>Asset</code> (optimistic/concurrent-safe).</p>
+</li>
+<li>
+<p>Keep presigned URL generation in Infrastructure (storage adapter). The Domain and Application layers do not know
+   bucket names, credentials, or URL signing details.</p>
+</li>
+</ol>
+<h2 id="consequences">Consequences</h2>
+<p>Positive</p>
+<ul>
+<li>Business rules (status transitions, ownership) live in Domain and are well tested.</li>
+<li>Idempotent presign/create calls are safe for client retries and network retries.</li>
+<li>Simpler, stable GraphQL mapping: GraphQL types mirror Domain objects.</li>
+</ul>
+<p>Negative / Tradeoffs</p>
+<ul>
+<li>Need to implement unique constraint and handle duplicate-key exceptions in infrastructure.</li>
+<li>Slightly more work initially to model Domain objects before wiring persistence and GraphQL.</li>
+</ul>
+<p>Neutral</p>
+<ul>
+<li>Storage details (S3/GCS) remain pluggable — adapters can be swapped without changing Domain.</li>
 </ul>
 
 

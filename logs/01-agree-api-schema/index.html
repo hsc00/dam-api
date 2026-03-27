@@ -11,10 +11,8 @@
       
       
       
-        <link rel="prev" href="../../architecture/sequence-presign-upload.drawio">
+        <link rel="prev" href="../../adr/03-domain-first-idempotent-upload/">
       
-      
-        <link rel="next" href="../02-security-choices/">
       
       
         
@@ -25,7 +23,7 @@
     
     
       
-        <title>Tooling - DAM API Docs</title>
+        <title>US-01 Agree API Schema - DAM API Docs</title>
       
     
     
@@ -66,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tooling-choices" class="md-skip">
+        <a href="#implementation-log-us-01-schema-focused-story" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +100,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Tooling
+              US-01 Agree API Schema
             
           </span>
         </div>
@@ -470,20 +468,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -504,7 +500,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -519,37 +515,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tooling
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../adr/01-tooling-choices/" class="md-nav__link">
         
   
   
@@ -565,214 +534,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#context" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Context
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#decisions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Decisions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Decisions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#webonyxgraphql-php" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        webonyx/graphql-php
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#monologmonolog" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        monolog/monolog
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vlucasphpdotenv" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        vlucas/phpdotenv
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phpstanphpstan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        phpstan/phpstan
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phpunitphpunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        phpunit/phpunit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#friendsofphpphp-cs-fixer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        friendsofphp/php-cs-fixer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vimeopsalm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        vimeo/psalm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#squizlabsphp_codesniffer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        squizlabs/php_codesniffer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#infectioninfection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        infection/infection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#github-codeql" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub CodeQL
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#composer-audit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        composer audit
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-docker-compose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker / docker-compose
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#consequences" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Consequences
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Consequences">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#local-development-and-ttfhw" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local development and TTFHW
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -785,7 +546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../02-security-choices/" class="md-nav__link">
+      <a href="../../adr/02-security-choices/" class="md-nav__link">
         
   
   
@@ -813,7 +574,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../03-domain-first-idempotent-upload/" class="md-nav__link">
+      <a href="../../adr/03-domain-first-idempotent-upload/" class="md-nav__link">
         
   
   
@@ -845,18 +606,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -877,7 +640,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -892,10 +655,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../logs/01-agree-api-schema/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-01 Agree API Schema
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -911,6 +701,92 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Details
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files Changed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#delivery-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delivery Chunks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#follow-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Follow-up
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -950,10 +826,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#context" class="md-nav__link">
+  <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Context
+        Summary
       
     </span>
   </a>
@@ -961,148 +837,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#decisions" class="md-nav__link">
+  <a href="#implementation-details" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decisions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Decisions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#webonyxgraphql-php" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        webonyx/graphql-php
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#monologmonolog" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        monolog/monolog
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vlucasphpdotenv" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        vlucas/phpdotenv
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phpstanphpstan" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        phpstan/phpstan
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#phpunitphpunit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        phpunit/phpunit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#friendsofphpphp-cs-fixer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        friendsofphp/php-cs-fixer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#vimeopsalm" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        vimeo/psalm
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#squizlabsphp_codesniffer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        squizlabs/php_codesniffer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#infectioninfection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        infection/infection
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#github-codeql" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GitHub CodeQL
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#composer-audit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        composer audit
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#docker-docker-compose" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Docker / docker-compose
+        Implementation Details
       
     </span>
   </a>
@@ -1110,30 +848,46 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#consequences" class="md-nav__link">
+  <a href="#files-changed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Consequences
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Consequences">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#local-development-and-ttfhw" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Local development and TTFHW
+        Files Changed
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#delivery-chunks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Delivery Chunks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#follow-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Follow-up
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1154,44 +908,38 @@
 
 
 
-<h1 id="tooling-choices">Tooling Choices</h1>
-<h2 id="context">Context</h2>
-<p>This project is a challenge that mirrors a DAM (Digital Asset Management) stack using PHP, GraphQL and MySQL with no framework. We need a consistent set of tools for quality, safety and CI.</p>
-<h2 id="decisions">Decisions</h2>
-<h3 id="webonyxgraphql-php">webonyx/graphql-php</h3>
-<p>The de facto PHP GraphQL server library. Lets us build a schema without pulling in a framework. Matches the kind of stack we want to match.</p>
-<h3 id="monologmonolog">monolog/monolog</h3>
-<p>Structured logging library for PHP. Used to emit JSON log lines to stdout/stderr, making logs consumable by any log aggregator (Loki, CloudWatch, etc.) without coupling to a specific platform.</p>
-<h3 id="vlucasphpdotenv">vlucas/phpdotenv</h3>
-<p>Standard way to load <code>.env</code> files into PHP's <code>$_ENV</code>/<code>getenv()</code>. Keeps credentials out of source code and makes the app configurable across environments with no extra infrastructure.</p>
-<h3 id="phpstanphpstan">phpstan/phpstan</h3>
-<p>Static analyser for PHP. Fast and integrates well with CI.</p>
-<h3 id="phpunitphpunit">phpunit/phpunit</h3>
-<p>The PHP testing standard. Integrates with coverage reporting, mutation testing and CI natively. No learning overhead for reviewers.</p>
-<h3 id="friendsofphpphp-cs-fixer">friendsofphp/php-cs-fixer</h3>
-<p>Automatically enforces a consistent code style (PSR-12 by default). Running in <code>--dry-run</code> mode in CI blocks style regressions without requiring opinion from reviewers.</p>
-<h3 id="vimeopsalm">vimeo/psalm</h3>
-<p>Adds taint analysis on top of static analysis, catching SQL injection and XSS paths that phpstan alone does not cover. Used as a secondary security-focused analysis pass.</p>
-<h3 id="squizlabsphp_codesniffer">squizlabs/php_codesniffer</h3>
-<p>Complements php-cs-fixer by enforcing project-specific standards (doc blocks, naming conventions) that a formatter alone cannot check.</p>
-<h3 id="infectioninfection">infection/infection</h3>
-<p>Mutation testing tool that measures test quality, not just coverage. Introduces small code mutations and checks that at least one test fails, ensuring tests actually guard against regressions.</p>
-<h3 id="github-codeql">GitHub CodeQL</h3>
-<p>Free SAST built into GitHub Actions. Scans for OWASP Top 10 patterns (SQL injection, XSS, SSRF, etc.) in PHP without requiring a separate external service.</p>
-<h3 id="composer-audit">composer audit</h3>
-<p>Built-in Composer command that checks installed packages against the PHP Security Advisories database.</p>
-<h2 id="docker-docker-compose">Docker / docker-compose</h2>
-<p>Provide a reproducible local development stack using <code>docker-compose</code> that includes MySQL and Redis. Local developers and reviewers can boot the same services the CI uses, lowering configuration friction and avoiding environment-specific bugs.</p>
-<p>This decision directly supports the project's <strong>TTFHW</strong> <em>(Time To First Hello World)</em> principle: a developer must be able to go from a fresh clone to a running API with exactly two commands:</p>
-<pre><code class="language-bash">cp .env.example .env
-docker compose up
-</code></pre>
-<h2 id="consequences">Consequences</h2>
-<h3 id="local-development-and-ttfhw">Local development and TTFHW</h3>
-<p>Local development is supported by <code>docker-compose.yaml</code>, which brings up <code>app</code>, <code>nginx</code>, <code>db</code> (MySQL),
-and <code>redis</code>. This enables the repository's CI and local checks to run without external services.</p>
+<h1 id="implementation-log-us-01-schema-focused-story">Implementation Log: US-01 Schema-Focused Story</h1>
+<p><strong>Feature:</strong> US-01 Agree API Schema</p>
+<h2 id="summary">Summary</h2>
+<p>US-01 remains centered on the agreed GraphQL contract for the upload flow, plus a consumer-facing API reference for that contract. Draft ADRs and initial PHP scaffolding may exist on the branch, but they are supporting artifacts for later implementation rather than the accepted API contract itself.</p>
+<h2 id="implementation-details">Implementation Details</h2>
 <ul>
-<li>Mutation testing (<code>infection</code>) may be slow on large suites — run on schedule, not every push.</li>
+<li>Kept the GraphQL SDL as the authoritative contract for the upload flow: <code>asset</code>, <code>startUpload</code>, <code>completeUpload</code>, <code>Asset</code>, upload-target metadata, and status enums remain the scope of the story.</li>
+<li>Added a concise developer-facing API page so consumers can work from the agreed contract without reading implementation notes.</li>
+<li>Explicitly documented that <code>asset</code> is an authenticated, account-scoped lookup so the contract does not imply unauthenticated access by <code>assetId</code> alone.</li>
+<li>Kept ADR-03 and the initial scaffolding as draft implementation guidance, while documenting that the schema remains the source of truth for US-01.</li>
+</ul>
+<h2 id="files-changed">Files Changed</h2>
+<ul>
+<li><code>src/GraphQL/Schema/schema.graphql</code> — defines the agreed GraphQL upload and asset-status contract.</li>
+<li><code>docs/api/01-agree-api-schema.md</code> — documents the contract for API consumers.</li>
+<li><code>mkdocs.yml</code> — publishes the API page under a new top-level API section while keeping the implementation log visible.</li>
+<li><code>docs/logs/01-agree-api-schema.md</code> — records the story scope after cleanup.</li>
+<li><code>docs/adr/03-domain-first-idempotent-upload.md</code> — retained as forward-looking architecture guidance for later implementation.</li>
+</ul>
+<h2 id="validation">Validation</h2>
+<ul>
+<li>Documentation updated to match the current GraphQL schema in <code>src/GraphQL/Schema/schema.graphql</code>.</li>
+</ul>
+<h2 id="delivery-chunks">Delivery Chunks</h2>
+<ul>
+<li>Schema agreement — kept the GraphQL upload and asset-status surface as the durable contract.</li>
+<li>Consumer documentation — published a concise API reference page for the agreed schema.</li>
+<li>Story cleanup — aligned the implementation log, published docs, and remaining files with the contract-only scope.</li>
+</ul>
+<h2 id="follow-up">Follow-up</h2>
+<ul>
+<li>Implement the contract in follow-up stories without widening the API surface unless the contract is explicitly revised.</li>
 </ul>
 
 
