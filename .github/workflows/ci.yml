@@ -114,12 +114,14 @@ jobs:
           echo "Skipping integration suite for scaffold: no integration test files found."
       - name: SonarCloud Scan
         if: always() && steps.test-discovery.outputs.has_unit_tests == 'true'
-        uses: sonarsource/sonarcloud-github-action@v1
+        uses: SonarSource/sonarqube-scan-action@0303d6b62e310685c0e34d0b9cde218036885c4d
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.php.coverage.reportPaths=build/coverage.xml
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+            -Dsonar.verbose=true
       - name: Upload test report
         if: always() && steps.test-discovery.outputs.has_unit_tests == 'true'
         uses: actions/upload-artifact@v4
