@@ -35,6 +35,7 @@ final class AssetTest extends TestCase
 
         // Assert
         self::assertMatchesRegularExpression(self::UUID_V4_PATTERN, $asset->getId());
+        self::assertNotSame((string) $uploadId, $asset->getId());
         self::assertSame($uploadId, $asset->getUploadId());
         self::assertSame($accountId, $asset->getAccountId());
         self::assertSame(self::ACCOUNT_ID, (string) $asset->getAccountId());
@@ -78,7 +79,11 @@ final class AssetTest extends TestCase
         self::assertSame(self::FILENAME, $asset->getFilename());
         self::assertSame(self::CONTENT_TYPE, $asset->getContentType());
         self::assertSame(self::SIZE, $asset->getSize());
+        // Ensure updatedAt object instance changed even if timestamps are equal at microsecond precision
         self::assertNotSame($previousUpdatedAt, $asset->getUpdatedAt());
+        $previousTimestamp = (float) $previousUpdatedAt->format('U.u');
+        $currentTimestamp = (float) $asset->getUpdatedAt()->format('U.u');
+        self::assertGreaterThanOrEqual($previousTimestamp, $currentTimestamp, 'Asset updated timestamp should be equal or later than previous updated timestamp');
     }
 
     #[Test]
@@ -107,6 +112,9 @@ final class AssetTest extends TestCase
         // Assert
         self::assertSame(AssetStatus::FAILED, $asset->getStatus());
         self::assertNotSame($previousUpdatedAt, $asset->getUpdatedAt());
+        $previousTimestamp = (float) $previousUpdatedAt->format('U.u');
+        $currentTimestamp = (float) $asset->getUpdatedAt()->format('U.u');
+        self::assertGreaterThanOrEqual($previousTimestamp, $currentTimestamp, 'Asset updated timestamp should be equal or later than previous updated timestamp');
     }
 
     #[Test]

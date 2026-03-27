@@ -24,7 +24,6 @@ final class UploadIdTest extends TestCase
         $uploadId = new UploadId($value);
 
         // Assert
-        self::assertNotEmpty($uploadId->value);
         self::assertSame($value, $uploadId->value);
     }
 
@@ -61,7 +60,7 @@ final class UploadIdTest extends TestCase
         return [
             'empty string' => [''],
             'not a uuid' => ['upload-123'],
-            'wrong version' => ['123e4567-e89b-62d3-a456-426614174000'],
+            'wrong version' => ['123e4567-e89b-92d3-a456-426614174000'],
         ];
     }
 

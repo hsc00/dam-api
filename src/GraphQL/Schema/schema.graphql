@@ -13,6 +13,8 @@ scalar DateTime
 
 """
 Non-negative file size in bytes. Supports values beyond GraphQL Int range.
+Transmitted as JSON string to preserve precision for values > 2^53-1.
+Clients MUST encode fileSizeBytes as a string, e.g. "12345678901234567890".
 """
 scalar ByteCount
 
@@ -79,6 +81,25 @@ type UploadCompletionProofDescriptor {
 
 """
 Full client request instructions for uploading one file.
+
+Specifies the HTTP upload contract details required for browser-side file uploads.
+
+When `uploadTarget.url` is a cross-origin endpoint, the server hosting that endpoint
+must be configured to allow this upload origin via CORS:
+
+- **Access-Control-Allow-Headers**: Must include all header names listed in `signedHeaders`
+  to permit the browser to send signed authentication headers during the preflight request.
+
+- **Access-Control-Expose-Headers**: Must include the header name specified in
+  `completionProof` so the browser client can read the completion proof from the response.
+
+- **Access-Control-Allow-Origin** and **credentials**: Must explicitly allow the requesting
+  origin and set `Access-Control-Allow-Credentials: true` if the upload uses credentials.
+
+Without proper CORS configuration, the browser will block the signed headers from being sent
+and will prevent access to the completionProof response header, causing the upload flow to fail.
+
+For same-origin uploads, these CORS requirements do not apply.
 """
 type UploadTarget {
   "Time-limited upload URL."

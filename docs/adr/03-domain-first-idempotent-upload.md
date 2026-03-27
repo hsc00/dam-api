@@ -3,7 +3,7 @@
 ## Context
 
 This project implements a presigned-upload + asset status tracking flow. We must make small but durable architectural
-choices for the PoC that: preserve the TTFHW principle, keep business logic independent of infrastructure, and make the
+choices for the PoC that: preserve the TTFHW (Time to First Hello World) principle, keep business logic independent of infrastructure, and make the
 presign/upload flow safe to call repeatedly from unreliable clients or retrying networks.
 Constraints and forces:
 

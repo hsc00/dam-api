@@ -67,6 +67,10 @@ Starts one upload and returns the instructions the client needs to upload the fi
 | `success.uploadGrant`  | `String`        | Server-issued grant required by `completeUpload`.               |
 | `userErrors`           | `[UserError!]!` | Business validation errors when the request cannot be accepted. |
 
+**Return semantics**
+
+Clients should treat the payload as a success/userErrors pair: the `success` field is non-null only when the operation completed successfully; in that case `userErrors` MUST be an empty list. Conversely, when business validation prevents the request from succeeding, `success` will be `null` and `userErrors` will contain one or more `UserError` objects describing the problem(s). Clients MUST check `success` before reading `success.asset`, `success.uploadTarget`, or `success.uploadGrant`.
+
 **Example**
 
 ```graphql

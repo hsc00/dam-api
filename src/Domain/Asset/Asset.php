@@ -65,8 +65,26 @@ final class Asset
             throw new AssetDomainException('Asset already uploaded');
         }
 
-        $this->filename = $filename;
-        $this->contentType = $contentType;
+        if ($this->status !== AssetStatus::PENDING) {
+            throw new AssetDomainException('Cannot upload asset from current state');
+        }
+
+        if ($size < 0) {
+            throw new AssetDomainException('Asset size must be non-negative');
+        }
+
+        $trimmedFilename = trim($filename);
+        if ($trimmedFilename === '') {
+            throw new AssetDomainException('Filename must be non-empty');
+        }
+
+        $trimmedContentType = trim($contentType);
+        if ($trimmedContentType === '') {
+            throw new AssetDomainException('Content type must be non-empty');
+        }
+
+        $this->filename = $trimmedFilename;
+        $this->contentType = $trimmedContentType;
         $this->size = $size;
         $this->status = AssetStatus::UPLOADED;
         $this->updatedAt = new DateTimeImmutable();

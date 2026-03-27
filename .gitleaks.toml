@@ -9,7 +9,7 @@ tags = ["key","AWS"]
 [[rules]]
 description = "Generic private key"
 id = "private-key"
-regex = '''-----BEGIN (RSA )?PRIVATE KEY-----'''
+regex = '''-----BEGIN (RSA |DSA |EC |OPENSSH )?PRIVATE KEY-----'''
 tags = ["key","private"]
 
 [allowlist]
