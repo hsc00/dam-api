@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Asset\ValueObject;
 
 use App\Domain\Asset\UploadCompletionProofSource;
+use InvalidArgumentException;
 
 final readonly class UploadCompletionProof
 {
@@ -15,7 +16,7 @@ final readonly class UploadCompletionProof
         $normalizedName = trim($name);
 
         if ($normalizedName === '') {
-            throw new \InvalidArgumentException('Upload completion proof name cannot be empty');
+            throw new InvalidArgumentException('Upload completion proof name cannot be empty');
         }
 
         $this->name = $normalizedName;

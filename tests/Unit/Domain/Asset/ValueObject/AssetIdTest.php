@@ -80,5 +80,4 @@ final class AssetIdTest extends TestCase
             'wrong variant' => ['123e4567-e89b-42d3-c456-426614174000'],
         ];
     }
-
 }

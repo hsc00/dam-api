@@ -6,6 +6,7 @@ namespace App\Domain\Asset\ValueObject;
 
 use App\Domain\Asset\UploadHttpMethod;
 use DateTimeImmutable;
+use InvalidArgumentException;
 
 final readonly class UploadTarget
 {
@@ -37,14 +38,14 @@ final readonly class UploadTarget
     private static function normalizeSignedHeaders(array $signedHeaders): array
     {
         if (! array_is_list($signedHeaders)) {
-            throw new \InvalidArgumentException('Upload target signed headers must be a list');
+            throw new InvalidArgumentException('Upload target signed headers must be a list');
         }
 
         $normalizedSignedHeaders = [];
 
         foreach ($signedHeaders as $signedHeader) {
             if (! $signedHeader instanceof UploadParameter) {
-                throw new \InvalidArgumentException('Upload target signed headers must contain only UploadParameter instances');
+                throw new InvalidArgumentException('Upload target signed headers must contain only UploadParameter instances');
             }
 
             $normalizedSignedHeaders[] = $signedHeader;
@@ -58,7 +59,7 @@ final readonly class UploadTarget
         $normalizedUrl = trim($url);
 
         if ($normalizedUrl === '') {
-            throw new \InvalidArgumentException('Upload target URL cannot be empty');
+            throw new InvalidArgumentException('Upload target URL cannot be empty');
         }
 
         $parsedUrl = parse_url($normalizedUrl);
@@ -68,11 +69,11 @@ final readonly class UploadTarget
             || ! isset($parsedUrl['scheme'], $parsedUrl['host'])
             || trim($parsedUrl['host']) === ''
         ) {
-            throw new \InvalidArgumentException('Upload target URL must be an absolute URL with a host');
+            throw new InvalidArgumentException('Upload target URL must be an absolute URL with a host');
         }
 
         if (filter_var($normalizedUrl, FILTER_VALIDATE_URL) === false) {
-            throw new \InvalidArgumentException('Upload target URL must be a valid absolute URL');
+            throw new InvalidArgumentException('Upload target URL must be a valid absolute URL');
         }
 
         $scheme = strtolower($parsedUrl['scheme']);
@@ -80,7 +81,7 @@ final readonly class UploadTarget
         $host = strtolower(trim($rawHost, '[]'));
 
         if ($scheme !== 'https' && ! self::isAllowedLocalDevelopmentUrl($scheme, $host)) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'Upload target URL must use HTTPS, except http://localhost, http://127.0.0.1, or http://[::1] for local development'
             );
         }
@@ -115,6 +116,6 @@ final readonly class UploadTarget
             return false;
         }
 
-        return in_array(trim($host, '[]'), ['localhost', '127.0.0.1', '::1'], true);
+        return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
     }
 }

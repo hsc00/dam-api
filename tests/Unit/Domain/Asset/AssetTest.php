@@ -29,7 +29,7 @@ final class AssetTest extends TestCase
     private const UUID_V4_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
 
     #[Test]
-    public function itCreatesPendingAssetWithGeneratedIdentifierAndRequiredMetadata(): void
+    public function itReturnsPendingAssetWhenCreatedWithGeneratedIdentifierAndRequiredMetadata(): void
     {
         // Arrange
         $beforeCreation = new DateTimeImmutable();
@@ -69,7 +69,7 @@ final class AssetTest extends TestCase
     }
 
     #[Test]
-    public function itReconstitutesAssetWithPersistedValues(): void
+    public function itReturnsAssetWhenReconstitutedWithPersistedValues(): void
     {
         // Arrange
         $assetId = new AssetId(self::ASSET_ID);
@@ -99,7 +99,7 @@ final class AssetTest extends TestCase
     }
 
     #[Test]
-    public function itReconstitutesUploadedAssetWithPersistedValues(): void
+    public function itReturnsUploadedAssetWhenReconstitutedWithPersistedValues(): void
     {
         // Arrange
         $assetId = new AssetId(self::ASSET_ID);
@@ -126,6 +126,7 @@ final class AssetTest extends TestCase
         self::assertSame(self::MIME_TYPE, $asset->getMimeType());
         self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
         self::assertSame($createdAt, $asset->getCreatedAt());
+        self::assertEquals($this->createCompletionProofValue(), $asset->getCompletionProof());
     }
 
     #[Test]
@@ -168,7 +169,7 @@ final class AssetTest extends TestCase
     }
 
     #[Test]
-    public function itCreatesDistinctPendingAssetsAcrossCalls(): void
+    public function itReturnsDistinctPendingAssetsWhenCreatedAcrossCalls(): void
     {
         // Arrange
         $firstUploadId = new UploadId(self::FIRST_UPLOAD_ID);
@@ -185,7 +186,7 @@ final class AssetTest extends TestCase
     }
 
     #[Test]
-    public function itMarksPendingAssetAsUploaded(): void
+    public function itReturnsAssetWithUploadedStatusWhenMarkedUploaded(): void
     {
         // Arrange
         $asset = $this->createPendingAsset();
@@ -195,6 +196,7 @@ final class AssetTest extends TestCase
 
         // Assert
         self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
+        self::assertEquals($this->createCompletionProofValue(), $asset->getCompletionProof());
     }
 
     #[Test]
@@ -224,7 +226,7 @@ final class AssetTest extends TestCase
     }
 
     #[Test]
-    public function itMarksPendingAssetAsFailed(): void
+    public function itReturnsAssetWithFailedStatusWhenMarkedFailed(): void
     {
         // Arrange
         $asset = $this->createPendingAsset();

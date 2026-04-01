@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 final class UploadTargetTest extends TestCase
 {
     #[Test]
-    public function itStoresUploadTargetWhenInputsAreValid(): void
+    public function itReturnsUploadTargetWhenInputsAreValid(): void
     {
         // Arrange
         $signedHeader = new UploadParameter('  Content-Type  ', 'image/png');
@@ -96,7 +96,7 @@ final class UploadTargetTest extends TestCase
 
     #[Test]
     #[DataProvider('allowedLocalDevelopmentUrlProvider')]
-    public function itAllowsLocalDevelopmentHttpUrls(string $url): void
+    public function itReturnsUploadTargetWhenLocalDevelopmentHttpUrl(string $url): void
     {
         // Act
         $target = $this->createUploadTarget($url, []);
@@ -107,7 +107,7 @@ final class UploadTargetTest extends TestCase
 
     #[Test]
     #[DataProvider('schemeAndHostNormalizationProvider')]
-    public function itNormalizesSchemeAndHostToLowercase(string $input, string $expected): void
+    public function itReturnsNormalizedUrlWhenSchemeAndHostAreMixedCase(string $input, string $expected): void
     {
         // Act
         $target = $this->createUploadTarget($input, []);
@@ -200,6 +200,7 @@ final class UploadTargetTest extends TestCase
         return [
             'uppercase http scheme and host' => ['HTTP://LOCALHOST/path', 'http://localhost/path'],
             'mixed-case https with port, query, and fragment' => ['HTTPS://Example.COM:8443/Some/Path?Q=1#Frag', 'https://example.com:8443/Some/Path?Q=1#Frag'],
+            'userinfo with bracketed ipv6' => ['HTTPS://User:Pass@[2001:DB8::1]:8443/Some/Path?Q=1#Frag', 'https://User:Pass@[2001:db8::1]:8443/Some/Path?Q=1#Frag'],
             'already normalized' => ['https://example.com/Already', 'https://example.com/Already'],
         ];
     }
