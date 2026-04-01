@@ -13,6 +13,10 @@ use DateTimeImmutable;
 
 final class Asset
 {
+    private const DEFAULT_CHUNK_COUNT = 1;
+    private const INVALID_CHUNK_COUNT_MESSAGE = 'Chunk count must be at least 1';
+    private const INVALID_UPDATED_AT_MESSAGE = 'Updated at must not be earlier than created at';
+
     private AssetId $id;
     private UploadId $uploadId;
     private AccountId $accountId;
@@ -20,7 +24,9 @@ final class Asset
     private string $mimeType;
     private AssetStatus $status;
     private ?UploadCompletionProofValue $completionProof = null;
+    private int $chunkCount;
     private DateTimeImmutable $createdAt;
+    private DateTimeImmutable $updatedAt;
 
     private function __construct(
         AssetId $id,
@@ -46,6 +52,8 @@ final class Asset
      */
     public static function createPending(UploadId $uploadId, AccountId $accountId, string $fileName, string $mimeType): self
     {
+        $now = new DateTimeImmutable();
+
         $asset = new self(
             id: AssetId::generate(),
             uploadId: $uploadId,
@@ -55,7 +63,7 @@ final class Asset
             status: AssetStatus::PENDING,
         );
 
-        $asset->createdAt = new DateTimeImmutable();
+        $asset->initializeLifecycleState($now, self::DEFAULT_CHUNK_COUNT);
 
         return $asset;
     }
@@ -63,6 +71,8 @@ final class Asset
     /**
      * Reconstitutes a non-uploaded Asset from persistence.
      * For UPLOADED status, use reconstituteUploaded() instead.
+     *
+     * @param array{createdAt: DateTimeImmutable, chunkCount?: int, updatedAt?: DateTimeImmutable} $persistedState
      *
      * @throws AssetDomainException
      */
@@ -73,7 +83,7 @@ final class Asset
         string $fileName,
         string $mimeType,
         AssetStatus $status,
-        DateTimeImmutable $createdAt,
+        array $persistedState,
     ): self {
         $asset = new self(
             id: $id,
@@ -84,12 +94,18 @@ final class Asset
             status: $status,
         );
 
-        $asset->createdAt = $createdAt;
+        $asset->initializeLifecycleState(
+            $persistedState['createdAt'],
+            $persistedState['chunkCount'] ?? self::DEFAULT_CHUNK_COUNT,
+            $persistedState['updatedAt'] ?? null,
+        );
 
         return $asset;
     }
 
     /**
+     * @param array{createdAt: DateTimeImmutable, chunkCount?: int, updatedAt?: DateTimeImmutable} $persistedState
+     *
      * @throws AssetDomainException
      */
     public static function reconstituteUploaded(
@@ -98,8 +114,8 @@ final class Asset
         AccountId $accountId,
         string $fileName,
         string $mimeType,
-        DateTimeImmutable $createdAt,
         UploadCompletionProofValue $completionProof,
+        array $persistedState,
     ): self {
         $asset = new self(
             id: $id,
@@ -111,9 +127,36 @@ final class Asset
             completionProof: $completionProof,
         );
 
-        $asset->createdAt = $createdAt;
+        $asset->initializeLifecycleState(
+            $persistedState['createdAt'],
+            $persistedState['chunkCount'] ?? self::DEFAULT_CHUNK_COUNT,
+            $persistedState['updatedAt'] ?? null,
+        );
 
         return $asset;
+    }
+
+    /**
+     * @throws AssetDomainException
+     */
+    private function initializeLifecycleState(
+        DateTimeImmutable $createdAt,
+        int $chunkCount,
+        ?DateTimeImmutable $updatedAt = null,
+    ): void {
+        $updatedAt ??= $createdAt;
+
+        if ($chunkCount < self::DEFAULT_CHUNK_COUNT) {
+            throw new AssetDomainException(self::INVALID_CHUNK_COUNT_MESSAGE);
+        }
+
+        if ($updatedAt < $createdAt) {
+            throw new AssetDomainException(self::INVALID_UPDATED_AT_MESSAGE);
+        }
+
+        $this->chunkCount = $chunkCount;
+        $this->createdAt = $createdAt;
+        $this->updatedAt = $updatedAt;
     }
 
     /**
@@ -159,6 +202,11 @@ final class Asset
 
         $this->completionProof = $completionProof;
         $this->status = AssetStatus::UPLOADED;
+        $nextUpdatedAt = new DateTimeImmutable();
+
+        if ($nextUpdatedAt > $this->updatedAt) {
+            $this->updatedAt = $nextUpdatedAt;
+        }
     }
 
     /**
@@ -170,7 +218,16 @@ final class Asset
             throw new AssetDomainException('Cannot mark an uploaded asset as failed');
         }
 
+        if ($this->status === AssetStatus::FAILED) {
+            return;
+        }
+
         $this->status = AssetStatus::FAILED;
+        $nextUpdatedAt = new DateTimeImmutable();
+
+        if ($nextUpdatedAt > $this->updatedAt) {
+            $this->updatedAt = $nextUpdatedAt;
+        }
     }
 
     public function getId(): AssetId
@@ -208,9 +265,19 @@ final class Asset
         return $this->completionProof;
     }
 
+    public function getChunkCount(): int
+    {
+        return $this->chunkCount;
+    }
+
     public function getCreatedAt(): DateTimeImmutable
     {
         return $this->createdAt;
+    }
+
+    public function getUpdatedAt(): DateTimeImmutable
+    {
+        return $this->updatedAt;
     }
 
     public function equals(Asset $other): bool
