@@ -15,7 +15,7 @@ final class UploadIdTest extends TestCase
     private const VALID_UPLOAD_ID = '123e4567-e89b-42d3-a456-426614174000';
 
     #[Test]
-    public function itStoresValueWhenUuidIsValid(): void
+    public function itStoresValueWhenUuidV4IsValid(): void
     {
         // Arrange
         $value = self::VALID_UPLOAD_ID;
@@ -61,6 +61,7 @@ final class UploadIdTest extends TestCase
             'empty string' => [''],
             'not a uuid' => ['upload-123'],
             'wrong version' => ['123e4567-e89b-92d3-a456-426614174000'],
+            'wrong variant' => ['123e4567-e89b-42d3-c456-426614174000'],
         ];
     }
 

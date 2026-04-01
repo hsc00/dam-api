@@ -79,6 +79,14 @@ Quick-launch prompts (type `/` in chat): `/new-feature`, `/review-code`, `/draw-
 - Load only the skills and files required for the current task. Avoid broad context gathering when a targeted read is sufficient.
 - When a reusable implementation rule is discovered, prefer updating a scoped instruction or skill first. Update an agent file only when the role, delegation flow, or review behavior itself needs to change.
 
+## Feedback Carry-Forward
+
+When the user or another subagent returns `REQUEST CHANGES` or `DECLINE` on a prior attempt:
+
+- Treat every `Required Changes` item, rejection reason, and explicit new constraint as mandatory input to the next attempt until it is satisfied or the user explicitly removes it
+- Do not resubmit a previously rejected approach unless the root cause has been addressed and the revision makes that correction clear
+- When the feedback reveals a reusable rule, persist it in the narrowest correct customization surface so it carries into future runs: scoped instruction or skill first, workspace instructions only when the rule is truly repo-wide, and agent files only when the role workflow, delegation behavior, or review authority itself must change
+
 ## Build & Test
 
 ```bash
