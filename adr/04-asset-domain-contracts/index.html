@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../01-tooling-choices/">
+        <link rel="prev" href="../03-domain-first-idempotent-upload/">
       
       
-        <link rel="next" href="../03-domain-first-idempotent-upload/">
+        <link rel="next" href="../../logs/01-agree-api-schema/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Security - DAM API Docs</title>
+        <title>Asset Domain Contracts - DAM API Docs</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#security-choices" class="md-skip">
+        <a href="#adr-04-asset-domain-contracts" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Security
+              Asset Domain Contracts
             
           </span>
         </div>
@@ -575,37 +575,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Security
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../02-security-choices/" class="md-nav__link">
         
   
   
@@ -621,192 +594,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#context" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Context
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#decisions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Decisions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Decisions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dependabot" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependabot
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#semgrep" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Semgrep
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gitleaks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gitleaks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#trivy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Trivy
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#codeql" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CodeQL
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#composer-audit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Composer audit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#secrets-sbom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Secrets &amp; SBOM
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#future-considerations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Future Considerations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Future Considerations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#reviewdog" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reviewdog
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#coderabbit-ai-reviews" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CodeRabbit (AI reviews)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#enforcement-strategy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enforcement strategy
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#consequences" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Consequences
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -844,10 +631,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../04-asset-domain-contracts/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Domain Contracts
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -863,6 +677,81 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#purpose" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Purpose
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#asset-repository-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Asset Repository Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-adapter-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storage Adapter Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#added-to-complete-us-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added to complete US-02
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contract-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contract Boundary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1012,10 +901,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#context" class="md-nav__link">
+  <a href="#purpose" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Context
+        Purpose
       
     </span>
   </a>
@@ -1023,143 +912,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#decisions" class="md-nav__link">
+  <a href="#asset-repository-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Decisions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Decisions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#dependabot" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Dependabot
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#semgrep" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Semgrep
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#gitleaks" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Gitleaks
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#trivy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Trivy
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#codeql" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CodeQL
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#composer-audit" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Composer audit
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#secrets-sbom" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Secrets &amp; SBOM
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#future-considerations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Future Considerations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Future Considerations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#reviewdog" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reviewdog
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#coderabbit-ai-reviews" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CodeRabbit (AI reviews)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#enforcement-strategy" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Enforcement strategy
+        Asset Repository Contract
       
     </span>
   </a>
@@ -1167,10 +923,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#consequences" class="md-nav__link">
+  <a href="#storage-adapter-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Consequences
+        Storage Adapter Contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#added-to-complete-us-02" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Added to complete US-02
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#contract-boundary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Contract Boundary
       
     </span>
   </a>
@@ -1194,47 +972,91 @@
 
 
 
-<h1 id="security-choices">Security Choices</h1>
-<h2 id="context">Context</h2>
-<p>Security considerations require their own ADR to clearly separate operational and enforcement decisions from general tooling choices.</p>
-<h2 id="decisions">Decisions</h2>
-<h3 id="dependabot">Dependabot</h3>
-<p>Enable automated dependency updates via <code>.github/dependabot.yml</code> so the repository receives timely upgrade PRs for Composer packages.</p>
-<h3 id="semgrep">Semgrep</h3>
-<p>Run a lightweight Semgrep job on PRs with high-confidence rules that fail the PR. Use deeper rule sets on merge/nightly.</p>
-<h3 id="gitleaks">Gitleaks</h3>
-<p>Run Gitleaks on commits/PRs to detect accidentally committed secrets early and block merges that expose credentials.</p>
-<h3 id="trivy">Trivy</h3>
-<p>Scan built container images for CVEs on merges or scheduled runs using Trivy and fail builds on critical/high severity findings.</p>
-<h3 id="codeql">CodeQL</h3>
-<p>Keep CodeQL enabled for repository-level SAST via GitHub Actions; it complements Semgrep with broader query patterns for OWASP-style issues.</p>
-<h3 id="composer-audit">Composer audit</h3>
-<p>Keep <code>composer audit</code> in CI to surface package-level advisories during dependency install steps.</p>
-<h3 id="secrets-sbom">Secrets &amp; SBOM</h3>
+<h1 id="adr-04-asset-domain-contracts">ADR-04: Asset Domain Contracts</h1>
+<h2 id="purpose">Purpose</h2>
+<p>This document records the domain contract between the <code>Asset</code> aggregate, persistence, and storage for US-02. It is an implementation-level contract (not a Draw.io diagram) and belongs with the ADRs as permanent architecture documentation.</p>
+<h2 id="asset-repository-contract">Asset Repository Contract</h2>
+<p><code>AssetRepositoryInterface</code> must provide these behaviors.</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Required behavior</th>
+<th>Why US-02 needs it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>save(Asset $asset): void</code></td>
+<td>Persist enough state to reconstruct the same domain object later. This includes <code>id</code>, <code>uploadId</code>, <code>accountId</code>, <code>fileName</code>, <code>mimeType</code>, <code>status</code>, <code>createdAt</code>, and <code>completionProof</code> when the asset is uploaded.</td>
+<td>The <code>Asset</code> aggregate is the source of truth for lifecycle state. Persistence cannot drop uploaded-state proof data.</td>
+</tr>
+<tr>
+<td><code>findById(AssetId $assetId): ?Asset</code></td>
+<td>Return the matching asset or <code>null</code> when none exists.</td>
+<td>Later read and completion flows need a stable lookup by asset identity.</td>
+</tr>
+<tr>
+<td><code>findByUploadId(UploadId $uploadId): ?Asset</code></td>
+<td>Return the matching asset or <code>null</code> when none exists.</td>
+<td>The upload identifier is part of the upload flow contract and supports retry-safe lookup.</td>
+</tr>
+</tbody>
+</table>
+<p>Repository implementations must also preserve the uploaded-state invariant during reads.</p>
 <ul>
-<li>Add <code>gitleaks</code> for secret scanning in PRs.</li>
+<li><code>PENDING</code> and <code>FAILED</code> assets can be reconstituted with <code>Asset::reconstitute(...)</code>.</li>
+<li><code>UPLOADED</code> assets must be reconstituted with <code>Asset::reconstituteUploaded(...)</code> and must include a completion proof value.</li>
+<li>An uploaded record without completion proof is invalid domain state and must not be returned as a valid <code>Asset</code>.</li>
 </ul>
-<h2 id="future-considerations">Future Considerations</h2>
+<h2 id="storage-adapter-contract">Storage Adapter Contract</h2>
+<p><code>StorageAdapterInterface</code> must return a fully typed <code>UploadTarget</code> for an accepted <code>Asset</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Upload target field</th>
+<th>Required behavior</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>url</code></td>
+<td>Must be an absolute URL. HTTPS is required except for local-development loopback URLs.</td>
+<td>Validated by <code>UploadTarget</code>.</td>
+</tr>
+<tr>
+<td><code>method</code></td>
+<td>Must be a supported domain upload method.</td>
+<td>The current domain contract supports <code>PUT</code>.</td>
+</tr>
+<tr>
+<td><code>signedHeaders</code></td>
+<td>Must be a list of <code>UploadParameter</code> objects.</td>
+<td>The contract avoids provider-specific associative arrays.</td>
+</tr>
+<tr>
+<td><code>completionProof</code></td>
+<td>Must describe which proof the client captures and where it comes from.</td>
+<td>Expressed as <code>UploadCompletionProof</code> plus <code>UploadCompletionProofSource</code>.</td>
+</tr>
+<tr>
+<td><code>expiresAt</code></td>
+<td>Must state when the target stops being valid.</td>
+<td>Consumers should treat it as a hard expiry.</td>
+</tr>
+</tbody>
+</table>
+<p>Storage adapters own signing, credentials, bucket selection, and provider-specific response details. Those details stay in infrastructure and are translated into the typed domain contract before being returned.</p>
+<h2 id="added-to-complete-us-02">Added to complete US-02</h2>
+<p>The accepted delivery extended slightly beyond the original story so the domain contract would be complete.</p>
 <ul>
-<li>SBOM generation with <code>syft</code> for releases (not yet decided — requires evaluating licensing and distribution requirements).</li>
+<li><code>findByUploadId(...)</code> was added to the repository contract so upload flows can resolve an asset by upload identifier.</li>
+<li><code>StorageAdapterInterface</code> and the typed upload-target model were added so upload instructions are represented as domain types instead of untyped infrastructure payloads.</li>
+<li>A completion-proof requirement was added to both upload completion and uploaded-state reconstitution so <code>UPLOADED</code> cannot exist without proof.</li>
 </ul>
-<h3 id="reviewdog">Reviewdog</h3>
-<p>Post <code>phpstan</code>, <code>php-cs-fixer</code>, and <code>semgrep</code> output as PR comments using Reviewdog to improve reviewer UX and tie findings to code locations.</p>
-<h3 id="coderabbit-ai-reviews">CodeRabbit (AI reviews)</h3>
-<p>Integrate CodeRabbit as a reviewer that posts maintainability and clean-code suggestions. Treat it as advisory and tune for noise and privacy concerns.</p>
-<h2 id="enforcement-strategy">Enforcement strategy</h2>
-<ul>
-<li>PR-level (fast, mandatory): <code>phpstan</code> (light), <code>php-cs-fixer</code> (check), <code>composer audit</code>, Semgrep quick rules, Gitleaks.</li>
-<li>PR-level: CodeRabbit (AI), Reviewdog-posted analyzer output until tuned.</li>
-<li>Merge/nightly (heavy): PSalm full rules, Infection mutation testing, Trivy image scans, deep Semgrep rule sets, and full CodeQL runs.</li>
-<li>Maintain <code>roave/security-advisories</code> to block known-vulnerable package installs at <code>composer install</code> time.</li>
-</ul>
-<h2 id="consequences">Consequences</h2>
-<ul>
-<li>Faster PR feedback for common security issues while reserving deeper costly scans for merge/nightly runs.</li>
-<li>AI reviews improve maintainability suggestions but must be non-blocking to avoid false-positive blocking and data leakage.</li>
-<li>Additional CI jobs increase runtime and maintenance; use caching and scheduling to reduce friction.</li>
-</ul>
+<h2 id="contract-boundary">Contract Boundary</h2>
+<p>This page is the durable contract for US-02. Infrastructure implementations may vary, but repository and storage adapters must continue to satisfy these behaviors and return values.</p>
 
 
 
