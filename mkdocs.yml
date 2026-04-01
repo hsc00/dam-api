@@ -7,6 +7,7 @@ nav:
   - API:
       - US-01 Agree API Schema: api/01-agree-api-schema.md
   - Architecture:
+      - US-02 Asset Domain Contracts: architecture/01-asset-domain-contracts.md
       - C4 Context Diagram: architecture/c4-context.drawio
       - C4 Container Diagram: architecture/c4-container.drawio
       - Clean Architecture Layers: architecture/clean-arch-layers.drawio
@@ -15,7 +16,9 @@ nav:
       - Tooling: adr/01-tooling-choices.md
       - Security: adr/02-security-choices.md
       - Domain-first Modeling and Idempotent Upload Flow: adr/03-domain-first-idempotent-upload.md
+      - Asset Domain Contracts: adr/04-asset-domain-contracts.md
   - Implementation Logs:
       - US-01 Agree API Schema: logs/01-agree-api-schema.md
+      - US-02 Domain Model Core Objects: logs/02-domain-model-core-objects.md
 plugins:
   - search

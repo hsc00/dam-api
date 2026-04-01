@@ -6,60 +6,148 @@ namespace App\Domain\Asset;
 
 use App\Domain\Asset\Exception\AssetDomainException;
 use App\Domain\Asset\ValueObject\AccountId;
+use App\Domain\Asset\ValueObject\AssetId;
+use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 use App\Domain\Asset\ValueObject\UploadId;
 use DateTimeImmutable;
 
 final class Asset
 {
-    private string $id;
+    private AssetId $id;
     private UploadId $uploadId;
     private AccountId $accountId;
+    private string $fileName;
+    private string $mimeType;
     private AssetStatus $status;
-    private ?string $filename = null;
-    private ?string $contentType = null;
-    private ?int $size = null;
+    private ?UploadCompletionProofValue $completionProof = null;
     private DateTimeImmutable $createdAt;
-    private DateTimeImmutable $updatedAt;
 
-    private function __construct(string $id, UploadId $uploadId, AccountId $accountId, AssetStatus $status, DateTimeImmutable $now)
-    {
+    private function __construct(
+        AssetId $id,
+        UploadId $uploadId,
+        AccountId $accountId,
+        string $fileName,
+        string $mimeType,
+        AssetStatus $status,
+        ?UploadCompletionProofValue $completionProof = null,
+    ) {
         $this->id = $id;
         $this->uploadId = $uploadId;
         $this->accountId = $accountId;
+        $this->fileName = self::normalizeRequiredText($fileName, 'File name must be non-empty');
+        $this->mimeType = self::normalizeRequiredText($mimeType, 'Mime type must be non-empty');
+        self::assertCompletionProofMatchesStatus($status, $completionProof);
         $this->status = $status;
-        $this->createdAt = $now;
-        $this->updatedAt = $now;
-    }
-
-    public static function createPending(UploadId $uploadId, AccountId $accountId): self
-    {
-        $now = new DateTimeImmutable();
-
-        return new self(id: self::generateUuidV4(), uploadId: $uploadId, accountId: $accountId, status: AssetStatus::PENDING, now: $now);
-    }
-
-    private static function generateUuidV4(): string
-    {
-        $bytes = random_bytes(16);
-        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
-        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
-
-        $hex = bin2hex($bytes);
-
-        return sprintf(
-            '%s-%s-%s-%s-%s',
-            substr($hex, 0, 8),
-            substr($hex, 8, 4),
-            substr($hex, 12, 4),
-            substr($hex, 16, 4),
-            substr($hex, 20, 12),
-        );
+        $this->completionProof = $completionProof;
     }
 
     /**
      * @throws AssetDomainException
      */
-    public function markUploaded(string $filename, string $contentType, int $size): void
+    public static function createPending(UploadId $uploadId, AccountId $accountId, string $fileName, string $mimeType): self
+    {
+        $asset = new self(
+            id: AssetId::generate(),
+            uploadId: $uploadId,
+            accountId: $accountId,
+            fileName: $fileName,
+            mimeType: $mimeType,
+            status: AssetStatus::PENDING,
+        );
+
+        $asset->createdAt = new DateTimeImmutable();
+
+        return $asset;
+    }
+
+    /**
+     * Reconstitutes a non-uploaded Asset from persistence.
+     * For UPLOADED status, use reconstituteUploaded() instead.
+     *
+     * @throws AssetDomainException
+     */
+    public static function reconstitute(
+        AssetId $id,
+        UploadId $uploadId,
+        AccountId $accountId,
+        string $fileName,
+        string $mimeType,
+        AssetStatus $status,
+        DateTimeImmutable $createdAt,
+    ): self {
+        $asset = new self(
+            id: $id,
+            uploadId: $uploadId,
+            accountId: $accountId,
+            fileName: $fileName,
+            mimeType: $mimeType,
+            status: $status,
+        );
+
+        $asset->createdAt = $createdAt;
+
+        return $asset;
+    }
+
+    /**
+     * @throws AssetDomainException
+     */
+    public static function reconstituteUploaded(
+        AssetId $id,
+        UploadId $uploadId,
+        AccountId $accountId,
+        string $fileName,
+        string $mimeType,
+        DateTimeImmutable $createdAt,
+        UploadCompletionProofValue $completionProof,
+    ): self {
+        $asset = new self(
+            id: $id,
+            uploadId: $uploadId,
+            accountId: $accountId,
+            fileName: $fileName,
+            mimeType: $mimeType,
+            status: AssetStatus::UPLOADED,
+            completionProof: $completionProof,
+        );
+
+        $asset->createdAt = $createdAt;
+
+        return $asset;
+    }
+
+    /**
+     * @throws AssetDomainException
+     */
+    private static function assertCompletionProofMatchesStatus(AssetStatus $status, ?UploadCompletionProofValue $completionProof): void
+    {
+        if ($status === AssetStatus::UPLOADED && $completionProof === null) {
+            throw new AssetDomainException('Uploaded assets must have completion proof');
+        }
+
+        if ($status !== AssetStatus::UPLOADED && $completionProof !== null) {
+            throw new AssetDomainException('Only uploaded assets can have completion proof');
+        }
+    }
+
+    /**
+     * @throws AssetDomainException
+     */
+    private static function normalizeRequiredText(string $value, string $message): string
+    {
+        $normalizedValue = trim($value);
+
+        if ($normalizedValue === '') {
+            throw new AssetDomainException($message);
+        }
+
+        return $normalizedValue;
+    }
+
+    /**
+     * @throws AssetDomainException
+     */
+    public function markUploaded(UploadCompletionProofValue $completionProof): void
     {
         if ($this->status === AssetStatus::UPLOADED) {
             throw new AssetDomainException('Asset already uploaded');
@@ -69,25 +157,8 @@ final class Asset
             throw new AssetDomainException('Cannot upload asset from current state');
         }
 
-        if ($size < 0) {
-            throw new AssetDomainException('Asset size must be non-negative');
-        }
-
-        $trimmedFilename = trim($filename);
-        if ($trimmedFilename === '') {
-            throw new AssetDomainException('Filename must be non-empty');
-        }
-
-        $trimmedContentType = trim($contentType);
-        if ($trimmedContentType === '') {
-            throw new AssetDomainException('Content type must be non-empty');
-        }
-
-        $this->filename = $trimmedFilename;
-        $this->contentType = $trimmedContentType;
-        $this->size = $size;
+        $this->completionProof = $completionProof;
         $this->status = AssetStatus::UPLOADED;
-        $this->updatedAt = new DateTimeImmutable();
     }
 
     /**
@@ -100,10 +171,9 @@ final class Asset
         }
 
         $this->status = AssetStatus::FAILED;
-        $this->updatedAt = new DateTimeImmutable();
     }
 
-    public function getId(): string
+    public function getId(): AssetId
     {
         return $this->id;
     }
@@ -118,24 +188,24 @@ final class Asset
         return $this->accountId;
     }
 
+    public function getFileName(): string
+    {
+        return $this->fileName;
+    }
+
+    public function getMimeType(): string
+    {
+        return $this->mimeType;
+    }
+
     public function getStatus(): AssetStatus
     {
         return $this->status;
     }
 
-    public function getFilename(): ?string
+    public function getCompletionProof(): ?UploadCompletionProofValue
     {
-        return $this->filename;
-    }
-
-    public function getContentType(): ?string
-    {
-        return $this->contentType;
-    }
-
-    public function getSize(): ?int
-    {
-        return $this->size;
+        return $this->completionProof;
     }
 
     public function getCreatedAt(): DateTimeImmutable
@@ -143,13 +213,8 @@ final class Asset
         return $this->createdAt;
     }
 
-    public function getUpdatedAt(): DateTimeImmutable
-    {
-        return $this->updatedAt;
-    }
-
     public function equals(Asset $other): bool
     {
-        return $this->id === $other->id;
+        return $this->id->equals($other->id);
     }
 }
