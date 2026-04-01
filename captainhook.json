@@ -3,7 +3,6 @@
     "enabled": true,
     "actions": [
       { "action": "php vendor/bin/php-cs-fixer fix --using-cache=no" },
-      { "action": "git add -A" },
       { "action": "php vendor/bin/phpstan analyse -c phpstan.neon" }
     ]
   },
