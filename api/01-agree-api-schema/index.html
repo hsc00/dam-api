@@ -1089,6 +1089,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logs/03-data-local-storage-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-03 Data & Local Storage Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1711,7 +1739,7 @@ revises the schema.</p>
 <tr>
 <td><code>url</code></td>
 <td><code>String!</code></td>
-<td>Time-limited upload URL.</td>
+<td>Time-limited upload target. Production returns HTTPS; local mock may return deterministic <code>mock://uploads/{uploadId}/chunk/0</code>.</td>
 </tr>
 <tr>
 <td><code>method</code></td>
@@ -1735,6 +1763,7 @@ revises the schema.</p>
 </tr>
 </tbody>
 </table>
+<p>Clients must perform a network upload only when <code>UploadTarget.url</code> uses <code>https://</code>. In local development, <code>mock://uploads/{uploadId}/chunk/0</code> is a deterministic stub for test and dev flows, so clients must skip the network upload and continue with the agreed mock behavior. Clients must reject <code>http://</code> targets and any other non-HTTPS, non-<code>mock://</code> scheme as a misconfiguration and security risk.</p>
 <h3 id="uploadhttpmethod"><code>UploadHttpMethod</code></h3>
 <table>
 <thead>

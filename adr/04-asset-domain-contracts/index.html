@@ -867,6 +867,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logs/03-data-local-storage-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-03 Data & Local Storage Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -974,7 +1002,7 @@
 
 <h1 id="adr-04-asset-domain-contracts">ADR-04: Asset Domain Contracts</h1>
 <h2 id="purpose">Purpose</h2>
-<p>This document records the domain contract between the <code>Asset</code> aggregate, persistence, and storage for US-02. It is an implementation-level contract (not a Draw.io diagram) and belongs with the ADRs as permanent architecture documentation.</p>
+<p>This document records the domain contract between the <code>Asset</code> aggregate, persistence, and storage for US-02. It is an implementation-level contract and belongs with the ADRs as permanent architecture documentation.</p>
 <h2 id="asset-repository-contract">Asset Repository Contract</h2>
 <p><code>AssetRepositoryInterface</code> must provide these behaviors.</p>
 <table>
@@ -988,7 +1016,7 @@
 <tbody>
 <tr>
 <td><code>save(Asset $asset): void</code></td>
-<td>Persist enough state to reconstruct the same domain object later. This includes <code>id</code>, <code>uploadId</code>, <code>accountId</code>, <code>fileName</code>, <code>mimeType</code>, <code>status</code>, <code>createdAt</code>, and <code>completionProof</code> when the asset is uploaded.</td>
+<td>Persist enough state to reconstruct the same domain object later. This includes <code>id</code>, <code>uploadId</code>, <code>accountId</code>, <code>fileName</code>, <code>mimeType</code>, <code>status</code>, <code>chunkCount</code>, <code>createdAt</code>, <code>updatedAt</code>, and <code>completionProof</code> when the asset is uploaded.</td>
 <td>The <code>Asset</code> aggregate is the source of truth for lifecycle state. Persistence cannot drop uploaded-state proof data.</td>
 </tr>
 <tr>
@@ -1001,13 +1029,20 @@
 <td>Return the matching asset or <code>null</code> when none exists.</td>
 <td>The upload identifier is part of the upload flow contract and supports retry-safe lookup.</td>
 </tr>
+<tr>
+<td><code>searchByFileName(AccountId $accountId, string $query): array</code></td>
+<td>Return only assets for the supplied account whose <code>fileName</code> contains the trimmed query as a plain-text, case-insensitive substring. Results are ordered by <code>createdAt</code> descending, then <code>id</code> ascending. Return an empty list when the trimmed query is empty.</td>
+<td>Search flows need deterministic account-scoped matching without turning an empty query into a full scan.</td>
+</tr>
 </tbody>
 </table>
+<p>Persistence must store <code>accountId</code>, <code>fileName</code>, <code>mimeType</code>, and uploaded-state <code>completionProof</code> values without truncating them to an undocumented 255-character ceiling. In this chunk the domain still models those fields as trimmed non-empty text, so persistence must preserve the full value it receives.</p>
+<p>Persistence must store <code>chunkCount</code> as a positive integer and <code>updatedAt</code> as a timestamp that is never earlier than <code>createdAt</code>. Newly created pending assets start with <code>chunkCount = 1</code> and <code>updatedAt === createdAt</code>; successful status transitions advance <code>updatedAt</code> monotonically and never move it backward.</p>
 <p>Repository implementations must also preserve the uploaded-state invariant during reads.</p>
 <ul>
-<li><code>PENDING</code> and <code>FAILED</code> assets can be reconstituted with <code>Asset::reconstitute(...)</code>.</li>
-<li><code>UPLOADED</code> assets must be reconstituted with <code>Asset::reconstituteUploaded(...)</code> and must include a completion proof value.</li>
-<li>An uploaded record without completion proof is invalid domain state and must not be returned as a valid <code>Asset</code>.</li>
+<li><code>PENDING</code> and <code>FAILED</code> assets are reconstituted with <code>Asset::reconstitute(...)</code>, including persisted <code>chunkCount</code>, <code>createdAt</code>, and <code>updatedAt</code>.</li>
+<li><code>UPLOADED</code> assets are reconstituted with <code>Asset::reconstituteUploaded(...)</code>, including the same persisted lifecycle fields plus a completion proof value.</li>
+<li>An uploaded record without a non-empty completion proof, a record with <code>chunkCount &lt; 1</code>, or a record with <code>updatedAt &lt; createdAt</code> is invalid domain state and must not be returned as a valid <code>Asset</code>.</li>
 </ul>
 <h2 id="storage-adapter-contract">Storage Adapter Contract</h2>
 <p><code>StorageAdapterInterface</code> must return a fully typed <code>UploadTarget</code> for an accepted <code>Asset</code>.</p>
@@ -1022,7 +1057,7 @@
 <tbody>
 <tr>
 <td><code>url</code></td>
-<td>Must be an absolute URL. HTTPS is required except for local-development loopback URLs.</td>
+<td>Must be an absolute URL. HTTPS is required except for local-development loopback URLs and deterministic <code>mock://uploads/{uploadId}/chunk/0</code> targets.</td>
 <td>Validated by <code>UploadTarget</code>.</td>
 </tr>
 <tr>
@@ -1048,10 +1083,12 @@
 </tbody>
 </table>
 <p>Storage adapters own signing, credentials, bucket selection, and provider-specific response details. Those details stay in infrastructure and are translated into the typed domain contract before being returned.</p>
+<p>The current storage adapter interface remains singular. Until the contract grows multi-part semantics, local-development adapters return deterministic chunk <code>0</code> targets.</p>
 <h2 id="added-to-complete-us-02">Added to complete US-02</h2>
 <p>The accepted delivery extended slightly beyond the original story so the domain contract would be complete.</p>
 <ul>
 <li><code>findByUploadId(...)</code> was added to the repository contract so upload flows can resolve an asset by upload identifier.</li>
+<li><code>searchByFileName(...)</code> was added to the repository contract so account-scoped file-name search has deterministic semantics before the repository implementation lands.</li>
 <li><code>StorageAdapterInterface</code> and the typed upload-target model were added so upload instructions are represented as domain types instead of untyped infrastructure payloads.</li>
 <li>A completion-proof requirement was added to both upload completion and uploaded-state reconstitution so <code>UPLOADED</code> cannot exist without proof.</li>
 </ul>
