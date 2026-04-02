@@ -193,6 +193,7 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
 
     private function updateMutableFields(Asset $asset, Asset $persistedAsset): void
     {
+        $parameters = $this->mutableUpdateParameters($asset, $persistedAsset);
         $statement = $this->connection->prepare(
             'UPDATE assets
              SET status = :status,
@@ -203,9 +204,28 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
                AND status = :expected_status
                AND updated_at = :expected_updated_at',
         );
-        $statement->execute($this->mutableUpdateParameters($asset, $persistedAsset));
+        $statement->execute($parameters);
 
         if ($statement->rowCount() === 0) {
+            $currentAsset = $this->findById($asset->getId());
+
+            if (
+                $currentAsset !== null
+                && [
+                    'status' => $currentAsset->getStatus()->value,
+                    'chunk_count' => $currentAsset->getChunkCount(),
+                    'completion_proof' => $currentAsset->getCompletionProof()?->value,
+                    'updated_at' => $currentAsset->getUpdatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
+                ] === [
+                    'status' => $parameters['status'],
+                    'chunk_count' => $parameters['chunk_count'],
+                    'completion_proof' => $parameters['completion_proof'],
+                    'updated_at' => $parameters['updated_at'],
+                ]
+            ) {
+                return;
+            }
+
             throw new StaleAssetWriteException(self::STALE_WRITE_MESSAGE);
         }
     }

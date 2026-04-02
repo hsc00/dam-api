@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\Test;
 final class AssetsTableSchemaTest extends BaseAssetsTableTestCase
 {
     #[Test]
-    public function itCreatesTheExpectedAssetsTableSchemaAndCanBeReappliedSafely(): void
+    public function itReturnsExpectedSchemaWhenReappliedSafely(): void
     {
         // Arrange & Act
         $this->withTemporarySchema(function (PDO $connection): void {

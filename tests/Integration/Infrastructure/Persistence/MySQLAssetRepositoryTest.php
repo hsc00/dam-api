@@ -165,7 +165,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itRejectsALaterSaveWhenTheSameAssetIdentityChangesAnImmutableField(): void
+    public function itThrowsStaleAssetWriteExceptionWhenSameAssetIdentityChangesImmutableField(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -209,7 +209,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itRejectsAStaleSaveAndPreservesTheNewerPersistedState(): void
+    public function itThrowsStaleAssetWriteExceptionWhenSavingStaleAssetAndPreservesNewerPersistedState(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -254,7 +254,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itRejectsAStaleSaveWhenTheCompareAndSwapUpdateLosesARace(): void
+    public function itThrowsStaleAssetWriteExceptionWhenCompareAndSwapUpdateLosesRace(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -319,6 +319,52 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
+    public function itReturnsSuccessfullyWhenTheCompareAndSwapUpdateLosesARaceButTheRowAlreadyMatchesTheDesiredState(): void
+    {
+        // Arrange & Act
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            $repository = new MySQLAssetRepository($connection);
+            $persistedAsset = $this->pendingAsset(
+                assetId: '30303030-3030-4030-8030-303030303030',
+                uploadId: '40404040-4040-4040-8040-404040404040',
+                accountId: 'account-compare-and-swap-idempotent-race',
+                fileName: 'race-idempotent.png',
+                createdAt: '2026-04-01 13:25:00.000000',
+            );
+            $uploadedAsset = $this->uploadedAsset(
+                assetId: (string) $persistedAsset->getId(),
+                uploadId: (string) $persistedAsset->getUploadId(),
+                accountId: (string) $persistedAsset->getAccountId(),
+                fileName: $persistedAsset->getFileName(),
+                completionProof: 'etag-idempotent-race-winner',
+                persistedState: $this->persistedState(
+                    '2026-04-01 13:25:00.000000',
+                    1,
+                    '2026-04-01 13:30:00.000000',
+                ),
+            );
+
+            $repository->save($persistedAsset);
+
+            $raceConnection = $this->createCompareAndSwapRaceConnection(
+                $this->currentDatabaseName($connection),
+                function () use ($connection, $uploadedAsset): void {
+                    $this->forceUploadedAssetState($connection, $uploadedAsset);
+                },
+            );
+            $raceRepository = new MySQLAssetRepository($raceConnection);
+
+            $raceRepository->save($uploadedAsset);
+            $persistedAfterRace = $repository->findById($persistedAsset->getId());
+
+            // Assert
+            self::assertNotNull($persistedAfterRace);
+            self::assertSame(1, $this->countAssets($connection));
+            $this->assertAssetMatches($uploadedAsset, $persistedAfterRace);
+        });
+    }
+
+    #[Test]
     public function itReturnsNullWhenAnAssetIsMissing(): void
     {
         // Arrange & Act
@@ -334,7 +380,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itSearchesByFileNameWithinAnAccountUsingDeterministicOrdering(): void
+    public function itReturnsMatchingAssetsWhenSearchingByFileNameWithinAccountUsingDeterministicOrdering(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -393,7 +439,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itReturnsAnEmptyListForAnEmptyTrimmedSearchQueryWithoutQueryingTheTable(): void
+    public function itReturnsAnEmptyListWhenSearchQueryIsEmptyAfterTrimming(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -406,7 +452,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itSurfacesADatabaseExceptionWhenADifferentAssetReusesAnExistingUploadId(): void
+    public function itThrowsPdoExceptionWhenDifferentAssetReusesExistingUploadId(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -668,6 +714,25 @@ final class MySQLAssetRepositoryTest extends TestCase
         ]);
     }
 
+    private function forceUploadedAssetState(PDO $connection, Asset $asset): void
+    {
+        $statement = $connection->prepare(
+            'UPDATE assets
+             SET status = :status,
+                 chunk_count = :chunk_count,
+                 completion_proof = :completion_proof,
+                 updated_at = :updated_at
+             WHERE id = :id',
+        );
+        $statement->execute([
+            'id' => (string) $asset->getId(),
+            'status' => $asset->getStatus()->value,
+            'chunk_count' => $asset->getChunkCount(),
+            'completion_proof' => $asset->getCompletionProof()?->value,
+            'updated_at' => $asset->getUpdatedAt()->format(self::DATETIME_FORMAT),
+        ]);
+    }
+
     private function countAssets(PDO $connection): int
     {
         $statement = $connection->prepare('SELECT COUNT(*) AS asset_count FROM assets');
@@ -735,9 +800,9 @@ final class MySQLAssetRepositoryTest extends TestCase
     private function persistedState(string $createdAt, int $chunkCount = 1, ?string $updatedAt = null): array
     {
         return [
-            'createdAt' => new DateTimeImmutable($createdAt),
+            'createdAt' => new DateTimeImmutable($createdAt, new \DateTimeZone('UTC')),
             'chunkCount' => $chunkCount,
-            'updatedAt' => new DateTimeImmutable($updatedAt ?? $createdAt),
+            'updatedAt' => new DateTimeImmutable($updatedAt ?? $createdAt, new \DateTimeZone('UTC')),
         ];
     }
 
@@ -755,12 +820,12 @@ final class MySQLAssetRepositoryTest extends TestCase
             $actual->getCompletionProof()?->value,
         );
         self::assertSame(
-            $expected->getCreatedAt()->format(self::DATETIME_FORMAT),
-            $actual->getCreatedAt()->format(self::DATETIME_FORMAT),
+            $expected->getCreatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
+            $actual->getCreatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
         );
         self::assertSame(
-            $expected->getUpdatedAt()->format(self::DATETIME_FORMAT),
-            $actual->getUpdatedAt()->format(self::DATETIME_FORMAT),
+            $expected->getUpdatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
+            $actual->getUpdatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
         );
     }
 
