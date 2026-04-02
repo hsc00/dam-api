@@ -17,6 +17,8 @@ use PHPUnit\Framework\TestCase;
 
 final class UploadTargetTest extends TestCase
 {
+    private const TRANSPORT_SECURITY_MESSAGE = 'Upload target URL must use HTTPS, except http://localhost, http://127.0.0.1, http://[::1], or mock://uploads for local development';
+
     #[Test]
     public function itReturnsUploadTargetWhenInputsAreValid(): void
     {
@@ -84,14 +86,14 @@ final class UploadTargetTest extends TestCase
     #[DataProvider('disallowedInsecureUrlProvider')]
     public function itThrowsInvalidArgumentExceptionWhenRemoteUrlDoesNotUseHttps(string $url): void
     {
-        // Arrange
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage(
-            'Upload target URL must use HTTPS, except http://localhost, http://127.0.0.1, or http://[::1] for local development'
-        );
+        $this->assertTransportSecurityFailure($url);
+    }
 
-        // Act
-        $this->createUploadTarget($url, []);
+    #[Test]
+    #[DataProvider('invalidMockUrlProvider')]
+    public function itThrowsInvalidArgumentExceptionWhenMockUrlDoesNotMatchTheAgreedLocalShape(string $url): void
+    {
+        $this->assertTransportSecurityFailure($url);
     }
 
     #[Test]
@@ -174,6 +176,29 @@ final class UploadTargetTest extends TestCase
         return [
             'remote http url' => ['http://example.test/upload'],
             'insecure localhost-like hostname' => ['http://localhost.example.test/upload'],
+            'unsupported ftp url' => ['ftp://example.test/upload'],
+            'unexpected mock host' => ['mock://downloads/123e4567-e89b-42d3-a456-426614174000/chunk/0'],
+        ];
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function invalidMockUrlProvider(): array
+    {
+        return [
+            'userinfo' => ['mock://user@uploads/123e4567-e89b-42d3-a456-426614174000/chunk/0'],
+            'explicit port' => ['mock://uploads:9000/123e4567-e89b-42d3-a456-426614174000/chunk/0'],
+            'query string' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/0?partNumber=1'],
+            'fragment' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/0#etag'],
+            'missing upload id segment' => ['mock://uploads/chunk/0'],
+            'empty upload id segment' => ['mock://uploads//chunk/0'],
+            'invalid upload id segment' => ['mock://uploads/not-an-upload-id/chunk/0'],
+            'wrong path literal' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunks/0'],
+            'wrong chunk index' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/1'],
+            'trailing slash' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/0/'],
+            'traversal-like upload id' => ['mock://uploads/../chunk/0'],
+            'traversal-like middle segment' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/../0'],
         ];
     }
 
@@ -200,7 +225,8 @@ final class UploadTargetTest extends TestCase
         return [
             'uppercase http scheme and host' => ['HTTP://LOCALHOST/path', 'http://localhost/path'],
             'mixed-case https with port, query, and fragment' => ['HTTPS://Example.COM:8443/Some/Path?Q=1#Frag', 'https://example.com:8443/Some/Path?Q=1#Frag'],
-            'userinfo with bracketed ipv6' => ['HTTPS://User:Pass@[2001:DB8::1]:8443/Some/Path?Q=1#Frag', 'https://User:Pass@[2001:db8::1]:8443/Some/Path?Q=1#Frag'],
+            'userinfo with bracketed ipv6' => ['HTTPS://User@[2001:DB8::1]:8443/Some/Path?Q=1#Frag', 'https://User@[2001:db8::1]:8443/Some/Path?Q=1#Frag'],
+            'mixed-case mock upload target' => ['MOCK://UPLOADS/123e4567-e89b-42d3-a456-426614174000/chunk/0', 'mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/0'],
             'already normalized' => ['https://example.com/Already', 'https://example.com/Already'],
         ];
     }
@@ -217,5 +243,15 @@ final class UploadTargetTest extends TestCase
             new UploadCompletionProof('etag', UploadCompletionProofSource::RESPONSE_HEADER),
             new DateTimeImmutable('2026-01-20T12:34:56+00:00'),
         );
+    }
+
+    private function assertTransportSecurityFailure(string $url): void
+    {
+        // Arrange
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage(self::TRANSPORT_SECURITY_MESSAGE);
+
+        // Act
+        $this->createUploadTarget($url, []);
     }
 }

@@ -173,13 +173,15 @@ Non-negative file size in bytes. This allows values beyond the GraphQL `Int` ran
 
 ### `UploadTarget`
 
-| Field             | Type                               | Description                                           |
-| ----------------- | ---------------------------------- | ----------------------------------------------------- |
-| `url`             | `String!`                          | Time-limited upload URL.                              |
-| `method`          | `UploadHttpMethod!`                | HTTP method the client must use.                      |
-| `signedHeaders`   | `[UploadParameter!]!`              | Headers that must be sent exactly as issued.          |
-| `completionProof` | `UploadCompletionProofDescriptor!` | Tells the client which proof to capture after upload. |
-| `expiresAt`       | `DateTime!`                        | Expiration timestamp for the upload target.           |
+| Field             | Type                               | Description                                                                                                                    |
+| ----------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `url`             | `String!`                          | Time-limited upload target. Production returns HTTPS; local mock may return deterministic `mock://uploads/{uploadId}/chunk/0`. |
+| `method`          | `UploadHttpMethod!`                | HTTP method the client must use.                                                                                               |
+| `signedHeaders`   | `[UploadParameter!]!`              | Headers that must be sent exactly as issued.                                                                                   |
+| `completionProof` | `UploadCompletionProofDescriptor!` | Tells the client which proof to capture after upload.                                                                          |
+| `expiresAt`       | `DateTime!`                        | Expiration timestamp for the upload target.                                                                                    |
+
+Clients must perform a network upload only when `UploadTarget.url` uses `https://`. In local development, `mock://uploads/{uploadId}/chunk/0` is a deterministic stub for test and dev flows, so clients must skip the network upload and continue with the agreed mock behavior. Clients must reject `http://` targets and any other non-HTTPS, non-`mock://` scheme as a misconfiguration and security risk.
 
 ### `UploadHttpMethod`
 

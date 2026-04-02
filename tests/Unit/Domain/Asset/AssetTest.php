@@ -18,6 +18,8 @@ use PHPUnit\Framework\TestCase;
 
 final class AssetTest extends TestCase
 {
+    private const DEFAULT_CHUNK_COUNT = 1;
+    private const CHUNK_COUNT = 4;
     private const ASSET_ID = '123e4567-e89b-42d3-a456-426614174099';
     private const OTHER_ASSET_ID = '123e4567-e89b-42d3-a456-426614174098';
     private const FIRST_UPLOAD_ID = '123e4567-e89b-42d3-a456-426614174000';
@@ -26,6 +28,10 @@ final class AssetTest extends TestCase
     private const FILE_NAME = 'image.png';
     private const MIME_TYPE = 'image/png';
     private const COMPLETION_PROOF_VALUE = 'etag-value';
+    private const CREATED_AT = '2020-01-20T12:34:56+00:00';
+    private const UPDATED_AT = '2020-01-21T12:34:56+00:00';
+    private const INVALID_CHUNK_COUNT_MESSAGE = 'Chunk count must be at least 1';
+    private const INVALID_UPDATED_AT_MESSAGE = 'Updated at must not be earlier than created at';
     private const UUID_V4_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
 
     #[Test]
@@ -50,8 +56,10 @@ final class AssetTest extends TestCase
         self::assertSame(self::FILE_NAME, $asset->getFileName());
         self::assertSame(self::MIME_TYPE, $asset->getMimeType());
         self::assertSame(AssetStatus::PENDING, $asset->getStatus());
+        self::assertSame(self::DEFAULT_CHUNK_COUNT, $asset->getChunkCount());
         self::assertGreaterThanOrEqual($beforeCreation->getTimestamp(), $asset->getCreatedAt()->getTimestamp());
         self::assertLessThanOrEqual($afterCreation->getTimestamp(), $asset->getCreatedAt()->getTimestamp());
+        self::assertSame($asset->getCreatedAt(), $asset->getUpdatedAt());
     }
 
     #[Test]
@@ -75,7 +83,8 @@ final class AssetTest extends TestCase
         $assetId = new AssetId(self::ASSET_ID);
         $uploadId = new UploadId(self::FIRST_UPLOAD_ID);
         $accountId = new AccountId(self::ACCOUNT_ID);
-        $createdAt = new DateTimeImmutable('2026-01-20T12:34:56+00:00');
+        $createdAt = new DateTimeImmutable(self::CREATED_AT);
+        $updatedAt = new DateTimeImmutable(self::UPDATED_AT);
 
         // Act
         $asset = Asset::reconstitute(
@@ -85,7 +94,7 @@ final class AssetTest extends TestCase
             '  ' . self::FILE_NAME . '  ',
             '  ' . self::MIME_TYPE . '  ',
             AssetStatus::FAILED,
-            $createdAt,
+            $this->persistedState($createdAt, self::CHUNK_COUNT, $updatedAt),
         );
 
         // Assert
@@ -95,7 +104,9 @@ final class AssetTest extends TestCase
         self::assertSame(self::FILE_NAME, $asset->getFileName());
         self::assertSame(self::MIME_TYPE, $asset->getMimeType());
         self::assertSame(AssetStatus::FAILED, $asset->getStatus());
+        self::assertSame(self::CHUNK_COUNT, $asset->getChunkCount());
         self::assertSame($createdAt, $asset->getCreatedAt());
+        self::assertSame($updatedAt, $asset->getUpdatedAt());
     }
 
     #[Test]
@@ -105,7 +116,8 @@ final class AssetTest extends TestCase
         $assetId = new AssetId(self::ASSET_ID);
         $uploadId = new UploadId(self::FIRST_UPLOAD_ID);
         $accountId = new AccountId(self::ACCOUNT_ID);
-        $createdAt = new DateTimeImmutable('2026-01-20T12:34:56+00:00');
+        $createdAt = new DateTimeImmutable(self::CREATED_AT);
+        $updatedAt = new DateTimeImmutable(self::UPDATED_AT);
 
         // Act
         $asset = Asset::reconstituteUploaded(
@@ -114,8 +126,8 @@ final class AssetTest extends TestCase
             $accountId,
             '  ' . self::FILE_NAME . '  ',
             '  ' . self::MIME_TYPE . '  ',
-            $createdAt,
             $this->createCompletionProofValue(),
+            $this->persistedState($createdAt, self::CHUNK_COUNT, $updatedAt),
         );
 
         // Assert
@@ -125,8 +137,175 @@ final class AssetTest extends TestCase
         self::assertSame(self::FILE_NAME, $asset->getFileName());
         self::assertSame(self::MIME_TYPE, $asset->getMimeType());
         self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
+        self::assertSame(self::CHUNK_COUNT, $asset->getChunkCount());
         self::assertSame($createdAt, $asset->getCreatedAt());
+        self::assertSame($updatedAt, $asset->getUpdatedAt());
         self::assertEquals($this->createCompletionProofValue(), $asset->getCompletionProof());
+    }
+
+    #[Test]
+    public function itReturnsAssetWhenReconstitutedWithMinimumValidChunkCount(): void
+    {
+        // Arrange
+        $createdAt = new DateTimeImmutable(self::CREATED_AT);
+        $updatedAt = new DateTimeImmutable(self::UPDATED_AT);
+
+        // Act
+        $asset = Asset::reconstitute(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            AssetStatus::PENDING,
+            $this->persistedState($createdAt, self::DEFAULT_CHUNK_COUNT, $updatedAt),
+        );
+
+        // Assert
+        self::assertSame(self::DEFAULT_CHUNK_COUNT, $asset->getChunkCount());
+        self::assertSame($updatedAt, $asset->getUpdatedAt());
+    }
+
+    #[Test]
+    public function itDefaultsChunkCountAndUpdatedAtWhenReconstitutingAssetWithoutOptionalPersistedStateFields(): void
+    {
+        // Arrange
+        $createdAt = new DateTimeImmutable(self::CREATED_AT);
+
+        // Act
+        $asset = Asset::reconstitute(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            AssetStatus::PENDING,
+            [
+                'createdAt' => $createdAt,
+            ],
+        );
+
+        // Assert
+        self::assertSame(self::DEFAULT_CHUNK_COUNT, $asset->getChunkCount());
+        self::assertSame($createdAt, $asset->getUpdatedAt());
+    }
+
+    #[Test]
+    public function itDefaultsChunkCountAndUpdatedAtWhenReconstitutingUploadedAssetWithoutOptionalPersistedStateFields(): void
+    {
+        // Arrange
+        $createdAt = new DateTimeImmutable(self::CREATED_AT);
+
+        // Act
+        $asset = Asset::reconstituteUploaded(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            $this->createCompletionProofValue(),
+            [
+                'createdAt' => $createdAt,
+            ],
+        );
+
+        // Assert
+        self::assertSame(self::DEFAULT_CHUNK_COUNT, $asset->getChunkCount());
+        self::assertSame($createdAt, $asset->getUpdatedAt());
+    }
+
+    #[Test]
+    #[DataProvider('invalidChunkCountProvider')]
+    public function itThrowsAssetDomainExceptionWhenReconstitutingAssetWithInvalidChunkCount(int $chunkCount): void
+    {
+        // Arrange
+        $this->expectException(AssetDomainException::class);
+        $this->expectExceptionMessage(self::INVALID_CHUNK_COUNT_MESSAGE);
+
+        // Act
+        Asset::reconstitute(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            AssetStatus::PENDING,
+            [
+                'createdAt' => new DateTimeImmutable(self::CREATED_AT),
+                'chunkCount' => $chunkCount,
+                'updatedAt' => new DateTimeImmutable(self::UPDATED_AT),
+            ],
+        );
+    }
+
+    #[Test]
+    #[DataProvider('invalidChunkCountProvider')]
+    public function itThrowsAssetDomainExceptionWhenReconstitutingUploadedAssetWithInvalidChunkCount(int $chunkCount): void
+    {
+        // Arrange
+        $this->expectException(AssetDomainException::class);
+        $this->expectExceptionMessage(self::INVALID_CHUNK_COUNT_MESSAGE);
+
+        // Act
+        Asset::reconstituteUploaded(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            $this->createCompletionProofValue(),
+            [
+                'createdAt' => new DateTimeImmutable(self::CREATED_AT),
+                'chunkCount' => $chunkCount,
+                'updatedAt' => new DateTimeImmutable(self::UPDATED_AT),
+            ],
+        );
+    }
+
+    #[Test]
+    public function itThrowsAssetDomainExceptionWhenReconstitutingAssetWithUpdatedAtEarlierThanCreatedAt(): void
+    {
+        // Arrange
+        $this->expectException(AssetDomainException::class);
+        $this->expectExceptionMessage(self::INVALID_UPDATED_AT_MESSAGE);
+
+        // Act
+        Asset::reconstitute(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            AssetStatus::FAILED,
+            [
+                'createdAt' => new DateTimeImmutable(self::UPDATED_AT),
+                'chunkCount' => self::CHUNK_COUNT,
+                'updatedAt' => new DateTimeImmutable(self::CREATED_AT),
+            ],
+        );
+    }
+
+    #[Test]
+    public function itThrowsAssetDomainExceptionWhenReconstitutingUploadedAssetWithUpdatedAtEarlierThanCreatedAt(): void
+    {
+        // Arrange
+        $this->expectException(AssetDomainException::class);
+        $this->expectExceptionMessage(self::INVALID_UPDATED_AT_MESSAGE);
+
+        // Act
+        Asset::reconstituteUploaded(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            $this->createCompletionProofValue(),
+            [
+                'createdAt' => new DateTimeImmutable(self::UPDATED_AT),
+                'chunkCount' => self::CHUNK_COUNT,
+                'updatedAt' => new DateTimeImmutable(self::CREATED_AT),
+            ],
+        );
     }
 
     #[Test]
@@ -144,7 +323,7 @@ final class AssetTest extends TestCase
             self::FILE_NAME,
             self::MIME_TYPE,
             AssetStatus::UPLOADED,
-            new DateTimeImmutable('2026-01-20T12:34:56+00:00'),
+            $this->persistedState(new DateTimeImmutable('2026-01-20T12:34:56+00:00')),
         );
     }
 
@@ -164,7 +343,7 @@ final class AssetTest extends TestCase
             $fileName,
             $mimeType,
             AssetStatus::PENDING,
-            new DateTimeImmutable('2026-01-20T12:34:56+00:00'),
+            $this->persistedState(new DateTimeImmutable('2026-01-20T12:34:56+00:00')),
         );
     }
 
@@ -189,7 +368,8 @@ final class AssetTest extends TestCase
     public function itReturnsAssetWithUploadedStatusWhenMarkedUploaded(): void
     {
         // Arrange
-        $asset = $this->createPendingAsset();
+        $asset = $this->reconstituteAsset();
+        $originalUpdatedAt = $asset->getUpdatedAt();
 
         // Act
         $asset->markUploaded($this->createCompletionProofValue());
@@ -197,58 +377,116 @@ final class AssetTest extends TestCase
         // Assert
         self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
         self::assertEquals($this->createCompletionProofValue(), $asset->getCompletionProof());
+        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+    }
+
+    #[Test]
+    public function itDoesNotMoveUpdatedAtBackwardWhenMarkingUploadedWithFuturePersistedUpdatedAt(): void
+    {
+        // Arrange
+        $futureUpdatedAt = new DateTimeImmutable('2099-01-21T12:34:56+00:00');
+        $asset = $this->reconstituteAsset(updatedAt: $futureUpdatedAt);
+
+        // Act
+        $asset->markUploaded($this->createCompletionProofValue());
+
+        // Assert
+        self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
+        self::assertEquals($this->createCompletionProofValue(), $asset->getCompletionProof());
+        self::assertSame($futureUpdatedAt, $asset->getUpdatedAt());
     }
 
     #[Test]
     public function itThrowsAssetDomainExceptionWhenMarkingUploadedAssetAsUploadedAgain(): void
     {
         // Arrange
-        $asset = $this->createPendingAsset();
-        $asset->markUploaded($this->createCompletionProofValue());
-        $this->expectException(AssetDomainException::class);
-        $this->expectExceptionMessage('Asset already uploaded');
+        $asset = $this->reconstituteUploadedAsset();
+        $originalUpdatedAt = $asset->getUpdatedAt();
 
         // Act
-        $asset->markUploaded($this->createCompletionProofValue('second-proof'));
+        $this->assertTransitionRejected(
+            fn () => $asset->markUploaded(new UploadCompletionProofValue('second-proof')),
+            'Asset already uploaded',
+            $asset,
+            $originalUpdatedAt,
+        );
     }
 
     #[Test]
     public function itThrowsAssetDomainExceptionWhenMarkingFailedAssetAsUploaded(): void
     {
         // Arrange
-        $asset = $this->createPendingAsset();
-        $asset->markFailed();
-        $this->expectException(AssetDomainException::class);
-        $this->expectExceptionMessage('Cannot upload asset from current state');
+        $asset = $this->reconstituteAsset(status: AssetStatus::FAILED);
+        $originalUpdatedAt = $asset->getUpdatedAt();
 
         // Act
-        $asset->markUploaded($this->createCompletionProofValue());
+        $this->assertTransitionRejected(
+            fn () => $asset->markUploaded(new UploadCompletionProofValue(self::COMPLETION_PROOF_VALUE)),
+            'Cannot upload asset from current state',
+            $asset,
+            $originalUpdatedAt,
+        );
     }
 
     #[Test]
     public function itReturnsAssetWithFailedStatusWhenMarkedFailed(): void
     {
         // Arrange
-        $asset = $this->createPendingAsset();
+        $asset = $this->reconstituteAsset();
+        $originalUpdatedAt = $asset->getUpdatedAt();
 
         // Act
         $asset->markFailed();
 
         // Assert
         self::assertSame(AssetStatus::FAILED, $asset->getStatus());
+        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+    }
+
+    #[Test]
+    public function itDoesNotMoveUpdatedAtBackwardWhenMarkingFailedWithFuturePersistedUpdatedAt(): void
+    {
+        // Arrange
+        $futureUpdatedAt = new DateTimeImmutable('2099-01-21T12:34:56+00:00');
+        $asset = $this->reconstituteAsset(updatedAt: $futureUpdatedAt);
+
+        // Act
+        $asset->markFailed();
+
+        // Assert
+        self::assertSame(AssetStatus::FAILED, $asset->getStatus());
+        self::assertSame($futureUpdatedAt, $asset->getUpdatedAt());
+    }
+
+    #[Test]
+    public function itDoesNotChangeUpdatedAtWhenMarkingFailedAssetAsFailedAgain(): void
+    {
+        // Arrange
+        $asset = $this->reconstituteAsset(status: AssetStatus::FAILED);
+        $originalUpdatedAt = $asset->getUpdatedAt();
+
+        // Act
+        $asset->markFailed();
+
+        // Assert
+        self::assertSame(AssetStatus::FAILED, $asset->getStatus());
+        self::assertSame($originalUpdatedAt, $asset->getUpdatedAt());
     }
 
     #[Test]
     public function itThrowsAssetDomainExceptionWhenMarkingUploadedAssetAsFailed(): void
     {
         // Arrange
-        $asset = $this->createPendingAsset();
-        $asset->markUploaded($this->createCompletionProofValue());
-        $this->expectException(AssetDomainException::class);
-        $this->expectExceptionMessage('Cannot mark an uploaded asset as failed');
+        $asset = $this->reconstituteUploadedAsset();
+        $originalUpdatedAt = $asset->getUpdatedAt();
 
         // Act
-        $asset->markFailed();
+        $this->assertTransitionRejected(
+            fn () => $asset->markFailed(),
+            'Cannot mark an uploaded asset as failed',
+            $asset,
+            $originalUpdatedAt,
+        );
     }
 
     #[Test]
@@ -262,7 +500,7 @@ final class AssetTest extends TestCase
             self::FILE_NAME,
             self::MIME_TYPE,
             AssetStatus::PENDING,
-            new DateTimeImmutable('2026-01-20T12:34:56+00:00'),
+            $this->persistedState(new DateTimeImmutable('2026-01-20T12:34:56+00:00')),
         );
         $secondAsset = Asset::reconstitute(
             new AssetId(self::ASSET_ID),
@@ -271,7 +509,7 @@ final class AssetTest extends TestCase
             'other-file.pdf',
             'application/pdf',
             AssetStatus::FAILED,
-            new DateTimeImmutable('2026-01-21T12:34:56+00:00'),
+            $this->persistedState(new DateTimeImmutable('2026-01-21T12:34:56+00:00')),
         );
 
         // Act
@@ -292,7 +530,7 @@ final class AssetTest extends TestCase
             self::FILE_NAME,
             self::MIME_TYPE,
             AssetStatus::PENDING,
-            new DateTimeImmutable('2026-01-20T12:34:56+00:00'),
+            $this->persistedState(new DateTimeImmutable('2026-01-20T12:34:56+00:00')),
         );
         $secondAsset = Asset::reconstitute(
             new AssetId(self::OTHER_ASSET_ID),
@@ -301,7 +539,7 @@ final class AssetTest extends TestCase
             self::FILE_NAME,
             self::MIME_TYPE,
             AssetStatus::PENDING,
-            new DateTimeImmutable('2026-01-20T12:34:56+00:00'),
+            $this->persistedState(new DateTimeImmutable('2026-01-20T12:34:56+00:00')),
         );
 
         // Act
@@ -324,18 +562,90 @@ final class AssetTest extends TestCase
         ];
     }
 
-    private function createPendingAsset(string $uploadId = self::FIRST_UPLOAD_ID): Asset
+    /**
+     * @return array<string, array{0: int}>
+     */
+    public static function invalidChunkCountProvider(): array
     {
-        return Asset::createPending(
-            new UploadId($uploadId),
+        return [
+            'zero chunks' => [0],
+            'negative chunks' => [-1],
+        ];
+    }
+
+    private function reconstituteAsset(
+        AssetStatus $status = AssetStatus::PENDING,
+        ?DateTimeImmutable $createdAt = null,
+        ?DateTimeImmutable $updatedAt = null,
+        int $chunkCount = self::CHUNK_COUNT,
+    ): Asset {
+        $createdAt ??= new DateTimeImmutable(self::CREATED_AT);
+        $updatedAt ??= new DateTimeImmutable(self::UPDATED_AT);
+
+        return Asset::reconstitute(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
             new AccountId(self::ACCOUNT_ID),
             self::FILE_NAME,
             self::MIME_TYPE,
+            $status,
+            $this->persistedState($createdAt, $chunkCount, $updatedAt),
         );
+    }
+
+    private function reconstituteUploadedAsset(
+        ?DateTimeImmutable $createdAt = null,
+        ?DateTimeImmutable $updatedAt = null,
+        int $chunkCount = self::CHUNK_COUNT,
+        string $completionProof = self::COMPLETION_PROOF_VALUE,
+    ): Asset {
+        $createdAt ??= new DateTimeImmutable(self::CREATED_AT);
+        $updatedAt ??= new DateTimeImmutable(self::UPDATED_AT);
+
+        return Asset::reconstituteUploaded(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            new UploadCompletionProofValue($completionProof),
+            $this->persistedState($createdAt, $chunkCount, $updatedAt),
+        );
+    }
+
+    /**
+     * @return array{createdAt: DateTimeImmutable, chunkCount: int, updatedAt: DateTimeImmutable}
+     */
+    private function persistedState(
+        DateTimeImmutable $createdAt,
+        int $chunkCount = self::DEFAULT_CHUNK_COUNT,
+        ?DateTimeImmutable $updatedAt = null,
+    ): array {
+        return [
+            'createdAt' => $createdAt,
+            'chunkCount' => $chunkCount,
+            'updatedAt' => $updatedAt ?? $createdAt,
+        ];
     }
 
     private function createCompletionProofValue(string $value = self::COMPLETION_PROOF_VALUE): UploadCompletionProofValue
     {
         return new UploadCompletionProofValue($value);
+    }
+
+    private function assertTransitionRejected(
+        \Closure $transition,
+        string $expectedMessage,
+        Asset $asset,
+        DateTimeImmutable $expectedUpdatedAt,
+    ): void {
+        try {
+            $transition();
+            self::fail('Expected AssetDomainException was not thrown');
+        } catch (AssetDomainException $exception) {
+            self::assertSame($expectedMessage, $exception->getMessage());
+        }
+
+        self::assertSame($expectedUpdatedAt, $asset->getUpdatedAt());
     }
 }

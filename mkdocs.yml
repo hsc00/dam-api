@@ -20,5 +20,6 @@ nav:
   - Implementation Logs:
       - US-01 Agree API Schema: logs/01-agree-api-schema.md
       - US-02 Domain Model Core Objects: logs/02-domain-model-core-objects.md
+      - US-03 Data & Local Storage Setup: logs/03-data-local-storage-setup.md
 plugins:
   - search
