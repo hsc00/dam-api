@@ -29,15 +29,17 @@ Repository implementations must also preserve the uploaded-state invariant durin
 
 `StorageAdapterInterface` must return a fully typed `UploadTarget` for an accepted `Asset`.
 
-| Upload target field | Required behavior                                                                      | Notes                                                                    |
-| ------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `url`               | Must be an absolute URL. HTTPS is required except for local-development loopback URLs. | Validated by `UploadTarget`.                                             |
-| `method`            | Must be a supported domain upload method.                                              | The current domain contract supports `PUT`.                              |
-| `signedHeaders`     | Must be a list of `UploadParameter` objects.                                           | The contract avoids provider-specific associative arrays.                |
-| `completionProof`   | Must describe which proof the client captures and where it comes from.                 | Expressed as `UploadCompletionProof` plus `UploadCompletionProofSource`. |
-| `expiresAt`         | Must state when the target stops being valid.                                          | Consumers should treat it as a hard expiry.                              |
+| Upload target field | Required behavior                                                                                                                                    | Notes                                                                    |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `url`               | Must be an absolute URL. HTTPS is required except for local-development loopback URLs and deterministic `mock://uploads/{uploadId}/chunk/0` targets. | Validated by `UploadTarget`.                                             |
+| `method`            | Must be a supported domain upload method.                                                                                                            | The current domain contract supports `PUT`.                              |
+| `signedHeaders`     | Must be a list of `UploadParameter` objects.                                                                                                         | The contract avoids provider-specific associative arrays.                |
+| `completionProof`   | Must describe which proof the client captures and where it comes from.                                                                               | Expressed as `UploadCompletionProof` plus `UploadCompletionProofSource`. |
+| `expiresAt`         | Must state when the target stops being valid.                                                                                                        | Consumers should treat it as a hard expiry.                              |
 
 Storage adapters own signing, credentials, bucket selection, and provider-specific response details. Those details stay in infrastructure and are translated into the typed domain contract before being returned.
+
+The current storage adapter interface remains singular. Until the contract grows multi-part semantics, local-development adapters return deterministic chunk `0` targets.
 
 ## Added to complete US-02
 
