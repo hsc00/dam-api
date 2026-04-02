@@ -69,7 +69,23 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
                 :updated_at
             )',
         );
-        $statement->execute($this->assetParameters($asset));
+
+        try {
+            $statement->execute($this->assetParameters($asset));
+        } catch (\PDOException $exception) {
+            // If another process inserted the same id concurrently we may get a
+            // duplicate-key error. Re-read the row and treat identical
+            // rows as a successful idempotent save; otherwise rethrow.
+            if ($exception->getCode() === '23000') {
+                $persisted = $this->findById($asset->getId());
+
+                if ($persisted !== null && $this->assetParameters($asset) === $this->assetParameters($persisted)) {
+                    return;
+                }
+            }
+
+            throw $exception;
+        }
     }
 
     public function findById(AssetId $assetId): ?Asset
@@ -219,8 +235,8 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
             'status' => $asset->getStatus()->value,
             'chunk_count' => $asset->getChunkCount(),
             'completion_proof' => $asset->getCompletionProof()?->value,
-            'created_at' => $asset->getCreatedAt()->format(self::DATETIME_FORMAT),
-            'updated_at' => $asset->getUpdatedAt()->format(self::DATETIME_FORMAT),
+            'created_at' => $asset->getCreatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
+            'updated_at' => $asset->getUpdatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
         ];
     }
 
@@ -242,7 +258,7 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
             'account_id' => (string) $asset->getAccountId(),
             'file_name' => $asset->getFileName(),
             'mime_type' => $asset->getMimeType(),
-            'created_at' => $asset->getCreatedAt()->format(self::DATETIME_FORMAT),
+            'created_at' => $asset->getCreatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
         ];
     }
 
@@ -264,9 +280,9 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
             'status' => $asset->getStatus()->value,
             'chunk_count' => $asset->getChunkCount(),
             'completion_proof' => $asset->getCompletionProof()?->value,
-            'updated_at' => $asset->getUpdatedAt()->format(self::DATETIME_FORMAT),
+            'updated_at' => $asset->getUpdatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
             'expected_status' => $persistedAsset->getStatus()->value,
-            'expected_updated_at' => $persistedAsset->getUpdatedAt()->format(self::DATETIME_FORMAT),
+            'expected_updated_at' => $persistedAsset->getUpdatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
         ];
     }
 
@@ -334,7 +350,7 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
 
     private function parseDateTime(string $value, string $column): DateTimeImmutable
     {
-        $dateTime = DateTimeImmutable::createFromFormat(self::DATETIME_FORMAT, $value);
+        $dateTime = DateTimeImmutable::createFromFormat(self::DATETIME_FORMAT, $value, new \DateTimeZone('UTC'));
 
         if (! $dateTime instanceof DateTimeImmutable) {
             throw new UnexpectedValueException(sprintf('Unexpected %s value.', $column));

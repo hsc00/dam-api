@@ -6,22 +6,19 @@ namespace App\Tests\Integration\Infrastructure\Persistence;
 
 use PDO;
 use PDOException;
-use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-final class AssetsTableBootstrapTest extends TestCase
+abstract class BaseAssetsTableTest extends TestCase
 {
-    private const ACCOUNT_ID_INDEX_NAME = 'idx_assets_account_id';
-    private const TABLE_NAME = 'assets';
-    private const FILE_NAME_COLLATION = 'utf8mb4_0900_ai_ci';
-    private const LONG_TEXT_DATA_TYPE = 'longtext';
-    private const MIGRATION_FILE = __DIR__ . '/../../../../migrations/20260401120000_create_assets_table.sql';
-    private const VARCHAR_DATA_TYPE = 'varchar';
+    protected const ACCOUNT_ID_INDEX_NAME = 'idx_assets_account_id';
+    protected const TABLE_NAME = 'assets';
+    protected const FILE_NAME_COLLATION = 'utf8mb4_0900_ai_ci';
+    protected const LONG_TEXT_DATA_TYPE = 'longtext';
+    protected const MIGRATION_FILE = __DIR__ . '/../../../../migrations/20260401120000_create_assets_table.sql';
+    protected const VARCHAR_DATA_TYPE = 'varchar';
 
-    /**
-     * @var list<string>
-     */
-    private const REQUIRED_COLUMNS = [
+    /** @var list<string> */
+    protected const REQUIRED_COLUMNS = [
         'id',
         'upload_id',
         'account_id',
@@ -34,10 +31,8 @@ final class AssetsTableBootstrapTest extends TestCase
         'updated_at',
     ];
 
-    /**
-     * @var list<string>
-     */
-    private const REQUIRED_NON_NULLABLE_COLUMNS = [
+    /** @var list<string> */
+    protected const REQUIRED_NON_NULLABLE_COLUMNS = [
         'id',
         'upload_id',
         'account_id',
@@ -49,191 +44,21 @@ final class AssetsTableBootstrapTest extends TestCase
         'updated_at',
     ];
 
-    /**
-     * @var array<string, string>
-     */
-    private const WIDENED_TEXT_COLUMNS = [
+    /** @var array<string, string> */
+    protected const WIDENED_TEXT_COLUMNS = [
         'account_id' => self::VARCHAR_DATA_TYPE,
         'file_name' => self::LONG_TEXT_DATA_TYPE,
         'mime_type' => self::LONG_TEXT_DATA_TYPE,
         'completion_proof' => self::LONG_TEXT_DATA_TYPE,
     ];
 
-    /**
-     * @var array{host: string, port: int, user: string, password: string}|null
-     */
+    /** @var array{host: string, port: int, user: string, password: string}|null */
     private ?array $selectedConnection = null;
-
-    #[Test]
-    public function itCreatesTheExpectedAssetsTableSchemaAndCanBeReappliedSafely(): void
-    {
-        // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
-            $firstRunColumns = $this->fetchColumnMetadata($connection);
-            $firstRunAccountIdIndex = $this->fetchIndexColumns($connection, self::ACCOUNT_ID_INDEX_NAME);
-            $firstRunUploadIdUniqueIndexes = $this->fetchUniqueUploadIdIndexDefinitions($connection);
-
-            $connection->exec($this->migrationSql());
-            $secondRunColumns = $this->fetchColumnMetadata($connection);
-            $secondRunAccountIdIndex = $this->fetchIndexColumns($connection, self::ACCOUNT_ID_INDEX_NAME);
-            $secondRunUploadIdUniqueIndexes = $this->fetchUniqueUploadIdIndexDefinitions($connection);
-
-            // Assert
-            $missing = array_values(array_diff(self::REQUIRED_COLUMNS, array_keys($firstRunColumns)));
-            self::assertSame([], $missing, 'Missing required columns: ' . implode(', ', $missing));
-
-            foreach (self::REQUIRED_NON_NULLABLE_COLUMNS as $columnName) {
-                self::assertSame('NO', $firstRunColumns[$columnName]['IS_NULLABLE']);
-            }
-
-            foreach (self::WIDENED_TEXT_COLUMNS as $columnName => $expectedDataType) {
-                self::assertSame($expectedDataType, $firstRunColumns[$columnName]['DATA_TYPE']);
-            }
-
-            self::assertSame('YES', $firstRunColumns['completion_proof']['IS_NULLABLE']);
-            self::assertSame(self::FILE_NAME_COLLATION, $firstRunColumns['file_name']['COLLATION_NAME']);
-            self::assertSame(['account_id'], $firstRunAccountIdIndex);
-            self::assertSame([['upload_id']], $firstRunUploadIdUniqueIndexes);
-            self::assertSame($firstRunColumns, $secondRunColumns);
-            self::assertSame($firstRunAccountIdIndex, $secondRunAccountIdIndex);
-            self::assertSame([['upload_id']], $secondRunUploadIdUniqueIndexes);
-        });
-    }
-
-    #[Test]
-    public function itAcceptsRowsForEveryValidAssetLifecycleState(): void
-    {
-        // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
-            $validRows = [
-                $this->validPendingRow(),
-                $this->validFailedRow(),
-                $this->validUploadedRow(),
-            ];
-
-            foreach ($validRows as $row) {
-                $this->insertAssetRow($connection, $row);
-            }
-
-            // Assert
-            foreach ($validRows as $row) {
-                self::assertSame(
-                    [
-                        'status' => (string) $row['status'],
-                        'chunk_count' => (int) $row['chunk_count'],
-                        'completion_proof' => $row['completion_proof'] === null ? null : (string) $row['completion_proof'],
-                        'created_at' => (string) $row['created_at'],
-                        'updated_at' => (string) $row['updated_at'],
-                    ],
-                    $this->fetchPersistedLifecycleState($connection, (string) $row['upload_id']),
-                );
-            }
-        });
-    }
-
-    #[Test]
-    public function itRejectsRowsThatViolateAssetLifecycleConstraints(): void
-    {
-        // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
-            $validPendingRow = $this->validPendingRow();
-
-            $this->assertInsertFails(
-                $connection,
-                [
-                    'status' => 'PROCESSING',
-                ],
-                'Invalid status values must be rejected.',
-                $validPendingRow,
-                null,
-                'chk_assets_',
-            );
-
-            $this->assertInsertFails(
-                $connection,
-                [
-                    'chunk_count' => 0,
-                ],
-                'chunk_count values below 1 must be rejected.',
-                $validPendingRow,
-                null,
-                'chk_assets_chunk_count_positive',
-            );
-
-            $this->assertInsertFails(
-                $connection,
-                [
-                    'completion_proof' => 'etag-pending-row',
-                ],
-                'Non-uploaded pending assets must not persist a completion proof.',
-                $validPendingRow,
-                null,
-                'chk_assets_completion_proof_matches_status',
-            );
-
-            $this->assertInsertFails(
-                $connection,
-                [
-                    'completion_proof' => 'etag-failed-row',
-                ],
-                'Non-uploaded failed assets must not persist a completion proof.',
-                $this->validFailedRow(),
-                null,
-                'chk_assets_completion_proof_matches_status',
-            );
-
-            $this->assertInsertFails(
-                $connection,
-                [
-                    'completion_proof' => null,
-                ],
-                'Uploaded assets must persist a completion proof.',
-                $this->validUploadedRow(),
-                null,
-                'chk_assets_completion_proof_matches_status',
-            );
-
-            $this->assertInsertFails(
-                $connection,
-                [
-                    'completion_proof' => " \t\n ",
-                ],
-                'Whitespace-only completion proof values must be rejected for uploaded assets.',
-                $this->validUploadedRow(),
-                null,
-                'chk_assets_completion_proof_matches_status',
-            );
-
-            $this->assertInsertFails(
-                $connection,
-                [
-                    'created_at' => '2026-04-01 12:00:01.000000',
-                    'updated_at' => '2026-04-01 12:00:00.000000',
-                ],
-                'updated_at values earlier than created_at must be rejected.',
-                $validPendingRow,
-                null,
-                'chk_assets_updated_at_not_before_created_at',
-            );
-
-            $this->insertAssetRow($connection, $validPendingRow);
-
-            $this->assertInsertFails(
-                $connection,
-                [
-                    'id' => '11111111-1111-4111-8111-111111111112',
-                    'file_name' => str_repeat('replacement-file-name-', 16) . '.png',
-                ],
-                'Duplicate upload_id values must be rejected.',
-                $validPendingRow,
-            );
-        });
-    }
 
     /**
      * @param callable(PDO): void $assertions
      */
-    private function withTemporarySchema(callable $assertions): void
+    protected function withTemporarySchema(callable $assertions): void
     {
         $serverConnection = $this->createServerConnectionOrSkip();
         $databaseName = 'dam_schema_' . bin2hex(random_bytes(6));
@@ -251,7 +76,7 @@ final class AssetsTableBootstrapTest extends TestCase
         }
     }
 
-    private function migrationSql(): string
+    protected function migrationSql(): string
     {
         $migrationSql = file_get_contents(self::MIGRATION_FILE);
 
@@ -262,7 +87,7 @@ final class AssetsTableBootstrapTest extends TestCase
         return $migrationSql;
     }
 
-    private function createServerConnectionOrSkip(): PDO
+    protected function createServerConnectionOrSkip(): PDO
     {
         if (! class_exists(PDO::class)) {
             self::markTestSkipped('PDO is not available in this PHP runtime.');
@@ -297,7 +122,7 @@ final class AssetsTableBootstrapTest extends TestCase
         );
     }
 
-    private function createDatabaseConnection(string $databaseName): PDO
+    protected function createDatabaseConnection(string $databaseName): PDO
     {
         if ($this->selectedConnection === null) {
             self::fail('MySQL connection settings were not initialized.');
@@ -313,7 +138,7 @@ final class AssetsTableBootstrapTest extends TestCase
         return $this->createConnection($dsn, $this->selectedConnection['user'], $this->selectedConnection['password']);
     }
 
-    private function createConnection(string $dsn, string $user, string $password): PDO
+    protected function createConnection(string $dsn, string $user, string $password): PDO
     {
         return new PDO(
             $dsn,
@@ -326,7 +151,7 @@ final class AssetsTableBootstrapTest extends TestCase
         );
     }
 
-    private function createDatabase(PDO $connection, string $databaseName): void
+    protected function createDatabase(PDO $connection, string $databaseName): void
     {
         $connection->exec(
             sprintf(
@@ -337,7 +162,7 @@ final class AssetsTableBootstrapTest extends TestCase
         );
     }
 
-    private function dropDatabase(PDO $connection, string $databaseName): void
+    protected function dropDatabase(PDO $connection, string $databaseName): void
     {
         $connection->exec('DROP DATABASE IF EXISTS ' . $this->quoteIdentifier($databaseName));
     }
@@ -345,7 +170,7 @@ final class AssetsTableBootstrapTest extends TestCase
     /**
      * @return list<array{host: string, port: int, user: string, password: string}>
      */
-    private function connectionCandidates(): array
+    protected function connectionCandidates(): array
     {
         $user = $this->env('DB_USER', 'root');
         $password = $this->env('DB_PASSWORD', 'root');
@@ -373,7 +198,7 @@ final class AssetsTableBootstrapTest extends TestCase
         return $candidates;
     }
 
-    private function env(string $name, string $defaultValue): string
+    protected function env(string $name, string $defaultValue): string
     {
         $value = getenv($name);
 
@@ -386,7 +211,7 @@ final class AssetsTableBootstrapTest extends TestCase
         return $trimmedValue === '' ? $defaultValue : $trimmedValue;
     }
 
-    private function envInt(string $name, int $defaultValue): int
+    protected function envInt(string $name, int $defaultValue): int
     {
         $value = getenv($name);
 
@@ -406,7 +231,7 @@ final class AssetsTableBootstrapTest extends TestCase
     /**
      * @return array<string, array{IS_NULLABLE: string, COLLATION_NAME: string|null, DATA_TYPE: string}>
      */
-    private function fetchColumnMetadata(PDO $connection): array
+    protected function fetchColumnMetadata(PDO $connection): array
     {
         $statement = $connection->prepare(
             'SELECT COLUMN_NAME, IS_NULLABLE, COLLATION_NAME, DATA_TYPE
@@ -453,7 +278,7 @@ final class AssetsTableBootstrapTest extends TestCase
     /**
      * @return list<string>
      */
-    private function fetchIndexColumns(PDO $connection, string $indexName): array
+    protected function fetchIndexColumns(PDO $connection, string $indexName): array
     {
         $statement = $connection->prepare(
             'SELECT COLUMN_NAME, SEQ_IN_INDEX
@@ -493,7 +318,7 @@ final class AssetsTableBootstrapTest extends TestCase
     /**
      * @return list<list<string>>
      */
-    private function fetchUniqueUploadIdIndexDefinitions(PDO $connection): array
+    protected function fetchUniqueUploadIdIndexDefinitions(PDO $connection): array
     {
         $statement = $connection->prepare(
             'SELECT INDEX_NAME, COLUMN_NAME, SEQ_IN_INDEX
@@ -544,7 +369,7 @@ final class AssetsTableBootstrapTest extends TestCase
     /**
      * @param array<string, int|string|null> $row
      */
-    private function insertAssetRow(PDO $connection, array $row): void
+    protected function insertAssetRow(PDO $connection, array $row): void
     {
         $statement = $connection->prepare(
             'INSERT INTO assets (
@@ -578,7 +403,7 @@ final class AssetsTableBootstrapTest extends TestCase
      * @param array<string, int|string|null> $overrides
      * @param array<string, int|string|null>|null $baseRow
      */
-    private function assertInsertFails(
+    protected function assertInsertFails(
         PDO $connection,
         array $overrides,
         string $message,
@@ -608,7 +433,7 @@ final class AssetsTableBootstrapTest extends TestCase
     /**
      * @return array{status: string, chunk_count: int, completion_proof: string|null, created_at: string, updated_at: string}
      */
-    private function fetchPersistedLifecycleState(PDO $connection, string $uploadId): array
+    protected function fetchPersistedLifecycleState(PDO $connection, string $uploadId): array
     {
         $statement = $connection->prepare(
             'SELECT status, chunk_count, completion_proof, created_at, updated_at
@@ -650,10 +475,8 @@ final class AssetsTableBootstrapTest extends TestCase
         ];
     }
 
-    /**
-     * @return array<string, int|string|null>
-     */
-    private function validPendingRow(): array
+    /** @return array<string, int|string|null> */
+    protected function validPendingRow(): array
     {
         return [
             'id' => '11111111-1111-4111-8111-111111111111',
@@ -669,10 +492,8 @@ final class AssetsTableBootstrapTest extends TestCase
         ];
     }
 
-    /**
-     * @return array<string, int|string|null>
-     */
-    private function validFailedRow(): array
+    /** @return array<string, int|string|null> */
+    protected function validFailedRow(): array
     {
         return array_replace(
             $this->validPendingRow(),
@@ -686,10 +507,8 @@ final class AssetsTableBootstrapTest extends TestCase
         );
     }
 
-    /**
-     * @return array<string, int|string|null>
-     */
-    private function validUploadedRow(): array
+    /** @return array<string, int|string|null> */
+    protected function validUploadedRow(): array
     {
         return array_replace(
             $this->validPendingRow(),
@@ -704,7 +523,7 @@ final class AssetsTableBootstrapTest extends TestCase
         );
     }
 
-    private function quoteIdentifier(string $identifier): string
+    protected function quoteIdentifier(string $identifier): string
     {
         return '`' . str_replace('`', '``', $identifier) . '`';
     }
