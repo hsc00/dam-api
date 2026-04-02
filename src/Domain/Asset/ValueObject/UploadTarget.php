@@ -10,6 +10,16 @@ use InvalidArgumentException;
 
 final readonly class UploadTarget
 {
+    private const ALLOWED_LOCAL_DEVELOPMENT_HOSTS = ['localhost', '127.0.0.1', '::1'];
+    private const EMPTY_URL_MESSAGE = 'Upload target URL cannot be empty';
+    private const INVALID_ABSOLUTE_URL_MESSAGE = 'Upload target URL must be a valid absolute URL';
+    private const LOCAL_DEVELOPMENT_MOCK_CHUNK_INDEX = '0';
+    private const LOCAL_DEVELOPMENT_MOCK_CHUNK_SEGMENT = 'chunk';
+    private const LOCAL_DEVELOPMENT_MOCK_HOST = 'uploads';
+    private const LOCAL_DEVELOPMENT_MOCK_PATH_SEGMENT_COUNT = 4;
+    private const MISSING_HOST_MESSAGE = 'Upload target URL must be an absolute URL with a host';
+    private const TRANSPORT_SECURITY_MESSAGE = 'Upload target URL must use HTTPS, except http://localhost, http://127.0.0.1, http://[::1], or mock://uploads for local development';
+
     public string $url;
     /**
      * @var list<UploadParameter>
@@ -58,34 +68,77 @@ final readonly class UploadTarget
     {
         $normalizedUrl = trim($url);
 
-        if ($normalizedUrl === '') {
-            throw new InvalidArgumentException('Upload target URL cannot be empty');
-        }
+        self::assertUrlIsNotEmpty($normalizedUrl);
+        self::assertUrlDoesNotContainWhitespace($normalizedUrl);
 
-        $parsedUrl = parse_url($normalizedUrl);
-
-        if (
-            ! is_array($parsedUrl)
-            || ! isset($parsedUrl['scheme'], $parsedUrl['host'])
-            || trim($parsedUrl['host']) === ''
-        ) {
-            throw new InvalidArgumentException('Upload target URL must be an absolute URL with a host');
-        }
-
-        if (filter_var($normalizedUrl, FILTER_VALIDATE_URL) === false) {
-            throw new InvalidArgumentException('Upload target URL must be a valid absolute URL');
-        }
+        $parsedUrl = self::parseAbsoluteUrl($normalizedUrl);
 
         $scheme = strtolower($parsedUrl['scheme']);
         $rawHost = $parsedUrl['host'];
         $host = strtolower(trim($rawHost, '[]'));
 
-        if ($scheme !== 'https' && ! self::isAllowedLocalDevelopmentUrl($scheme, $host)) {
-            throw new InvalidArgumentException(
-                'Upload target URL must use HTTPS, except http://localhost, http://127.0.0.1, or http://[::1] for local development'
-            );
+        self::assertTransportSecurity($normalizedUrl, $parsedUrl, $scheme, $host);
+
+        return self::rebuildNormalizedUrl($parsedUrl, $scheme, $host);
+    }
+
+    private static function assertUrlIsNotEmpty(string $url): void
+    {
+        if ($url === '') {
+            throw new InvalidArgumentException(self::EMPTY_URL_MESSAGE);
+        }
+    }
+
+    private static function assertUrlDoesNotContainWhitespace(string $url): void
+    {
+        if (preg_match('/\s/', $url) === 1) {
+            throw new InvalidArgumentException(self::INVALID_ABSOLUTE_URL_MESSAGE);
+        }
+    }
+
+    /**
+     * @return array{scheme: string, host: string, user?: string, pass?: string, port?: int, path?: string, query?: string, fragment?: string}
+     */
+    private static function parseAbsoluteUrl(string $url): array
+    {
+        $parsedUrl = parse_url($url);
+
+        if (
+            ! is_array($parsedUrl)
+            || ! isset($parsedUrl['scheme'], $parsedUrl['host'])
+            || trim((string) $parsedUrl['host']) === ''
+        ) {
+            throw new InvalidArgumentException(self::MISSING_HOST_MESSAGE);
         }
 
+        return $parsedUrl;
+    }
+
+    /**
+     * @param array{scheme: string, host: string, user?: string, pass?: string, port?: int, path?: string, query?: string, fragment?: string} $parsedUrl
+     */
+    private static function assertTransportSecurity(string $url, array $parsedUrl, string $scheme, string $host): void
+    {
+        if ($scheme === 'mock') {
+            self::assertAllowedLocalDevelopmentMockUrl($parsedUrl, $host);
+
+            return;
+        }
+
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            throw new InvalidArgumentException(self::INVALID_ABSOLUTE_URL_MESSAGE);
+        }
+
+        if ($scheme !== 'https' && ! self::isAllowedLocalDevelopmentUrl($scheme, $host)) {
+            throw new InvalidArgumentException(self::TRANSPORT_SECURITY_MESSAGE);
+        }
+    }
+
+    /**
+     * @param array{scheme: string, host: string, user?: string, pass?: string, port?: int, path?: string, query?: string, fragment?: string} $parsedUrl
+     */
+    private static function rebuildNormalizedUrl(array $parsedUrl, string $scheme, string $host): string
+    {
         // Reconstruct the URL using the lowercased scheme and host while preserving
         // original user/pass, port (only if present), path, query and fragment
         $auth = '';
@@ -110,12 +163,59 @@ final readonly class UploadTarget
         return $scheme . '://' . $auth . $hostForUrl . $port . $path . $query . $fragment;
     }
 
+    /**
+     * @param array{path?: mixed, user?: mixed, pass?: mixed, port?: mixed, query?: mixed, fragment?: mixed} $parsedUrl
+     */
+    private static function assertAllowedLocalDevelopmentMockUrl(array $parsedUrl, string $host): void
+    {
+        $path = $parsedUrl['path'] ?? null;
+
+        if (
+            $host !== self::LOCAL_DEVELOPMENT_MOCK_HOST
+            || isset($parsedUrl['user'])
+            || isset($parsedUrl['pass'])
+            || isset($parsedUrl['port'])
+            || isset($parsedUrl['query'])
+            || isset($parsedUrl['fragment'])
+            || ! is_string($path)
+            || ! self::isAllowedLocalDevelopmentMockPath($path)
+        ) {
+            throw new InvalidArgumentException(self::TRANSPORT_SECURITY_MESSAGE);
+        }
+    }
+
+    private static function isAllowedLocalDevelopmentMockPath(string $path): bool
+    {
+        $segments = explode('/', $path);
+
+        if (count($segments) !== self::LOCAL_DEVELOPMENT_MOCK_PATH_SEGMENT_COUNT) {
+            return false;
+        }
+
+        [$leadingSlash, $uploadId, $chunkSegment, $chunkIndex] = $segments;
+
+        if (
+            $leadingSlash !== ''
+            || $chunkSegment !== self::LOCAL_DEVELOPMENT_MOCK_CHUNK_SEGMENT
+            || $chunkIndex !== self::LOCAL_DEVELOPMENT_MOCK_CHUNK_INDEX
+        ) {
+            return false;
+        }
+
+        return self::isValidMockUploadId($uploadId);
+    }
+
+    private static function isValidMockUploadId(string $uploadId): bool
+    {
+        return UploadId::isValid($uploadId);
+    }
+
     private static function isAllowedLocalDevelopmentUrl(string $scheme, string $host): bool
     {
         if ($scheme !== 'http') {
             return false;
         }
 
-        return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+        return in_array($host, self::ALLOWED_LOCAL_DEVELOPMENT_HOSTS, true);
     }
 }

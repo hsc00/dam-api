@@ -11,10 +11,12 @@ use PHPUnit\Framework\TestCase;
 
 final class AssetsTableBootstrapTest extends TestCase
 {
+    private const ACCOUNT_ID_INDEX_NAME = 'idx_assets_account_id';
     private const TABLE_NAME = 'assets';
     private const FILE_NAME_COLLATION = 'utf8mb4_0900_ai_ci';
     private const LONG_TEXT_DATA_TYPE = 'longtext';
     private const MIGRATION_FILE = __DIR__ . '/../../../../migrations/20260401120000_create_assets_table.sql';
+    private const VARCHAR_DATA_TYPE = 'varchar';
 
     /**
      * @var list<string>
@@ -51,7 +53,7 @@ final class AssetsTableBootstrapTest extends TestCase
      * @var array<string, string>
      */
     private const WIDENED_TEXT_COLUMNS = [
-        'account_id' => self::LONG_TEXT_DATA_TYPE,
+        'account_id' => self::VARCHAR_DATA_TYPE,
         'file_name' => self::LONG_TEXT_DATA_TYPE,
         'mime_type' => self::LONG_TEXT_DATA_TYPE,
         'completion_proof' => self::LONG_TEXT_DATA_TYPE,
@@ -68,14 +70,17 @@ final class AssetsTableBootstrapTest extends TestCase
         // Arrange & Act
         $this->withTemporarySchema(function (PDO $connection): void {
             $firstRunColumns = $this->fetchColumnMetadata($connection);
+            $firstRunAccountIdIndex = $this->fetchIndexColumns($connection, self::ACCOUNT_ID_INDEX_NAME);
             $firstRunUploadIdUniqueIndexes = $this->fetchUniqueUploadIdIndexDefinitions($connection);
 
             $connection->exec($this->migrationSql());
             $secondRunColumns = $this->fetchColumnMetadata($connection);
+            $secondRunAccountIdIndex = $this->fetchIndexColumns($connection, self::ACCOUNT_ID_INDEX_NAME);
             $secondRunUploadIdUniqueIndexes = $this->fetchUniqueUploadIdIndexDefinitions($connection);
 
             // Assert
-            self::assertSame([], $this->missingRequiredColumns($firstRunColumns));
+            $missing = array_values(array_diff(self::REQUIRED_COLUMNS, array_keys($firstRunColumns)));
+            self::assertSame([], $missing, 'Missing required columns: ' . implode(', ', $missing));
 
             foreach (self::REQUIRED_NON_NULLABLE_COLUMNS as $columnName) {
                 self::assertSame('NO', $firstRunColumns[$columnName]['IS_NULLABLE']);
@@ -87,8 +92,10 @@ final class AssetsTableBootstrapTest extends TestCase
 
             self::assertSame('YES', $firstRunColumns['completion_proof']['IS_NULLABLE']);
             self::assertSame(self::FILE_NAME_COLLATION, $firstRunColumns['file_name']['COLLATION_NAME']);
+            self::assertSame(['account_id'], $firstRunAccountIdIndex);
             self::assertSame([['upload_id']], $firstRunUploadIdUniqueIndexes);
             self::assertSame($firstRunColumns, $secondRunColumns);
+            self::assertSame($firstRunAccountIdIndex, $secondRunAccountIdIndex);
             self::assertSame([['upload_id']], $secondRunUploadIdUniqueIndexes);
         });
     }
@@ -138,6 +145,8 @@ final class AssetsTableBootstrapTest extends TestCase
                 ],
                 'Invalid status values must be rejected.',
                 $validPendingRow,
+                null,
+                'chk_assets_',
             );
 
             $this->assertInsertFails(
@@ -147,6 +156,8 @@ final class AssetsTableBootstrapTest extends TestCase
                 ],
                 'chunk_count values below 1 must be rejected.',
                 $validPendingRow,
+                null,
+                'chk_assets_chunk_count_positive',
             );
 
             $this->assertInsertFails(
@@ -156,6 +167,8 @@ final class AssetsTableBootstrapTest extends TestCase
                 ],
                 'Non-uploaded pending assets must not persist a completion proof.',
                 $validPendingRow,
+                null,
+                'chk_assets_completion_proof_matches_status',
             );
 
             $this->assertInsertFails(
@@ -165,6 +178,8 @@ final class AssetsTableBootstrapTest extends TestCase
                 ],
                 'Non-uploaded failed assets must not persist a completion proof.',
                 $this->validFailedRow(),
+                null,
+                'chk_assets_completion_proof_matches_status',
             );
 
             $this->assertInsertFails(
@@ -174,6 +189,8 @@ final class AssetsTableBootstrapTest extends TestCase
                 ],
                 'Uploaded assets must persist a completion proof.',
                 $this->validUploadedRow(),
+                null,
+                'chk_assets_completion_proof_matches_status',
             );
 
             $this->assertInsertFails(
@@ -183,6 +200,8 @@ final class AssetsTableBootstrapTest extends TestCase
                 ],
                 'Whitespace-only completion proof values must be rejected for uploaded assets.',
                 $this->validUploadedRow(),
+                null,
+                'chk_assets_completion_proof_matches_status',
             );
 
             $this->assertInsertFails(
@@ -193,6 +212,8 @@ final class AssetsTableBootstrapTest extends TestCase
                 ],
                 'updated_at values earlier than created_at must be rejected.',
                 $validPendingRow,
+                null,
+                'chk_assets_updated_at_not_before_created_at',
             );
 
             $this->insertAssetRow($connection, $validPendingRow);
@@ -383,7 +404,7 @@ final class AssetsTableBootstrapTest extends TestCase
     }
 
     /**
-         * @return array<string, array{IS_NULLABLE: string, COLLATION_NAME: string|null, DATA_TYPE: string}>
+     * @return array<string, array{IS_NULLABLE: string, COLLATION_NAME: string|null, DATA_TYPE: string}>
      */
     private function fetchColumnMetadata(PDO $connection): array
     {
@@ -430,13 +451,43 @@ final class AssetsTableBootstrapTest extends TestCase
     }
 
     /**
-     * @param array<string, array{IS_NULLABLE: string, COLLATION_NAME: string|null, DATA_TYPE: string}> $columns
-     *
      * @return list<string>
      */
-    private function missingRequiredColumns(array $columns): array
+    private function fetchIndexColumns(PDO $connection, string $indexName): array
     {
-        return array_values(array_diff(self::REQUIRED_COLUMNS, array_keys($columns)));
+        $statement = $connection->prepare(
+            'SELECT COLUMN_NAME, SEQ_IN_INDEX
+             FROM INFORMATION_SCHEMA.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :tableName
+               AND INDEX_NAME = :indexName
+             ORDER BY SEQ_IN_INDEX',
+        );
+        $statement->execute([
+            'tableName' => self::TABLE_NAME,
+            'indexName' => $indexName,
+        ]);
+
+        $indexColumns = [];
+
+        while (($row = $statement->fetch()) !== false) {
+            if (! is_array($row)) {
+                self::fail('Unexpected index metadata row shape.');
+            }
+
+            $columnName = $row['COLUMN_NAME'] ?? null;
+            $seqInIndex = $row['SEQ_IN_INDEX'] ?? null;
+
+            if (! is_string($columnName) || ! is_numeric($seqInIndex)) {
+                self::fail('Unexpected index metadata row shape.');
+            }
+
+            $indexColumns[(int) $seqInIndex] = $columnName;
+        }
+
+        ksort($indexColumns);
+
+        return array_values($indexColumns);
     }
 
     /**
@@ -527,14 +578,26 @@ final class AssetsTableBootstrapTest extends TestCase
      * @param array<string, int|string|null> $overrides
      * @param array<string, int|string|null>|null $baseRow
      */
-    private function assertInsertFails(PDO $connection, array $overrides, string $message, ?array $baseRow = null): void
-    {
+    private function assertInsertFails(
+        PDO $connection,
+        array $overrides,
+        string $message,
+        ?array $baseRow = null,
+        ?string $expectedSqlState = '23000',
+        ?string $expectedMessageFragment = null,
+    ): void {
         $row = array_replace($baseRow ?? $this->validPendingRow(), $overrides);
 
         try {
             $this->insertAssetRow($connection, $row);
-        } catch (PDOException) {
-            $this->addToAssertionCount(1);
+        } catch (PDOException $exception) {
+            if ($expectedMessageFragment !== null) {
+                self::assertStringContainsString($expectedMessageFragment, $exception->getMessage());
+
+                return;
+            }
+
+            self::assertSame($expectedSqlState, $exception->getCode());
 
             return;
         }
@@ -595,7 +658,7 @@ final class AssetsTableBootstrapTest extends TestCase
         return [
             'id' => '11111111-1111-4111-8111-111111111111',
             'upload_id' => '22222222-2222-4222-8222-222222222222',
-            'account_id' => str_repeat('account-', 45),
+            'account_id' => str_repeat('account-', 20),
             'file_name' => str_repeat('very-long-file-name-', 18) . '.png',
             'mime_type' => 'application/' . str_repeat('vnd.example.long-subtype-', 12) . 'json',
             'status' => 'PENDING',

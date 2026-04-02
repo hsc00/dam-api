@@ -634,7 +634,7 @@ final class AssetTest extends TestCase
     }
 
     private function assertTransitionRejected(
-        callable $transition,
+        \Closure $transition,
         string $expectedMessage,
         Asset $asset,
         DateTimeImmutable $expectedUpdatedAt,

@@ -17,12 +17,12 @@ interface AssetRepositoryInterface
     public function findByUploadId(UploadId $uploadId): ?Asset;
 
     /**
-    * Performs an account-scoped search using the trimmed query as a plain-text,
-    * case-insensitive substring match against fileName.
-    * Results are ordered by createdAt descending, then id ascending.
-    * Implementations must return an empty list when the trimmed query is empty.
-    *
-    * @return list<Asset>
-    */
+     * Performs an account-scoped search using the trimmed query as a plain-text,
+     * case-insensitive substring match against fileName.
+     * Results are ordered by createdAt descending, then id ascending.
+     * Implementations must return an empty list when the trimmed query is empty.
+     *
+     * @return list<Asset>
+     */
     public function searchByFileName(AccountId $accountId, string $query): array;
 }

@@ -26,6 +26,7 @@ final class Asset
     private ?UploadCompletionProofValue $completionProof = null;
     private int $chunkCount;
     private DateTimeImmutable $createdAt;
+    private ClockInterface $clock;
     private DateTimeImmutable $updatedAt;
 
     private function __construct(
@@ -50,9 +51,15 @@ final class Asset
     /**
      * @throws AssetDomainException
      */
-    public static function createPending(UploadId $uploadId, AccountId $accountId, string $fileName, string $mimeType): self
-    {
-        $now = new DateTimeImmutable();
+    public static function createPending(
+        UploadId $uploadId,
+        AccountId $accountId,
+        string $fileName,
+        string $mimeType,
+        ?ClockInterface $clock = null,
+    ): self {
+        $resolvedClock = $clock ?? new SystemClock();
+        $now = $resolvedClock->now();
 
         $asset = new self(
             id: AssetId::generate(),
@@ -62,6 +69,7 @@ final class Asset
             mimeType: $mimeType,
             status: AssetStatus::PENDING,
         );
+        $asset->clock = $resolvedClock;
 
         $asset->initializeLifecycleState($now, self::DEFAULT_CHUNK_COUNT);
 
@@ -93,6 +101,7 @@ final class Asset
             mimeType: $mimeType,
             status: $status,
         );
+        $asset->clock = new SystemClock();
 
         $asset->initializeLifecycleState(
             $persistedState['createdAt'],
@@ -126,6 +135,7 @@ final class Asset
             status: AssetStatus::UPLOADED,
             completionProof: $completionProof,
         );
+        $asset->clock = new SystemClock();
 
         $asset->initializeLifecycleState(
             $persistedState['createdAt'],
@@ -202,7 +212,7 @@ final class Asset
 
         $this->completionProof = $completionProof;
         $this->status = AssetStatus::UPLOADED;
-        $nextUpdatedAt = new DateTimeImmutable();
+        $nextUpdatedAt = $this->clock->now();
 
         if ($nextUpdatedAt > $this->updatedAt) {
             $this->updatedAt = $nextUpdatedAt;
@@ -223,7 +233,7 @@ final class Asset
         }
 
         $this->status = AssetStatus::FAILED;
-        $nextUpdatedAt = new DateTimeImmutable();
+        $nextUpdatedAt = $this->clock->now();
 
         if ($nextUpdatedAt > $this->updatedAt) {
             $this->updatedAt = $nextUpdatedAt;
