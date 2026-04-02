@@ -7,7 +7,7 @@ namespace App\Tests\Integration\Infrastructure\Persistence;
 use PDO;
 use PHPUnit\Framework\Attributes\Test;
 
-final class AssetsTableSchemaTest extends BaseAssetsTableTest
+final class AssetsTableSchemaTest extends BaseAssetsTableTestCase
 {
     #[Test]
     public function itCreatesTheExpectedAssetsTableSchemaAndCanBeReappliedSafely(): void

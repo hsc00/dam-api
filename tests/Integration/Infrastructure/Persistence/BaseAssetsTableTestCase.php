@@ -8,7 +8,7 @@ use PDO;
 use PDOException;
 use PHPUnit\Framework\TestCase;
 
-abstract class BaseAssetsTableTest extends TestCase
+abstract class BaseAssetsTableTestCase extends TestCase
 {
     protected const ACCOUNT_ID_INDEX_NAME = 'idx_assets_account_id';
     protected const TABLE_NAME = 'assets';
@@ -326,8 +326,8 @@ abstract class BaseAssetsTableTest extends TestCase
              WHERE TABLE_SCHEMA = DATABASE()
                AND TABLE_NAME = :tableName
                AND NON_UNIQUE = 0
-                             AND INDEX_NAME <> :primaryIndex
-                         ORDER BY INDEX_NAME, SEQ_IN_INDEX',
+               AND INDEX_NAME <> :primaryIndex
+               ORDER BY INDEX_NAME, SEQ_IN_INDEX',
         );
         $statement->execute([
             'tableName' => self::TABLE_NAME,

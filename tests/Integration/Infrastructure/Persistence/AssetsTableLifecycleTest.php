@@ -8,7 +8,7 @@ use PDO;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 
-final class AssetsTableLifecycleTest extends BaseAssetsTableTest
+final class AssetsTableLifecycleTest extends BaseAssetsTableTestCase
 {
     #[Test]
     #[DataProvider('provideValidLifecycleRows')]
