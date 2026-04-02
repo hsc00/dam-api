@@ -33,7 +33,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     private ?array $selectedConnection = null;
 
     #[Test]
-    public function itSavesAndReadsAPendingAsset(): void
+    public function itReturnsAssetWhenSavingAndReadingAPendingAsset(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -59,7 +59,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itSavesAndReadsAnUploadedAsset(): void
+    public function itReturnsAssetWhenSavingAndReadingAnUploadedAsset(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -86,7 +86,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itUpdatesAnExistingRowAfterAnAssetStateChange(): void
+    public function itReturnsUpdatedRowWhenAssetStateChanges(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -112,7 +112,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itAcceptsALegitimateStateChangeWhenUpdatedAtRemainsEqual(): void
+    public function itReturnsAcceptedStateWhenUpdatedAtRemainsEqual(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
@@ -140,7 +140,7 @@ final class MySQLAssetRepositoryTest extends TestCase
     }
 
     #[Test]
-    public function itKeepsASingleRowWhenSavingTheSameUnchangedAssetTwice(): void
+    public function itReturnsSingleRowWhenSavingUnchangedAssetTwice(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
