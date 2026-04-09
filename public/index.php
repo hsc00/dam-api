@@ -133,8 +133,18 @@ try {
     try {
         $logger->error($exception->getMessage(), ['exception' => $exception]);
     } catch (\Throwable $suppressed) {
-        // Swallow logger failures to avoid masking the original error.
-        unset($suppressed);
+        // Record suppressed logger failures so they are not lost during triage.
+        try {
+            if (isset($logger) && $logger instanceof \Psr\Log\LoggerInterface) {
+                $logger->error('Suppressed exception while logging primary error', ['suppressed' => $suppressed]);
+            } else {
+                error_log((string) $suppressed);
+            }
+        } catch (\Throwable $inner) {
+            // Last-resort fallback to PHP error log to ensure the suppressed
+            // exception details are preserved somewhere.
+            error_log((string) $suppressed);
+        }
     }
 
     $response = internalServerErrorResponse();

@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Application\Asset\Exception;
 
-use RuntimeException;
+use App\Domain\Asset\Exception\AssetDomainException;
 
 /**
  * Thrown when the number of upload targets returned by the storage adapter
  * does not match the expected chunk count for an asset.
  */
-final class UnexpectedTargetCountException extends RuntimeException
+final class UnexpectedTargetCountException extends AssetDomainException
 {
     private readonly int $expectedCount;
     private readonly int $actualCount;
