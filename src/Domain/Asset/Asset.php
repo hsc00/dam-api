@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Asset;
 
 use App\Domain\Asset\Exception\AssetDomainException;
+use App\Domain\Asset\Exception\InvalidChunkCountException;
+use App\Domain\Asset\Exception\InvalidFileNameException;
+use App\Domain\Asset\Exception\InvalidMimeTypeException;
 use App\Domain\Asset\ValueObject\AccountId;
 use App\Domain\Asset\ValueObject\AssetId;
 use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
@@ -41,8 +44,8 @@ final class Asset
         $this->id = $id;
         $this->uploadId = $uploadId;
         $this->accountId = $accountId;
-        $this->fileName = self::normalizeRequiredText($fileName, 'File name must be non-empty');
-        $this->mimeType = self::normalizeRequiredText($mimeType, 'Mime type must be non-empty');
+        $this->fileName = self::normalizeRequiredText($fileName, RequiredTextField::FILE_NAME);
+        $this->mimeType = self::normalizeRequiredText($mimeType, RequiredTextField::MIME_TYPE);
         self::assertCompletionProofMatchesStatus($status, $completionProof);
         $this->status = $status;
         $this->completionProof = $completionProof;
@@ -56,6 +59,7 @@ final class Asset
         AccountId $accountId,
         string $fileName,
         string $mimeType,
+        int $chunkCount = self::DEFAULT_CHUNK_COUNT,
         ?ClockInterface $clock = null,
     ): self {
         $resolvedClock = $clock ?? new SystemClock();
@@ -71,7 +75,7 @@ final class Asset
         );
         $asset->clock = $resolvedClock;
 
-        $asset->initializeLifecycleState($now, self::DEFAULT_CHUNK_COUNT);
+        $asset->initializeLifecycleState($now, $chunkCount);
 
         return $asset;
     }
@@ -157,7 +161,7 @@ final class Asset
         $updatedAt ??= $createdAt;
 
         if ($chunkCount < self::DEFAULT_CHUNK_COUNT) {
-            throw new AssetDomainException(self::INVALID_CHUNK_COUNT_MESSAGE);
+            throw new InvalidChunkCountException(self::INVALID_CHUNK_COUNT_MESSAGE);
         }
 
         if ($updatedAt < $createdAt) {
@@ -186,12 +190,18 @@ final class Asset
     /**
      * @throws AssetDomainException
      */
-    private static function normalizeRequiredText(string $value, string $message): string
+    private static function normalizeRequiredText(string $value, RequiredTextField $field): string
     {
         $normalizedValue = trim($value);
 
         if ($normalizedValue === '') {
-            throw new AssetDomainException($message);
+            // Throw a specific domain exception depending on the field identifier.
+            // Use a match on the RequiredTextField backed enum to construct the
+            // correct exception and throw it directly.
+            throw match ($field) {
+                RequiredTextField::FILE_NAME => new InvalidFileNameException('File name must be non-empty'),
+                RequiredTextField::MIME_TYPE => new InvalidMimeTypeException('Mime type must be non-empty'),
+            };
         }
 
         return $normalizedValue;

@@ -63,6 +63,21 @@ final class AssetTest extends TestCase
     }
 
     #[Test]
+    public function itReturnsPendingAssetWhenCreatedWithRequestedChunkCount(): void
+    {
+        // Arrange
+        $uploadId = new UploadId(self::FIRST_UPLOAD_ID);
+        $accountId = new AccountId(self::ACCOUNT_ID);
+
+        // Act
+        $asset = Asset::createPending($uploadId, $accountId, self::FILE_NAME, self::MIME_TYPE, self::CHUNK_COUNT);
+
+        // Assert
+        self::assertSame(self::CHUNK_COUNT, $asset->getChunkCount());
+        self::assertSame(AssetStatus::PENDING, $asset->getStatus());
+    }
+
+    #[Test]
     #[DataProvider('invalidRequiredTextProvider')]
     public function itThrowsAssetDomainExceptionWhenCreatePendingReceivesInvalidRequiredText(string $fileName, string $mimeType, string $expectedMessage): void
     {
@@ -74,6 +89,24 @@ final class AssetTest extends TestCase
 
         // Act
         Asset::createPending($uploadId, $accountId, $fileName, $mimeType);
+    }
+
+    #[Test]
+    #[DataProvider('invalidChunkCountProvider')]
+    public function itThrowsAssetDomainExceptionWhenCreatePendingReceivesInvalidChunkCount(int $chunkCount): void
+    {
+        // Arrange
+        $this->expectException(AssetDomainException::class);
+        $this->expectExceptionMessage(self::INVALID_CHUNK_COUNT_MESSAGE);
+
+        // Act
+        Asset::createPending(
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            $chunkCount,
+        );
     }
 
     #[Test]

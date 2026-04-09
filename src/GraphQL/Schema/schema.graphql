@@ -150,6 +150,31 @@ input StartUploadInput {
 }
 
 """
+One file within a chunk-aware upload batch.
+"""
+input StartUploadBatchFileInput {
+  "Client-supplied correlation identifier for this file."
+  clientFileId: String!
+
+  "Original client file name."
+  fileName: String!
+
+  "Client-supplied media type."
+  mimeType: String!
+
+  "Number of upload chunks the client will send for this file."
+  chunkCount: Int!
+}
+
+"""
+Input for starting multiple uploads at once.
+"""
+input StartUploadBatchInput {
+  "Files to initiate in this batch."
+  files: [StartUploadBatchFileInput!]!
+}
+
+"""
 Successful result of startUpload.
 """
 type StartUploadSuccess {
@@ -172,6 +197,42 @@ type StartUploadPayload {
 
   "Business validation errors."
   userErrors: [UserError!]!
+}
+
+"""
+Successful result for one file in startUploadBatch.
+"""
+type StartUploadBatchFileSuccess {
+  "Created asset status."
+  asset: Asset!
+
+  "Upload targets for each declared chunk."
+  uploadTargets: [UploadTarget!]!
+
+  "Server-issued grant required to complete this upload later."
+  uploadGrant: String!
+}
+
+"""
+Per-file result returned by startUploadBatch.
+"""
+type StartUploadBatchFilePayload {
+  "Client correlation identifier echoed from the request."
+  clientFileId: String!
+
+  "Successful result when this file is accepted."
+  success: StartUploadBatchFileSuccess
+
+  "Business validation errors for this file."
+  userErrors: [UserError!]!
+}
+
+"""
+Payload for startUploadBatch.
+"""
+type StartUploadBatchPayload {
+  "Per-file outcomes in request order."
+  files: [StartUploadBatchFilePayload!]!
 }
 
 """
@@ -215,6 +276,9 @@ type Query {
 type Mutation {
   "Start one upload and receive its upload target."
   startUpload(input: StartUploadInput!): StartUploadPayload!
+
+  "Start multiple uploads and receive one upload target per chunk for each accepted file."
+  startUploadBatch(input: StartUploadBatchInput!): StartUploadBatchPayload!
 
   "Complete one upload after the file is sent."
   completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!

@@ -53,7 +53,7 @@ abstract class BaseAssetsTableTestCase extends TestCase
     ];
 
     /** @var array{host: string, port: int, user: string, password: string}|null */
-    private ?array $selectedConnection = null;
+    protected ?array $selectedConnection = null;
 
     /**
      * @param callable(PDO): void $assertions

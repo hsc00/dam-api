@@ -8,5 +8,8 @@ use App\Domain\Asset\ValueObject\UploadTarget;
 
 interface StorageAdapterInterface
 {
-    public function createUploadTarget(Asset $asset): UploadTarget;
+    /**
+     * @return list<UploadTarget>
+     */
+    public function createUploadTargets(Asset $asset): array;
 }

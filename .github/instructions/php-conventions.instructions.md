@@ -6,6 +6,7 @@ applyTo: "**/*.php"
 ## Mandatory Header
 
 Every PHP file must begin with:
+
 ```php
 <?php
 
@@ -24,19 +25,20 @@ No exceptions. PHPStan will flag missing `strict_types`.
 
 ## DDD Naming Conventions
 
-| Type | Naming Pattern | Example |
-|------|---------------|---------|
-| Entity | `{Name}` | `Asset` |
-| Value Object | `{Name}` | `UploadId`, `AccountId` |
-| Repository Interface | `{Name}RepositoryInterface` | `AssetRepositoryInterface` |
-| Application Service | `{Name}Service` | `PresignService`, `AssetService` |
-| Command | `{Action}{Name}Command` | `PresignAssetCommand` |
-| Domain Event | `{Name}{Verb}Event` | `AssetStatusChangedEvent` |
-| Storage Adapter Interface | `{Name}AdapterInterface` | `StorageAdapterInterface` |
+| Type                      | Naming Pattern              | Example                          |
+| ------------------------- | --------------------------- | -------------------------------- |
+| Entity                    | `{Name}`                    | `Asset`                          |
+| Value Object              | `{Name}`                    | `UploadId`, `AccountId`          |
+| Repository Interface      | `{Name}RepositoryInterface` | `AssetRepositoryInterface`       |
+| Application Service       | `{Name}Service`             | `PresignService`, `AssetService` |
+| Command                   | `{Action}{Name}Command`     | `PresignAssetCommand`            |
+| Domain Event              | `{Name}{Verb}Event`         | `AssetStatusChangedEvent`        |
+| Storage Adapter Interface | `{Name}AdapterInterface`    | `StorageAdapterInterface`        |
 
 ## Clean Architecture Layer Rules
 
 No class may import from a layer further out than itself:
+
 - `Domain/` → no imports from Application, Infrastructure, GraphQL, Http
 - `Application/` → may import from Domain only
 - `Infrastructure/` → may import from Domain and Application
@@ -75,9 +77,47 @@ final readonly class UploadId
 - Static state (`static $x = ...`) — avoid; use constructor injection
 - `new` inside class bodies outside constructors/factories — prefer injected dependencies
 
+## Exception Handling
+
+- Never leave a `catch` block empty. Always handle exceptions by logging them, converting
+  them to an appropriate domain/application error, rethrowing, or returning a structured
+  error to the caller.
+- If you intentionally suppress a secondary/cleanup exception, still reference or log the
+  suppressed exception so it is not silently discarded and so static analyzers/readers
+  can see the rationale. Example:
+
+```php
+try {
+  // cleanup that may fail
+} catch (\Throwable $suppressed) {
+  // Suppressed intentionally after primary failure is already handled.
+  // Prefer logging when a logger is available to aid debugging:
+  // $this->logger->debug('Cleanup failed after primary error', ['exception' => $suppressed]);
+  //
+  // If logging is not desirable, keep an explicit comment explaining why
+  // the exception is intentionally ignored (do NOT use unset()).
+}
+```
+
+- Prefer structured logging (Monolog/PSR-3). When possible include context and the
+  exception object:
+
+```php
+try {
+        $this->assets->save($asset);
+} catch (\Throwable $e) {
+        $this->logger->error('Failed saving asset', ['exception' => $e]);
+        throw RepositoryUnavailableException::forReason('Repository failure', $e);
+}
+```
+
+- At layer boundaries, convert low-level infrastructure exceptions into domain/application
+  errors. Do not leak raw stack traces or internal exception details to GraphQL responses.
+
 ## Banned in GraphQL Resolvers
 
 Resolvers must delegate to Application Services only:
+
 ```php
 // WRONG — business logic in resolver
 public function resolve(mixed $root, array $args): array {

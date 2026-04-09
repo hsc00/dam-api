@@ -2,17 +2,74 @@
 
 declare(strict_types=1);
 
+use App\Application\Asset\StartUploadService;
+use App\GraphQL\Resolver\CompleteUploadResolver;
+use App\GraphQL\Resolver\StartUploadBatchResolver;
+use App\GraphQL\Resolver\StartUploadResolver;
+use App\GraphQL\SchemaFactory;
+use App\Http\Exception\MissingEnvironmentVariableException;
+use App\Http\GraphQLHandler;
+use App\Infrastructure\Persistence\MySQLAssetRepository;
+use App\Infrastructure\Storage\MockStorageAdapter;
+use App\Infrastructure\Upload\LocalUploadGrantIssuer;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
+use PDO;
+
 require_once __DIR__ . '/../vendor/autoload.php';
+
+$logger = new Logger('public');
+$logger->pushHandler(new StreamHandler('php://stderr', Logger::ERROR));
 
 $projectRoot = dirname(__DIR__);
 $envFile = $projectRoot . '/.env';
+
+/**
+ * @return array{status: int, headers: array<string, string>, body: string}
+ */
+function internalServerErrorResponse(): array
+{
+    return [
+        'status' => 500,
+        'headers' => ['Content-Type' => 'application/json; charset=utf-8'],
+        'body' => json_encode(
+            [
+                'errors' => [
+                    [
+                        'message' => 'Internal server error',
+                        'extensions' => ['code' => 'INTERNAL_SERVER_ERROR'],
+                    ],
+                ],
+            ],
+            JSON_THROW_ON_ERROR,
+        ),
+    ];
+}
 
 if (is_file($envFile)) {
     \Dotenv\Dotenv::createImmutable($projectRoot)->safeLoad();
 }
 
+/**
+ * Retrieve an environment variable or throw if missing.
+ * Do not expose default credential values in code.
+ *
+ * @param string $name
+ * @return string
+ */
+function requireEnv(string $name): string
+{
+    $val = $_ENV[$name] ?? getenv($name);
+    if ($val === false || $val === null || $val === '') {
+        throw MissingEnvironmentVariableException::forName($name);
+    }
+
+    return (string) $val;
+}
+
+$requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
+
 if (php_sapi_name() === 'cli-server') {
-    $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
     $resolved = realpath(__DIR__ . $requestPath);
     if ($resolved !== false
         && str_starts_with($resolved, __DIR__ . DIRECTORY_SEPARATOR)
@@ -22,6 +79,71 @@ if (php_sapi_name() === 'cli-server') {
     }
 }
 
-header('Content-Type: text/plain; charset=utf-8');
-echo "DAM-style PHP — GraphQL endpoint placeholder\n";
-echo "Send GraphQL POST requests to /graphql (not implemented yet)\n";
+if ($requestPath !== '/graphql') {
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "DAM-style PHP — GraphQL endpoint placeholder\n";
+    echo "Send GraphQL POST requests to /graphql\n";
+
+    return;
+}
+
+try {
+    $host = requireEnv('DB_HOST');
+    $port = requireEnv('DB_PORT');
+    $database = requireEnv('DB_DATABASE');
+    $user = requireEnv('DB_USER');
+    $password = requireEnv('DB_PASSWORD');
+
+    $pdo = new PDO(
+        sprintf(
+            'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            $host,
+            $port,
+            $database,
+        ),
+        $user,
+        $password,
+        [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ],
+    );
+
+    $startUploadService = new StartUploadService(
+        new MySQLAssetRepository($pdo),
+        new MockStorageAdapter(),
+        new LocalUploadGrantIssuer(requireEnv('UPLOAD_GRANT_SECRET')),
+    );
+    $schemaFactory = new SchemaFactory(
+        new StartUploadResolver($startUploadService),
+        new StartUploadBatchResolver($startUploadService),
+        new CompleteUploadResolver(),
+    );
+    $handler = new GraphQLHandler(
+        $schemaFactory,
+        $_ENV['LOCAL_ACCOUNT_ID'] ?? 'local-dev-account',
+        $logger,
+    );
+    $response = $handler->handle(
+        $_SERVER['REQUEST_METHOD'] ?? 'GET',
+        $requestPath,
+        (string) (file_get_contents('php://input') ?: ''),
+    );
+} catch (\Throwable $exception) {
+    try {
+        $logger->error($exception->getMessage(), ['exception' => $exception]);
+    } catch (\Throwable $suppressed) {
+        // Swallow logger failures to avoid masking the original error.
+        unset($suppressed);
+    }
+
+    $response = internalServerErrorResponse();
+}
+
+http_response_code($response['status']);
+
+foreach ($response['headers'] as $headerName => $headerValue) {
+    header($headerName . ': ' . $headerValue);
+}
+
+echo $response['body'];

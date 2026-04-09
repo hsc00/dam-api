@@ -28,6 +28,16 @@ final class UploadIdTest extends TestCase
     }
 
     #[Test]
+    public function itGeneratesAValidUuidV4WhenRequested(): void
+    {
+        // Act
+        $uploadId = UploadId::generate();
+
+        // Assert
+        self::assertTrue(UploadId::isValid($uploadId->value));
+    }
+
+    #[Test]
     public function itReturnsStringValueWhenCastToString(): void
     {
         // Arrange
