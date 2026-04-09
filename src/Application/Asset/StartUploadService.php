@@ -132,6 +132,12 @@ final class StartUploadService
             try {
                 $success = $this->initiateUpload($accountId, $file);
             } catch (AssetDomainException $exception) {
+                // Infrastructure failures (repository/storage unavailability)
+                // should surface as server errors, not user-facing errors.
+                if ($exception instanceof RepositoryUnavailableException || $exception instanceof StorageUnavailableException) {
+                    throw $exception;
+                }
+
                 $userErrors = [$this->mapDomainException($exception)];
             }
         }
