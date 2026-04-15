@@ -63,7 +63,7 @@ final class AssetIdTest extends TestCase
         // Arrange
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid AssetId format');
-        
+
         // Act
         $this->createAssetId($value);
     }
