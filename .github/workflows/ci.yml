@@ -128,7 +128,7 @@ jobs:
             -Dsonar.test.inclusions=tests/**
       - name: Upload test report
         if: always() && steps.test-discovery.outputs.has_unit_tests == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-php${{ matrix.php }}
           path: |
