@@ -63,6 +63,9 @@ final class AssetIdTest extends TestCase
         // Arrange
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Invalid AssetId format');
+        
+        // Act
+        $this->createAssetId($value);
     }
 
     /**
@@ -76,5 +79,10 @@ final class AssetIdTest extends TestCase
             'wrong version' => ['123e4567-e89b-12d3-a456-426614174000'],
             'wrong variant' => ['123e4567-e89b-42d3-c456-426614174000'],
         ];
+    }
+
+    private function createAssetId(string $value): AssetId
+    {
+        return new AssetId($value);
     }
 }
