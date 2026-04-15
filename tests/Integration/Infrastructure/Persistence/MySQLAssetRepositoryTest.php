@@ -18,26 +18,21 @@ use DateTimeImmutable;
 use PDO;
 use PDOException;
 use PHPUnit\Framework\Attributes\Test;
-use PHPUnit\Framework\TestCase;
 
-final class MySQLAssetRepositoryTest extends TestCase
+final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
 {
     private const DATETIME_FORMAT = 'Y-m-d H:i:s.u';
-    private const FILE_NAME_COLLATION = 'utf8mb4_0900_ai_ci';
-    private const MIGRATION_FILE = __DIR__ . '/../../../../migrations/20260401120000_create_assets_table.sql';
     private const MIME_TYPE = 'image/png';
-
-    /**
-     * @var array{host: string, port: int, user: string, password: string}|null
-     */
-    private ?array $selectedConnection = null;
+    private const STALE_ASSET_WRITE_MESSAGE = 'Cannot save stale asset state.';
+    private const CREATED_AT_2026_04_01_1300 = '2026-04-01 13:00:00.000000';
+    private const CREATED_AT_2026_04_01_1315 = '2026-04-01 13:15:00.000000';
 
     #[Test]
     public function itReturnsAssetWhenSavingAndReadingAPendingAsset(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '11111111-1111-4111-8111-111111111111',
                 uploadId: '22222222-2222-4222-8222-222222222222',
@@ -47,14 +42,7 @@ final class MySQLAssetRepositoryTest extends TestCase
             );
 
             $repository->save($asset);
-            $foundById = $repository->findById($asset->getId());
-            $foundByUploadId = $repository->findByUploadId($asset->getUploadId());
-
-            // Assert
-            self::assertNotNull($foundById);
-            self::assertNotNull($foundByUploadId);
-            $this->assertAssetMatches($asset, $foundById);
-            $this->assertAssetMatches($asset, $foundByUploadId);
+            $this->assertFoundByIdAndUploadId($repository, $asset);
         });
     }
 
@@ -62,8 +50,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itReturnsAssetWhenSavingAndReadingAnUploadedAsset(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $asset = $this->uploadedAsset(
                 assetId: '33333333-3333-4333-8333-333333333333',
                 uploadId: '44444444-4444-4444-8444-444444444444',
@@ -74,14 +62,7 @@ final class MySQLAssetRepositoryTest extends TestCase
             );
 
             $repository->save($asset);
-            $foundById = $repository->findById($asset->getId());
-            $foundByUploadId = $repository->findByUploadId($asset->getUploadId());
-
-            // Assert
-            self::assertNotNull($foundById);
-            self::assertNotNull($foundByUploadId);
-            $this->assertAssetMatches($asset, $foundById);
-            $this->assertAssetMatches($asset, $foundByUploadId);
+            $this->assertFoundByIdAndUploadId($repository, $asset);
         });
     }
 
@@ -89,8 +70,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itReturnsUpdatedRowWhenAssetStateChanges(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '55555555-5555-4555-8555-555555555555',
                 uploadId: '66666666-6666-4666-8666-666666666666',
@@ -105,9 +86,7 @@ final class MySQLAssetRepositoryTest extends TestCase
             $persistedAsset = $repository->findById($asset->getId());
 
             // Assert
-            self::assertNotNull($persistedAsset);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($asset, $persistedAsset);
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
         });
     }
 
@@ -115,8 +94,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itReturnsAcceptedStateWhenUpdatedAtRemainsEqual(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '56565656-5656-4565-8565-565656565656',
                 uploadId: '67676767-6767-4676-8676-676767676767',
@@ -133,9 +112,7 @@ final class MySQLAssetRepositoryTest extends TestCase
 
             // Assert
             self::assertSame($originalUpdatedAt, $asset->getUpdatedAt()->format(self::DATETIME_FORMAT));
-            self::assertNotNull($persistedAsset);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($asset, $persistedAsset);
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
         });
     }
 
@@ -143,8 +120,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itReturnsSingleRowWhenSavingUnchangedAssetTwice(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '77777777-0000-4777-8777-777777777777',
                 uploadId: '88888888-0000-4888-8888-888888888888',
@@ -158,9 +135,7 @@ final class MySQLAssetRepositoryTest extends TestCase
             $persistedAsset = $repository->findById($asset->getId());
 
             // Assert
-            self::assertNotNull($persistedAsset);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($asset, $persistedAsset);
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
         });
     }
 
@@ -168,8 +143,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itThrowsStaleAssetWriteExceptionWhenSameAssetIdentityChangesImmutableField(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $persistedAsset = $this->pendingAsset(
                 assetId: '12121212-1212-4212-8212-121212121212',
                 uploadId: '34343434-3434-4434-8434-343434343434',
@@ -196,15 +171,13 @@ final class MySQLAssetRepositoryTest extends TestCase
                 $repository->save($assetWithChangedImmutableField);
                 self::fail('Expected immutable field change to throw a StaleAssetWriteException.');
             } catch (StaleAssetWriteException $exception) {
-                self::assertSame('Cannot save stale asset state.', $exception->getMessage());
+                self::assertSame(self::STALE_ASSET_WRITE_MESSAGE, $exception->getMessage());
             }
 
             $storedAsset = $repository->findById($persistedAsset->getId());
 
             // Assert
-            self::assertNotNull($storedAsset);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($persistedAsset, $storedAsset);
+            $this->assertPersistedSingleRowMatches($connection, $persistedAsset, $storedAsset);
         });
     }
 
@@ -212,14 +185,14 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itThrowsStaleAssetWriteExceptionWhenSavingStaleAssetAndPreservesNewerPersistedState(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $staleAsset = $this->pendingAsset(
                 assetId: '99999999-0000-4999-8999-999999999999',
                 uploadId: 'aaaaaaaa-0000-4aaa-8aaa-aaaaaaaaaaaa',
                 accountId: 'account-stale-save',
                 fileName: 'stale-copy.png',
-                createdAt: '2026-04-01 13:00:00.000000',
+                createdAt: self::CREATED_AT_2026_04_01_1300,
             );
             $newerAsset = $this->uploadedAsset(
                 assetId: (string) $staleAsset->getId(),
@@ -228,7 +201,7 @@ final class MySQLAssetRepositoryTest extends TestCase
                 fileName: $staleAsset->getFileName(),
                 completionProof: 'etag-newer-state',
                 persistedState: $this->persistedState(
-                    '2026-04-01 13:00:00.000000',
+                    self::CREATED_AT_2026_04_01_1300,
                     1,
                     '2026-04-01 13:05:00.000000',
                 ),
@@ -241,15 +214,13 @@ final class MySQLAssetRepositoryTest extends TestCase
                 $repository->save($staleAsset);
                 self::fail('Expected stale asset save to throw a StaleAssetWriteException.');
             } catch (StaleAssetWriteException $exception) {
-                self::assertSame('Cannot save stale asset state.', $exception->getMessage());
+                self::assertSame(self::STALE_ASSET_WRITE_MESSAGE, $exception->getMessage());
             }
 
             $persistedAsset = $repository->findById($staleAsset->getId());
 
             // Assert
-            self::assertNotNull($persistedAsset);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($newerAsset, $persistedAsset);
+            $this->assertPersistedSingleRowMatches($connection, $newerAsset, $persistedAsset);
         });
     }
 
@@ -257,14 +228,14 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itThrowsStaleAssetWriteExceptionWhenCompareAndSwapUpdateLosesRace(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $persistedAsset = $this->pendingAsset(
                 assetId: '10101010-1010-4010-8010-101010101010',
                 uploadId: '20202020-2020-4020-8020-202020202020',
                 accountId: 'account-compare-and-swap-race',
                 fileName: 'race-window.png',
-                createdAt: '2026-04-01 13:15:00.000000',
+                createdAt: self::CREATED_AT_2026_04_01_1315,
             );
             $uploadedAsset = $this->uploadedAsset(
                 assetId: (string) $persistedAsset->getId(),
@@ -273,7 +244,7 @@ final class MySQLAssetRepositoryTest extends TestCase
                 fileName: $persistedAsset->getFileName(),
                 completionProof: 'etag-race-winner',
                 persistedState: $this->persistedState(
-                    '2026-04-01 13:15:00.000000',
+                    self::CREATED_AT_2026_04_01_1315,
                     1,
                     '2026-04-01 13:20:00.000000',
                 ),
@@ -286,7 +257,7 @@ final class MySQLAssetRepositoryTest extends TestCase
                 $persistedAsset->getMimeType(),
                 AssetStatus::FAILED,
                 $this->persistedState(
-                    '2026-04-01 13:15:00.000000',
+                    self::CREATED_AT_2026_04_01_1315,
                     1,
                     '2026-04-01 13:18:00.000000',
                 ),
@@ -300,21 +271,19 @@ final class MySQLAssetRepositoryTest extends TestCase
                     $this->forceFailedAssetState($connection, $persistedAsset, $concurrentPersistedAsset->getUpdatedAt());
                 },
             );
-            $raceRepository = new MySQLAssetRepository($raceConnection);
+            $raceRepository = $this->createRepository($raceConnection);
 
             try {
                 $raceRepository->save($uploadedAsset);
                 self::fail('Expected compare-and-swap update to throw a StaleAssetWriteException.');
             } catch (StaleAssetWriteException $exception) {
-                self::assertSame('Cannot save stale asset state.', $exception->getMessage());
+                self::assertSame(self::STALE_ASSET_WRITE_MESSAGE, $exception->getMessage());
             }
 
             $persistedAfterRace = $repository->findById($persistedAsset->getId());
 
             // Assert
-            self::assertNotNull($persistedAfterRace);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($concurrentPersistedAsset, $persistedAfterRace);
+            $this->assertPersistedSingleRowMatches($connection, $concurrentPersistedAsset, $persistedAfterRace);
         });
     }
 
@@ -322,8 +291,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itReturnsSuccessfullyWhenTheCompareAndSwapUpdateLosesARaceButTheRowAlreadyMatchesTheDesiredState(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $persistedAsset = $this->pendingAsset(
                 assetId: '30303030-3030-4030-8030-303030303030',
                 uploadId: '40404040-4040-4040-8040-404040404040',
@@ -352,15 +321,13 @@ final class MySQLAssetRepositoryTest extends TestCase
                     $this->forceUploadedAssetState($connection, $uploadedAsset);
                 },
             );
-            $raceRepository = new MySQLAssetRepository($raceConnection);
+            $raceRepository = $this->createRepository($raceConnection);
 
             $raceRepository->save($uploadedAsset);
             $persistedAfterRace = $repository->findById($persistedAsset->getId());
 
             // Assert
-            self::assertNotNull($persistedAfterRace);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($uploadedAsset, $persistedAfterRace);
+            $this->assertPersistedSingleRowMatches($connection, $uploadedAsset, $persistedAfterRace);
         });
     }
 
@@ -368,8 +335,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itReturnsNullWhenAnAssetIsMissing(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $missingAsset = $repository->findById(new AssetId('77777777-7777-4777-8777-777777777777'));
             $missingUpload = $repository->findByUploadId(new UploadId('88888888-8888-4888-8888-888888888888'));
 
@@ -383,8 +350,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itReturnsMatchingAssetsWhenSearchingByFileNameWithinAccountUsingDeterministicOrdering(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $accountId = new AccountId('account-search');
             $expectedFirst = $this->uploadedAsset(
                 assetId: '99999999-9999-4999-8999-999999999999',
@@ -399,14 +366,14 @@ final class MySQLAssetRepositoryTest extends TestCase
                 uploadId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
                 accountId: (string) $accountId,
                 fileName: 'report-draft.png',
-                createdAt: '2026-04-01 13:00:00.000000',
+                createdAt: self::CREATED_AT_2026_04_01_1300,
             );
             $expectedThird = $this->pendingAsset(
                 assetId: '22222222-bbbb-4222-8222-222222222222',
                 uploadId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
                 accountId: (string) $accountId,
                 fileName: 'REPORT-appendix.png',
-                createdAt: '2026-04-01 13:00:00.000000',
+                createdAt: self::CREATED_AT_2026_04_01_1300,
             );
             $sameAccountNonMatch = $this->pendingAsset(
                 assetId: '33333333-cccc-4333-8333-333333333333',
@@ -442,8 +409,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itReturnsAnEmptyListWhenSearchQueryIsEmptyAfterTrimming(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $results = $repository->searchByFileName(new AccountId('account-empty-search'), " \n\t ");
 
             // Assert
@@ -455,8 +422,8 @@ final class MySQLAssetRepositoryTest extends TestCase
     public function itThrowsPdoExceptionWhenDifferentAssetReusesExistingUploadId(): void
     {
         // Arrange & Act
-        $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+        $this->withTemporarySchema(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
             $existingAsset = $this->pendingAsset(
                 assetId: '55555555-eeee-4555-8555-555555555555',
                 uploadId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -481,97 +448,15 @@ final class MySQLAssetRepositoryTest extends TestCase
             } finally {
                 $persistedAsset = $repository->findByUploadId($existingAsset->getUploadId());
 
-                self::assertNotNull($persistedAsset);
-                self::assertSame(1, $this->countAssets($connection));
+                $this->assertPersistedSingleRowMatches($connection, $existingAsset, $persistedAsset);
                 self::assertNull($repository->findById($duplicateUploadIdAsset->getId()));
-                $this->assertAssetMatches($existingAsset, $persistedAsset);
             }
         });
     }
 
-    /**
-     * @param callable(PDO): void $assertions
-     */
-    private function withTemporaryDatabase(callable $assertions, bool $applyMigration = true): void
+    private function createRepository(PDO $connection): MySQLAssetRepository
     {
-        $serverConnection = $this->createServerConnectionOrSkip();
-        $databaseName = 'dam_repository_' . bin2hex(random_bytes(6));
-        $this->createDatabase($serverConnection, $databaseName);
-        $databaseConnection = null;
-
-        try {
-            $databaseConnection = $this->createDatabaseConnection($databaseName);
-
-            if ($applyMigration) {
-                $databaseConnection->exec($this->migrationSql());
-            }
-
-            $assertions($databaseConnection);
-        } finally {
-            $databaseConnection = null;
-            $this->dropDatabase($serverConnection, $databaseName);
-        }
-    }
-
-    private function migrationSql(): string
-    {
-        $migrationSql = file_get_contents(self::MIGRATION_FILE);
-
-        if ($migrationSql === false) {
-            self::fail('Failed to read the assets table bootstrap migration.');
-        }
-
-        return $migrationSql;
-    }
-
-    private function createServerConnectionOrSkip(): PDO
-    {
-        if (! class_exists(PDO::class)) {
-            self::markTestSkipped('PDO is not available in this PHP runtime.');
-        }
-
-        $connectionErrors = [];
-
-        foreach ($this->connectionCandidates() as $candidate) {
-            $dsn = sprintf(
-                'mysql:host=%s;port=%d;charset=utf8mb4',
-                $candidate['host'],
-                $candidate['port'],
-            );
-
-            try {
-                $connection = $this->createConnection($dsn, $candidate['user'], $candidate['password']);
-                $this->selectedConnection = $candidate;
-
-                return $connection;
-            } catch (PDOException $exception) {
-                $connectionErrors[] = sprintf(
-                    '%s:%d (%s)',
-                    $candidate['host'],
-                    $candidate['port'],
-                    $exception->getMessage(),
-                );
-            }
-        }
-
-        self::markTestSkipped(
-            'MySQL is not reachable for integration tests. Tried: ' . implode('; ', $connectionErrors),
-        );
-    }
-
-    private function createDatabaseConnection(string $databaseName): PDO
-    {
-        $selectedConnection = $this->selectedConnection;
-
-        if ($selectedConnection === null) {
-            self::fail('MySQL connection settings were not initialized.');
-        }
-
-        return $this->createConnection(
-            $this->databaseDsn($selectedConnection, $databaseName),
-            $selectedConnection['user'],
-            $selectedConnection['password'],
-        );
+        return new MySQLAssetRepository($connection);
     }
 
     private function createCompareAndSwapRaceConnection(string $databaseName, Closure $beforeCompareAndSwap): PDO
@@ -583,101 +468,16 @@ final class MySQLAssetRepositoryTest extends TestCase
         }
 
         return new CompareAndSwapRacePdo(
-            $this->databaseDsn($selectedConnection, $databaseName),
+            sprintf(
+                'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
+                $selectedConnection['host'],
+                $selectedConnection['port'],
+                $databaseName,
+            ),
             $selectedConnection['user'],
             $selectedConnection['password'],
             $beforeCompareAndSwap,
         );
-    }
-
-    private function createConnection(string $dsn, string $user, string $password): PDO
-    {
-        return new PDO(
-            $dsn,
-            $user,
-            $password,
-            [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ],
-        );
-    }
-
-    private function createDatabase(PDO $connection, string $databaseName): void
-    {
-        $connection->exec(
-            sprintf(
-                'CREATE DATABASE %s CHARACTER SET utf8mb4 COLLATE %s',
-                $this->quoteIdentifier($databaseName),
-                self::FILE_NAME_COLLATION,
-            ),
-        );
-    }
-
-    private function dropDatabase(PDO $connection, string $databaseName): void
-    {
-        $connection->exec('DROP DATABASE IF EXISTS ' . $this->quoteIdentifier($databaseName));
-    }
-
-    /**
-     * @return list<array{host: string, port: int, user: string, password: string}>
-     */
-    private function connectionCandidates(): array
-    {
-        $user = $this->env('DB_USER', 'root');
-        $password = $this->env('DB_PASSWORD', 'root');
-        $candidates = [[
-            'host' => $this->env('DB_HOST', '127.0.0.1'),
-            'port' => $this->envInt('DB_PORT', 3306),
-            'user' => $user,
-            'password' => $password,
-        ]];
-
-        $fallbackCandidate = [
-            'host' => '127.0.0.1',
-            'port' => $this->envInt('DB_HOST_PORT', 3307),
-            'user' => $user,
-            'password' => $password,
-        ];
-
-        if (
-            $fallbackCandidate['host'] !== $candidates[0]['host']
-            || $fallbackCandidate['port'] !== $candidates[0]['port']
-        ) {
-            $candidates[] = $fallbackCandidate;
-        }
-
-        return $candidates;
-    }
-
-    private function env(string $name, string $defaultValue): string
-    {
-        $value = getenv($name);
-
-        if ($value === false) {
-            return $defaultValue;
-        }
-
-        $trimmedValue = trim($value);
-
-        return $trimmedValue === '' ? $defaultValue : $trimmedValue;
-    }
-
-    private function envInt(string $name, int $defaultValue): int
-    {
-        $value = getenv($name);
-
-        if ($value === false) {
-            return $defaultValue;
-        }
-
-        $trimmedValue = trim($value);
-
-        if ($trimmedValue === '' || ! ctype_digit($trimmedValue)) {
-            return $defaultValue;
-        }
-
-        return (int) $trimmedValue;
     }
 
     private function currentDatabaseName(PDO $connection): string
@@ -733,7 +533,7 @@ final class MySQLAssetRepositoryTest extends TestCase
         ]);
     }
 
-    private function countAssets(PDO $connection): int
+    private function assertPersistedSingleRowMatches(PDO $connection, Asset $expectedAsset, ?Asset $actualAsset): void
     {
         $statement = $connection->prepare('SELECT COUNT(*) AS asset_count FROM assets');
         $statement->execute();
@@ -749,7 +549,9 @@ final class MySQLAssetRepositoryTest extends TestCase
             self::fail('Unexpected count query result.');
         }
 
-        return (int) $assetCount;
+        self::assertNotNull($actualAsset);
+        self::assertSame(1, (int) $assetCount);
+        $this->assertAssetMatches($expectedAsset, $actualAsset);
     }
 
     private function pendingAsset(
@@ -829,21 +631,14 @@ final class MySQLAssetRepositoryTest extends TestCase
         );
     }
 
-    private function quoteIdentifier(string $identifier): string
+    private function assertFoundByIdAndUploadId(MySQLAssetRepository $repository, Asset $asset): void
     {
-        return '`' . str_replace('`', '``', $identifier) . '`';
-    }
+        $foundById = $repository->findById($asset->getId());
+        $foundByUploadId = $repository->findByUploadId($asset->getUploadId());
 
-    /**
-     * @param array{host: string, port: int, user: string, password: string} $connection
-     */
-    private function databaseDsn(array $connection, string $databaseName): string
-    {
-        return sprintf(
-            'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
-            $connection['host'],
-            $connection['port'],
-            $databaseName,
-        );
+        self::assertNotNull($foundById);
+        self::assertNotNull($foundByUploadId);
+        $this->assertAssetMatches($asset, $foundById);
+        $this->assertAssetMatches($asset, $foundByUploadId);
     }
 }
