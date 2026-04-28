@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Http;
 
+use App\Application\Asset\CompleteUploadService;
 use App\Application\Asset\StartUploadService;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
@@ -73,9 +74,7 @@ GRAPHQL,
         // Act
         $response = $handler->handle('POST', '/graphql', $requestBody);
         $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
-        if (! is_array($payload)) {
-            throw new \RuntimeException('Expected JSON payload to decode to an array');
-        }
+        self::assertIsArray($payload);
 
         // Assert
         self::assertSame(200, $response['status']);
@@ -151,9 +150,7 @@ GRAPHQL,
         // Act
         $response = $handler->handle('POST', '/graphql', $requestBody);
         $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
-        if (! is_array($payload)) {
-            throw new \RuntimeException('Expected JSON payload to decode to an array');
-        }
+        self::assertIsArray($payload);
 
         // Assert
         self::assertSame(200, $response['status']);
@@ -172,22 +169,76 @@ GRAPHQL,
         self::assertSame(2, $repository->savedAssets[0]->getChunkCount());
     }
 
+    #[Test]
+    public function itExecutesCompleteUploadThroughTheLocalGraphQlHandler(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+        $asset = Asset::createPending(
+            UploadId::generate(),
+            new AccountId('local-test-account'),
+            'complete.png',
+            'image/png',
+        );
+        $repository->save($asset);
+        $requestBody = json_encode([
+            'query' => <<<'GRAPHQL'
+mutation CompleteUpload($input: CompleteUploadInput!) {
+  completeUpload(input: $input) {
+    success {
+      asset {
+        id
+        status
+      }
+    }
+    userErrors {
+      code
+      message
+      field
+    }
+  }
+}
+GRAPHQL,
+            'variables' => [
+                'input' => [
+                    'assetId' => (string) $asset->getId(),
+                    'uploadGrant' => (new LocalUploadGrantIssuer('test-secret'))->issueForAsset($asset),
+                    'completionProof' => 'etag-complete',
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $requestBody);
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['completeUpload']['userErrors']);
+        self::assertSame('UPLOADED', $payload['data']['completeUpload']['success']['asset']['status']);
+        self::assertSame('etag-complete', $repository->savedAssets[0]->getCompletionProof()?->value);
+    }
+
     /**
      * @return array{0: GraphQLHandler, 1: InMemoryAssetRepository}
      */
     private function createHandler(): array
     {
         $repository = new InMemoryAssetRepository();
+        $uploadGrantIssuer = new LocalUploadGrantIssuer('test-secret');
 
         $startUploadService = new StartUploadService(
             $repository,
             new MockStorageAdapter(),
-            new LocalUploadGrantIssuer('test-secret'),
+            $uploadGrantIssuer,
         );
+        $completeUploadService = new CompleteUploadService($repository, $uploadGrantIssuer);
         $schemaFactory = new SchemaFactory(
             new StartUploadResolver($startUploadService),
             new StartUploadBatchResolver($startUploadService),
-            new CompleteUploadResolver(),
+            new CompleteUploadResolver($completeUploadService),
         );
 
         return [new GraphQLHandler($schemaFactory, 'local-test-account', new NullLogger()), $repository];

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Application\Asset\CompleteUploadService;
 use App\Application\Asset\StartUploadService;
 use App\GraphQL\Resolver\CompleteUploadResolver;
 use App\GraphQL\Resolver\StartUploadBatchResolver;
@@ -109,19 +110,23 @@ try {
         ],
     );
 
+    $assetRepository = new MySQLAssetRepository($pdo);
+    $uploadGrantIssuer = new LocalUploadGrantIssuer(requireEnv('UPLOAD_GRANT_SECRET'));
     $startUploadService = new StartUploadService(
-        new MySQLAssetRepository($pdo),
+        $assetRepository,
         new MockStorageAdapter(),
-        new LocalUploadGrantIssuer(requireEnv('UPLOAD_GRANT_SECRET')),
+        $uploadGrantIssuer,
     );
+    $completeUploadService = new CompleteUploadService($assetRepository, $uploadGrantIssuer);
     $schemaFactory = new SchemaFactory(
         new StartUploadResolver($startUploadService),
         new StartUploadBatchResolver($startUploadService),
-        new CompleteUploadResolver(),
+        new CompleteUploadResolver($completeUploadService),
     );
+    $localAccountId = requireEnv('LOCAL_ACCOUNT_ID');
     $handler = new GraphQLHandler(
         $schemaFactory,
-        $_ENV['LOCAL_ACCOUNT_ID'] ?? 'local-dev-account',
+        $localAccountId,
         $logger,
     );
     $response = $handler->handle(
