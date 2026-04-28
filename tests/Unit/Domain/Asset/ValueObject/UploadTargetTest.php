@@ -186,9 +186,9 @@ final class UploadTargetTest extends TestCase
     public static function disallowedInsecureUrlProvider(): array
     {
         return [
-            'remote http url' => ['http://example.test/upload'],
-            'insecure localhost-like hostname' => ['http://localhost.example.test/upload'],
-            'unsupported ftp url' => ['ftp://example.test/upload'],
+            'remote http url' => ['http://example.test/upload'], // NOSONAR - intentional insecure URL for tests
+            'insecure localhost-like hostname' => ['http://localhost.example.test/upload'], // NOSONAR - intentional insecure URL for tests
+            'unsupported ftp url' => ['ftp://example.test/upload'], // NOSONAR - intentional insecure FTP for tests
             'unexpected mock host' => ['mock://downloads/123e4567-e89b-42d3-a456-426614174000/chunk/0'],
         ];
     }
@@ -233,12 +233,12 @@ final class UploadTargetTest extends TestCase
     public static function allowedLocalDevelopmentUrlProvider(): array
     {
         return [
-            'localhost' => ['http://localhost/upload'],
-            'localhost with port' => ['http://localhost:8000/upload'],
-            'ipv4 loopback' => ['http://127.0.0.1/upload'],
-            'ipv4 loopback with port' => ['http://127.0.0.1:9000/upload'],
-            'ipv6 loopback' => ['http://[::1]/upload'],
-            'ipv6 loopback with port' => ['http://[::1]:9000/upload'],
+            'localhost' => ['http://localhost/upload'], // NOSONAR - allowed for local dev tests
+            'localhost with port' => ['http://localhost:8000/upload'], // NOSONAR - allowed for local dev tests
+            'ipv4 loopback' => ['http://127.0.0.1/upload'], // NOSONAR - allowed for local dev tests
+            'ipv4 loopback with port' => ['http://127.0.0.1:9000/upload'], // NOSONAR - allowed for local dev tests
+            'ipv6 loopback' => ['http://[::1]/upload'], // NOSONAR - allowed for local dev tests
+            'ipv6 loopback with port' => ['http://[::1]:9000/upload'], // NOSONAR - allowed for local dev tests
         ];
     }
 
@@ -248,7 +248,7 @@ final class UploadTargetTest extends TestCase
     public static function schemeAndHostNormalizationProvider(): array
     {
         return [
-            'uppercase http scheme and host' => ['HTTP://LOCALHOST/path', 'http://localhost/path'],
+            'uppercase http scheme and host' => ['HTTP://LOCALHOST/path', 'http://localhost/path'], // NOSONAR - uppercase http scheme in test data
             'mixed-case https with port, query, and fragment' => ['HTTPS://Example.COM:8443/Some/Path?Q=1#Frag', 'https://example.com:8443/Some/Path?Q=1#Frag'],
             'userinfo with bracketed ipv6' => ['HTTPS://User@[2001:DB8::1]:8443/Some/Path?Q=1#Frag', 'https://User@[2001:db8::1]:8443/Some/Path?Q=1#Frag'],
             'mixed-case mock upload target' => ['MOCK://UPLOADS/123e4567-e89b-42d3-a456-426614174000/chunk/0', 'mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/0'],

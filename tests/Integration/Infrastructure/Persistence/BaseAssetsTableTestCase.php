@@ -58,7 +58,7 @@ abstract class BaseAssetsTableTestCase extends TestCase
     /**
      * @param callable(PDO): void $assertions
      */
-    protected function withTemporarySchema(callable $assertions): void
+    protected function withTemporarySchema(callable $assertions, bool $applyMigration = true): void
     {
         $serverConnection = $this->createServerConnectionOrSkip();
         $databaseName = 'dam_schema_' . bin2hex(random_bytes(6));
@@ -67,7 +67,10 @@ abstract class BaseAssetsTableTestCase extends TestCase
 
         try {
             $databaseConnection = $this->createDatabaseConnection($databaseName);
-            $databaseConnection->exec($this->migrationSql());
+
+            if ($applyMigration) {
+                $databaseConnection->exec($this->migrationSql());
+            }
 
             $assertions($databaseConnection);
         } finally {

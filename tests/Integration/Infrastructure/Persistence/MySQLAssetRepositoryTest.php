@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Infrastructure\Persistence;
 
+use App\Domain\Asset\Asset;
 use App\Domain\Asset\ValueObject\AccountId;
 use App\Domain\Asset\ValueObject\AssetId;
 use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
@@ -15,12 +16,14 @@ use PHPUnit\Framework\Attributes\Test;
 
 final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
 {
+    private const CREATED_AT_2026_04_01_1300 = '2026-04-01 13:00:00.000000';
+
     #[Test]
     public function itReturnsAssetWhenSavingAndReadingAPendingAsset(): void
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '11111111-1111-4111-8111-111111111111',
                 uploadId: '22222222-2222-4222-8222-222222222222',
@@ -30,14 +33,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             );
 
             $repository->save($asset);
-            $foundById = $repository->findById($asset->getId());
-            $foundByUploadId = $repository->findByUploadId($asset->getUploadId());
-
-            // Assert
-            self::assertNotNull($foundById);
-            self::assertNotNull($foundByUploadId);
-            $this->assertAssetMatches($asset, $foundById);
-            $this->assertAssetMatches($asset, $foundByUploadId);
+            $this->assertFoundByIdAndUploadId($repository, $asset);
         });
     }
 
@@ -71,7 +67,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $asset = $this->uploadedAsset(
                 assetId: '33333333-3333-4333-8333-333333333333',
                 uploadId: '44444444-4444-4444-8444-444444444444',
@@ -82,14 +78,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             );
 
             $repository->save($asset);
-            $foundById = $repository->findById($asset->getId());
-            $foundByUploadId = $repository->findByUploadId($asset->getUploadId());
-
-            // Assert
-            self::assertNotNull($foundById);
-            self::assertNotNull($foundByUploadId);
-            $this->assertAssetMatches($asset, $foundById);
-            $this->assertAssetMatches($asset, $foundByUploadId);
+            $this->assertFoundByIdAndUploadId($repository, $asset);
         });
     }
 
@@ -98,7 +87,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '55555555-5555-4555-8555-555555555555',
                 uploadId: '66666666-6666-4666-8666-666666666666',
@@ -113,9 +102,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             $persistedAsset = $repository->findById($asset->getId());
 
             // Assert
-            self::assertNotNull($persistedAsset);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($asset, $persistedAsset);
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
         });
     }
 
@@ -124,7 +111,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '56565656-5656-4565-8565-565656565656',
                 uploadId: '67676767-6767-4676-8676-676767676767',
@@ -141,9 +128,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
 
             // Assert
             self::assertSame($originalUpdatedAt, $asset->getUpdatedAt()->format(self::DATETIME_FORMAT));
-            self::assertNotNull($persistedAsset);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($asset, $persistedAsset);
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
         });
     }
 
@@ -152,7 +137,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '77777777-0000-4777-8777-777777777777',
                 uploadId: '88888888-0000-4888-8888-888888888888',
@@ -166,9 +151,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             $persistedAsset = $repository->findById($asset->getId());
 
             // Assert
-            self::assertNotNull($persistedAsset);
-            self::assertSame(1, $this->countAssets($connection));
-            $this->assertAssetMatches($asset, $persistedAsset);
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
         });
     }
 
@@ -177,7 +160,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $missingAsset = $repository->findById(new AssetId('77777777-7777-4777-8777-777777777777'));
             $missingUpload = $repository->findByUploadId(new UploadId('88888888-8888-4888-8888-888888888888'));
 
@@ -192,7 +175,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $accountId = new AccountId('account-search');
             $expectedFirst = $this->uploadedAsset(
                 assetId: '99999999-9999-4999-8999-999999999999',
@@ -207,14 +190,14 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 uploadId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
                 accountId: (string) $accountId,
                 fileName: 'report-draft.png',
-                createdAt: '2026-04-01 13:00:00.000000',
+                createdAt: self::CREATED_AT_2026_04_01_1300,
             );
             $expectedThird = $this->pendingAsset(
                 assetId: '22222222-bbbb-4222-8222-222222222222',
                 uploadId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
                 accountId: (string) $accountId,
                 fileName: 'REPORT-appendix.png',
-                createdAt: '2026-04-01 13:00:00.000000',
+                createdAt: self::CREATED_AT_2026_04_01_1300,
             );
             $sameAccountNonMatch = $this->pendingAsset(
                 assetId: '33333333-cccc-4333-8333-333333333333',
@@ -251,7 +234,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $results = $repository->searchByFileName(new AccountId('account-empty-search'), " \n\t ");
 
             // Assert
@@ -264,7 +247,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     {
         // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
-            $repository = new MySQLAssetRepository($connection);
+            $repository = $this->createRepository($connection);
             $existingAsset = $this->pendingAsset(
                 assetId: '55555555-eeee-4555-8555-555555555555',
                 uploadId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
@@ -289,11 +272,32 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             } finally {
                 $persistedAsset = $repository->findByUploadId($existingAsset->getUploadId());
 
-                self::assertNotNull($persistedAsset);
-                self::assertSame(1, $this->countAssets($connection));
+                $this->assertPersistedSingleRowMatches($connection, $existingAsset, $persistedAsset);
                 self::assertNull($repository->findById($duplicateUploadIdAsset->getId()));
-                $this->assertAssetMatches($existingAsset, $persistedAsset);
             }
         });
+    }
+
+    private function createRepository(PDO $connection): MySQLAssetRepository
+    {
+        return new MySQLAssetRepository($connection);
+    }
+
+    private function assertPersistedSingleRowMatches(PDO $connection, Asset $expectedAsset, ?Asset $actualAsset): void
+    {
+        self::assertNotNull($actualAsset);
+        self::assertSame(1, $this->countAssets($connection));
+        $this->assertAssetMatches($expectedAsset, $actualAsset);
+    }
+
+    private function assertFoundByIdAndUploadId(MySQLAssetRepository $repository, Asset $asset): void
+    {
+        $foundById = $repository->findById($asset->getId());
+        $foundByUploadId = $repository->findByUploadId($asset->getUploadId());
+
+        self::assertNotNull($foundById);
+        self::assertNotNull($foundByUploadId);
+        $this->assertAssetMatches($asset, $foundById);
+        $this->assertAssetMatches($asset, $foundByUploadId);
     }
 }
