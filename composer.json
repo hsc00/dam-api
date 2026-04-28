@@ -41,7 +41,7 @@
     "analyse": "vendor/bin/phpstan analyse -c phpstan.neon",
     "fix": "@php vendor/bin/php-cs-fixer fix",
     "fix:check": "@php vendor/bin/php-cs-fixer fix --dry-run --diff",
-    "mutate": "vendor/bin/infection --configuration=infection.json5",
+    "mutate": "vendor/bin/infection --configuration=infection.json5 --threads=max",
     "check": [
       "@fix:check",
       "@analyse"
