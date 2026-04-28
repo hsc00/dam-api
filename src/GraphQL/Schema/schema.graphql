@@ -233,6 +233,9 @@ Payload for startUploadBatch.
 type StartUploadBatchPayload {
   "Per-file outcomes in request order."
   files: [StartUploadBatchFilePayload!]!
+
+  "Business validation errors that apply to the whole batch."
+  userErrors: [UserError!]!
 }
 
 """

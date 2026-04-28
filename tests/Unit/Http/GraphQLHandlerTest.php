@@ -97,30 +97,35 @@ GRAPHQL,
         [$handler, $repository] = $this->createHandler();
         $requestBody = json_encode([
             'query' => <<<'GRAPHQL'
-mutation StartUploadBatch($input: StartUploadBatchInput!) {
-  startUploadBatch(input: $input) {
-    files {
-      clientFileId
-      success {
-        asset {
-          id
-          status
-        }
-        uploadGrant
-        uploadTargets {
-          url
-          method
-        }
-      }
-      userErrors {
-        code
-        message
-        field
-      }
-    }
-  }
-}
-GRAPHQL,
+                mutation StartUploadBatch($input: StartUploadBatchInput!) {
+                startUploadBatch(input: $input) {
+                    userErrors {
+                    code
+                    message
+                    field
+                    }
+                    files {
+                    clientFileId
+                    success {
+                        asset {
+                        id
+                        status
+                        }
+                        uploadGrant
+                        uploadTargets {
+                        url
+                        method
+                        }
+                    }
+                    userErrors {
+                        code
+                        message
+                        field
+                    }
+                    }
+                }
+                }
+                GRAPHQL,
             'variables' => [
                 'input' => [
                     'files' => [
@@ -155,6 +160,7 @@ GRAPHQL,
         // Assert
         self::assertSame(200, $response['status']);
         self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['startUploadBatch']['userErrors']);
         self::assertCount(3, $payload['data']['startUploadBatch']['files']);
         self::assertSame('alpha', $payload['data']['startUploadBatch']['files'][0]['clientFileId']);
         self::assertCount(2, $payload['data']['startUploadBatch']['files'][0]['success']['uploadTargets']);
@@ -167,6 +173,176 @@ GRAPHQL,
         self::assertSame('DUPLICATE_CLIENT_FILE_ID', $payload['data']['startUploadBatch']['files'][2]['userErrors'][0]['code']);
         self::assertCount(1, $repository->savedAssets);
         self::assertSame(2, $repository->savedAssets[0]->getChunkCount());
+    }
+
+    #[Test]
+    public function itReturnsTopLevelBatchValidationErrorsWhenStartUploadBatchReceivesNoFiles(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+        $requestBody = json_encode([
+            'query' => <<<'GRAPHQL'
+                mutation StartUploadBatch($input: StartUploadBatchInput!) {
+                startUploadBatch(input: $input) {
+                    userErrors {
+                    code
+                    message
+                    field
+                    }
+                    files {
+                    clientFileId
+                    }
+                }
+                }
+                GRAPHQL,
+            'variables' => [
+                'input' => [
+                    'files' => [],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $requestBody);
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['startUploadBatch']['files']);
+        self::assertCount(1, $payload['data']['startUploadBatch']['userErrors']);
+        self::assertSame('EMPTY_BATCH', $payload['data']['startUploadBatch']['userErrors'][0]['code']);
+        self::assertSame('At least one file is required.', $payload['data']['startUploadBatch']['userErrors'][0]['message']);
+        self::assertSame('files', $payload['data']['startUploadBatch']['userErrors'][0]['field']);
+        self::assertCount(0, $repository->savedAssets);
+    }
+
+    #[Test]
+    public function itReturnsTopLevelBatchValidationErrorsWhenStartUploadBatchReceivesTooManyFiles(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+        $requestBody = json_encode([
+        'query' => <<<'GRAPHQL'
+                mutation StartUploadBatch($input: StartUploadBatchInput!) {
+                    startUploadBatch(input: $input) {
+                        userErrors {
+                            code
+                            message
+                            field
+                        }
+                        files {
+                            clientFileId
+                        }
+                    }
+                }
+                GRAPHQL,
+            'variables' => [
+                    'input' => [
+                            'files' => array_map(
+                                static fn (int $index): array => [
+                                            'clientFileId' => sprintf('file-%d', $index),
+                                            'fileName' => sprintf('file-%d.png', $index),
+                                            'mimeType' => 'image/png',
+                                            'chunkCount' => 1,
+                                    ],
+                                range(1, 21),
+                            ),
+                    ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $requestBody);
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['startUploadBatch']['files']);
+        self::assertCount(1, $payload['data']['startUploadBatch']['userErrors']);
+        self::assertSame('BATCH_TOO_LARGE', $payload['data']['startUploadBatch']['userErrors'][0]['code']);
+        self::assertSame('You can upload at most 20 files in one request.', $payload['data']['startUploadBatch']['userErrors'][0]['message']);
+        self::assertSame('files', $payload['data']['startUploadBatch']['userErrors'][0]['field']);
+        self::assertCount(0, $repository->savedAssets);
+    }
+
+    #[Test]
+    public function itReturnsPerFileValidationErrorsWhenStartUploadBatchReceivesChunkCountsOutsideTheAllowedRange(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+        $requestBody = json_encode([
+            'query' => <<<'GRAPHQL'
+                mutation StartUploadBatch($input: StartUploadBatchInput!) {
+                startUploadBatch(input: $input) {
+                    userErrors {
+                    code
+                    message
+                    field
+                    }
+                    files {
+                    clientFileId
+                    success {
+                        asset {
+                        id
+                        status
+                        }
+                        uploadTargets {
+                        url
+                        }
+                    }
+                    userErrors {
+                        code
+                        message
+                        field
+                    }
+                    }
+                }
+                }
+                GRAPHQL,
+            'variables' => [
+                'input' => [
+                    'files' => [
+                        [
+                            'clientFileId' => 'alpha',
+                            'fileName' => 'first.png',
+                            'mimeType' => 'image/png',
+                            'chunkCount' => 100,
+                        ],
+                        [
+                            'clientFileId' => 'beta',
+                            'fileName' => 'second.png',
+                            'mimeType' => 'image/png',
+                            'chunkCount' => 101,
+                        ],
+                    ],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $requestBody);
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['startUploadBatch']['userErrors']);
+        self::assertCount(2, $payload['data']['startUploadBatch']['files']);
+        self::assertSame('alpha', $payload['data']['startUploadBatch']['files'][0]['clientFileId']);
+        self::assertCount(100, $payload['data']['startUploadBatch']['files'][0]['success']['uploadTargets']);
+        self::assertSame([], $payload['data']['startUploadBatch']['files'][0]['userErrors']);
+        self::assertSame('beta', $payload['data']['startUploadBatch']['files'][1]['clientFileId']);
+        self::assertNull($payload['data']['startUploadBatch']['files'][1]['success']);
+        self::assertSame('INVALID_CHUNK_COUNT', $payload['data']['startUploadBatch']['files'][1]['userErrors'][0]['code']);
+        self::assertSame('Chunk count must be between 1 and 100.', $payload['data']['startUploadBatch']['files'][1]['userErrors'][0]['message']);
+        self::assertSame('chunkCount', $payload['data']['startUploadBatch']['files'][1]['userErrors'][0]['field']);
+        self::assertCount(1, $repository->savedAssets);
+        self::assertSame(100, $repository->savedAssets[0]->getChunkCount());
     }
 
     #[Test]
@@ -183,22 +359,22 @@ GRAPHQL,
         $repository->save($asset);
         $requestBody = json_encode([
             'query' => <<<'GRAPHQL'
-mutation CompleteUpload($input: CompleteUploadInput!) {
-  completeUpload(input: $input) {
-    success {
-      asset {
-        id
-        status
-      }
-    }
-    userErrors {
-      code
-      message
-      field
-    }
-  }
-}
-GRAPHQL,
+                mutation CompleteUpload($input: CompleteUploadInput!) {
+                completeUpload(input: $input) {
+                    success {
+                    asset {
+                        id
+                        status
+                    }
+                    }
+                    userErrors {
+                    code
+                    message
+                    field
+                    }
+                }
+                }
+                GRAPHQL,
             'variables' => [
                 'input' => [
                     'assetId' => (string) $asset->getId(),

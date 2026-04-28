@@ -17,8 +17,9 @@ use DateTimeImmutable;
 final class Asset
 {
     private const DEFAULT_CHUNK_COUNT = 1;
-    private const INVALID_CHUNK_COUNT_MESSAGE = 'Chunk count must be at least 1';
+    private const INVALID_CHUNK_COUNT_MESSAGE = 'Chunk count must be between 1 and 100.';
     private const INVALID_UPDATED_AT_MESSAGE = 'Updated at must not be earlier than created at';
+    private const MAX_CHUNK_COUNT = 100;
 
     private AssetId $id;
     private UploadId $uploadId;
@@ -160,7 +161,7 @@ final class Asset
     ): void {
         $updatedAt ??= $createdAt;
 
-        if ($chunkCount < self::DEFAULT_CHUNK_COUNT) {
+        if ($chunkCount < self::DEFAULT_CHUNK_COUNT || $chunkCount > self::MAX_CHUNK_COUNT) {
             throw new InvalidChunkCountException(self::INVALID_CHUNK_COUNT_MESSAGE);
         }
 

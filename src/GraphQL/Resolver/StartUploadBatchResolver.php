@@ -52,6 +52,10 @@ final class StartUploadBatchResolver
                 fn (StartUploadBatchFileResult $file): array => $this->mapFileResult($file),
                 $result->files,
             ),
+            'userErrors' => array_map(
+                fn (UserError $userError): array => $this->mapUserError($userError),
+                $result->userErrors,
+            ),
         ];
     }
 

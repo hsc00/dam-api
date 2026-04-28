@@ -30,7 +30,7 @@ final class AssetTest extends TestCase
     private const COMPLETION_PROOF_VALUE = 'etag-value';
     private const CREATED_AT = '2020-01-20T12:34:56+00:00';
     private const UPDATED_AT = '2020-01-21T12:34:56+00:00';
-    private const INVALID_CHUNK_COUNT_MESSAGE = 'Chunk count must be at least 1';
+    private const INVALID_CHUNK_COUNT_MESSAGE = 'Chunk count must be between 1 and 100.';
     private const INVALID_UPDATED_AT_MESSAGE = 'Updated at must not be earlier than created at';
     private const UUID_V4_PATTERN = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i';
 
@@ -603,6 +603,7 @@ final class AssetTest extends TestCase
         return [
             'zero chunks' => [0],
             'negative chunks' => [-1],
+            'too many chunks' => [101],
         ];
     }
 
