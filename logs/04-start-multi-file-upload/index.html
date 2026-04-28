@@ -11,23 +11,25 @@
       
       
       
+        <link rel="prev" href="../03-data-local-storage-setup/">
       
-        <link rel="next" href="api/01-agree-api-schema/">
+      
+        <link rel="next" href="../05-upload-request-validation/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>DAM API Docs</title>
+        <title>US-04 Start Multi-file Upload - DAM API Docs</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
       
 
@@ -46,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -64,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#dam-documentation" class="md-skip">
+        <a href="#implementation-log-start-multi-file-upload-us-04" class="md-skip">
           Skip to content
         </a>
       
@@ -80,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="DAM API Docs" class="md-header__button md-logo" aria-label="DAM API Docs" data-md-component="logo">
+    <a href="../.." title="DAM API Docs" class="md-header__button md-logo" aria-label="DAM API Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -100,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              US-04 Start Multi-file Upload
             
           </span>
         </div>
@@ -178,7 +180,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="DAM API Docs" class="md-nav__button md-logo" aria-label="DAM API Docs" data-md-component="logo">
+    <a href="../.." title="DAM API Docs" class="md-nav__button md-logo" aria-label="DAM API Docs" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -193,37 +195,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -239,37 +214,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#adrs" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ADRs
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -328,7 +272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="api/01-agree-api-schema/" class="md-nav__link">
+      <a href="../../api/01-agree-api-schema/" class="md-nav__link">
         
   
   
@@ -410,7 +354,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/01-asset-domain-contracts.md" class="md-nav__link">
+      <a href="../../architecture/01-asset-domain-contracts.md" class="md-nav__link">
         
   
   
@@ -438,7 +382,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/c4-context.drawio" class="md-nav__link">
+      <a href="../../architecture/c4-context.drawio" class="md-nav__link">
         
   
   
@@ -466,7 +410,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/c4-container.drawio" class="md-nav__link">
+      <a href="../../architecture/c4-container.drawio" class="md-nav__link">
         
   
   
@@ -494,7 +438,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/clean-arch-layers.drawio" class="md-nav__link">
+      <a href="../../architecture/clean-arch-layers.drawio" class="md-nav__link">
         
   
   
@@ -522,7 +466,7 @@
   
   
     <li class="md-nav__item">
-      <a href="architecture/sequence-presign-upload.drawio" class="md-nav__link">
+      <a href="../../architecture/sequence-presign-upload.drawio" class="md-nav__link">
         
   
   
@@ -604,7 +548,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/01-tooling-choices/" class="md-nav__link">
+      <a href="../../adr/01-tooling-choices/" class="md-nav__link">
         
   
   
@@ -632,7 +576,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/02-security-choices/" class="md-nav__link">
+      <a href="../../adr/02-security-choices/" class="md-nav__link">
         
   
   
@@ -660,7 +604,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/03-domain-first-idempotent-upload/" class="md-nav__link">
+      <a href="../../adr/03-domain-first-idempotent-upload/" class="md-nav__link">
         
   
   
@@ -688,7 +632,7 @@
   
   
     <li class="md-nav__item">
-      <a href="adr/04-asset-domain-contracts/" class="md-nav__link">
+      <a href="../../adr/04-asset-domain-contracts/" class="md-nav__link">
         
   
   
@@ -720,18 +664,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -752,7 +698,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -770,7 +716,7 @@
   
   
     <li class="md-nav__item">
-      <a href="logs/01-agree-api-schema/" class="md-nav__link">
+      <a href="../01-agree-api-schema/" class="md-nav__link">
         
   
   
@@ -798,7 +744,7 @@
   
   
     <li class="md-nav__item">
-      <a href="logs/02-domain-model-core-objects/" class="md-nav__link">
+      <a href="../02-domain-model-core-objects/" class="md-nav__link">
         
   
   
@@ -826,7 +772,7 @@
   
   
     <li class="md-nav__item">
-      <a href="logs/03-data-local-storage-setup/" class="md-nav__link">
+      <a href="../03-data-local-storage-setup/" class="md-nav__link">
         
   
   
@@ -851,10 +797,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="logs/04-start-multi-file-upload/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-04 Start Multi-file Upload
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -870,6 +843,81 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Details
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files Changed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#follow-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Follow-up
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -882,7 +930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="logs/05-upload-request-validation/" class="md-nav__link">
+      <a href="../05-upload-request-validation/" class="md-nav__link">
         
   
   
@@ -937,10 +985,54 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#adrs" class="md-nav__link">
+  <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ADRs
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Details
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-changed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files Changed
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#follow-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Follow-up
       
     </span>
   </a>
@@ -964,16 +1056,37 @@
 
 
 
-<h1 id="dam-documentation">DAM — Documentation</h1>
-<p>Welcome to the documentation for the DAM presign + status challenge.</p>
+<h1 id="implementation-log-start-multi-file-upload-us-04">Implementation Log: Start multi-file upload (US-04)</h1>
+<p><strong>Feature:</strong> Start multi-file upload</p>
+<h2 id="summary">Summary</h2>
+<p>Implemented a batch-aware <code>startUpload</code> flow that initiates multi-file uploads. The server creates pending <code>Asset</code> records per file, requests storage upload targets (one target per chunk), and returns per-file upload grants and targets. Whole-request validation is returned as top-level <code>userErrors</code>; per-file problems are reported per-file.</p>
+<h2 id="implementation-details">Implementation Details</h2>
 <ul>
-<li>ADRs and architecture decisions are under <strong>ADRs</strong>.</li>
-<li>Developer quickstart and CI instructions are in the repository <code>README.md</code>.</li>
+<li><code>StartUploadService::startUploadBatch</code> validates the batch, creates pending assets, asks the <code>StorageAdapter</code> for upload targets, and issues per-file upload grants.</li>
+<li>GraphQL schema extended with <code>StartUploadBatchInput</code>/<code>StartUploadBatchPayload</code> and a <code>StartUploadBatchResolver</code> maps the application result into the GraphQL response.</li>
+<li><code>MockStorageAdapter</code> provides deterministic <code>mock://</code> upload targets for local development so no external storage is required.</li>
 </ul>
-<h2 id="adrs">ADRs</h2>
+<h2 id="files-changed">Files Changed</h2>
 <ul>
-<li><a href="adr/01-tooling-choices/">01 — Tooling choices</a></li>
-<li><a href="adr/02-security-choices/">02 — Security choices</a></li>
+<li><a href="src/Application/Asset/StartUploadService.php">src/Application/Asset/StartUploadService.php</a> — batch start implementation</li>
+<li><a href="src/Application/Asset/Command/StartUploadBatchCommand.php">src/Application/Asset/Command/StartUploadBatchCommand.php</a> — command for batch start</li>
+<li><a href="src/Application/Asset/Result/StartUploadBatchResult.php">src/Application/Asset/Result/StartUploadBatchResult.php</a> — batch result shape</li>
+<li><a href="src/GraphQL/Resolver/StartUploadBatchResolver.php">src/GraphQL/Resolver/StartUploadBatchResolver.php</a> — GraphQL mapping</li>
+<li><a href="src/GraphQL/Schema/schema.graphql">src/GraphQL/Schema/schema.graphql</a> — schema additions for batch upload</li>
+<li><a href="src/Infrastructure/Storage/MockStorageAdapter.php">src/Infrastructure/Storage/MockStorageAdapter.php</a> — local target generation</li>
+<li><a href="tests/Unit/Application/Asset/StartUploadServiceTest.php">tests/Unit/Application/Asset/StartUploadServiceTest.php</a> — unit tests</li>
+<li><a href="tests/Unit/Http/GraphQLHandlerTest.php">tests/Unit/Http/GraphQLHandlerTest.php</a> — GraphQL mapping tests</li>
+</ul>
+<h2 id="validation">Validation</h2>
+<ul>
+<li><code>vendor/bin/phpunit --configuration phpunit.xml tests/Unit/Application/Asset/StartUploadServiceTest.php</code> — passed locally (unit tests).</li>
+<li><code>vendor/bin/phpunit --configuration phpunit.xml tests/Unit/Http/GraphQLHandlerTest.php</code> — passed locally.</li>
+<li>Integration tests that require MySQL were skipped locally due to the test database not being available.</li>
+</ul>
+<h2 id="follow-up">Follow-up</h2>
+<ul>
+<li>Run the full CI pipeline and <code>mkdocs build</code> in an environment with MkDocs installed to confirm navigation and link rendering.</li>
+<li>Optionally add an integration smoke test for storage target generation.</li>
 </ul>
 
 
@@ -1024,10 +1137,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": [], "search": "assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": [], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
