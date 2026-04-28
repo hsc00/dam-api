@@ -30,13 +30,18 @@ use App\Domain\Asset\ValueObject\UploadTarget;
 
 final class StartUploadService
 {
+    private const BATCH_TOO_LARGE_CODE = 'BATCH_TOO_LARGE';
+    private const BATCH_TOO_LARGE_MESSAGE = 'You can upload at most 20 files in one request.';
     private const DUPLICATE_CLIENT_FILE_ID_CODE = 'DUPLICATE_CLIENT_FILE_ID';
     private const DUPLICATE_CLIENT_FILE_ID_MESSAGE = 'Each file in startUploadBatch must use a distinct clientFileId.';
+    private const EMPTY_BATCH_CODE = 'EMPTY_BATCH';
+    private const EMPTY_BATCH_MESSAGE = 'At least one file is required.';
     private const INVALID_CHUNK_COUNT_CODE = 'INVALID_CHUNK_COUNT';
     private const INVALID_CLIENT_FILE_ID_CODE = 'INVALID_CLIENT_FILE_ID';
     private const INVALID_CLIENT_FILE_ID_MESSAGE = 'clientFileId must be non-empty.';
     private const INVALID_FILE_NAME_CODE = 'INVALID_FILE_NAME';
     private const INVALID_MIME_TYPE_CODE = 'INVALID_MIME_TYPE';
+    private const MAX_BATCH_FILE_COUNT = 20;
     private const SINGLE_FILE_CLIENT_FILE_ID = '__single_file_upload__';
     private const UNEXPECTED_BATCH_RESULT_CODE = 'UPLOAD_INITIATION_FAILED';
     private const UNEXPECTED_BATCH_RESULT_MESSAGE = 'Upload initiation did not return a result.';
@@ -94,6 +99,12 @@ final class StartUploadService
 
     public function startUploadBatch(StartUploadBatchCommand $command): StartUploadBatchResult
     {
+        $batchValidationError = $this->validateBatchSize($command);
+
+        if ($batchValidationError !== null) {
+            return new StartUploadBatchResult(files: [], userErrors: [$batchValidationError]);
+        }
+
         $accountId = new AccountId($command->accountId);
         $duplicatedClientFileIds = $this->duplicatedClientFileIds($command->files);
         $files = [];
@@ -103,6 +114,21 @@ final class StartUploadService
         }
 
         return new StartUploadBatchResult($files);
+    }
+
+    private function validateBatchSize(StartUploadBatchCommand $command): ?UserError
+    {
+        $fileCount = count($command->files);
+
+        if ($fileCount === 0) {
+            return new UserError(self::EMPTY_BATCH_CODE, self::EMPTY_BATCH_MESSAGE, 'files');
+        }
+
+        if ($fileCount > self::MAX_BATCH_FILE_COUNT) {
+            return new UserError(self::BATCH_TOO_LARGE_CODE, self::BATCH_TOO_LARGE_MESSAGE, 'files');
+        }
+
+        return null;
     }
 
     /**
