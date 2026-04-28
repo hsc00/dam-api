@@ -108,6 +108,18 @@ final class UploadTargetTest extends TestCase
     }
 
     #[Test]
+    #[DataProvider('allowedMockUrlProvider')]
+    public function itReturnsUploadTargetWhenMockUrlUsesAContiguousChunkIndex(string $url): void
+    {
+        // Act
+        $target = $this->createUploadTarget($url, []);
+
+        // Assert
+        self::assertSame($url, $target->url);
+        self::assertMatchesRegularExpression('#/chunk/(?:0|[1-9][0-9]*)$#', $target->url);
+    }
+
+    #[Test]
     #[DataProvider('schemeAndHostNormalizationProvider')]
     public function itReturnsNormalizedUrlWhenSchemeAndHostAreMixedCase(string $input, string $expected): void
     {
@@ -195,10 +207,23 @@ final class UploadTargetTest extends TestCase
             'empty upload id segment' => ['mock://uploads//chunk/0'],
             'invalid upload id segment' => ['mock://uploads/not-an-upload-id/chunk/0'],
             'wrong path literal' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunks/0'],
-            'wrong chunk index' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/1'],
+            'negative chunk index' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/-1'],
+            'non-numeric chunk index' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/one'],
+            'leading zero chunk index' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/01'],
             'trailing slash' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/0/'],
             'traversal-like upload id' => ['mock://uploads/../chunk/0'],
             'traversal-like middle segment' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/../0'],
+        ];
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function allowedMockUrlProvider(): array
+    {
+        return [
+            'first chunk' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/0'],
+            'later chunk' => ['mock://uploads/123e4567-e89b-42d3-a456-426614174000/chunk/12'],
         ];
     }
 

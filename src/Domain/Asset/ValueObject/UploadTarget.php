@@ -13,7 +13,7 @@ final readonly class UploadTarget
     private const ALLOWED_LOCAL_DEVELOPMENT_HOSTS = ['localhost', '127.0.0.1', '::1'];
     private const EMPTY_URL_MESSAGE = 'Upload target URL cannot be empty';
     private const INVALID_ABSOLUTE_URL_MESSAGE = 'Upload target URL must be a valid absolute URL';
-    private const LOCAL_DEVELOPMENT_MOCK_CHUNK_INDEX = '0';
+    private const LOCAL_DEVELOPMENT_MOCK_CHUNK_INDEX_PATTERN = '/^(0|[1-9][0-9]*)$/';
     private const LOCAL_DEVELOPMENT_MOCK_CHUNK_SEGMENT = 'chunk';
     private const LOCAL_DEVELOPMENT_MOCK_HOST = 'uploads';
     private const LOCAL_DEVELOPMENT_MOCK_PATH_SEGMENT_COUNT = 4;
@@ -197,7 +197,7 @@ final readonly class UploadTarget
         if (
             $leadingSlash !== ''
             || $chunkSegment !== self::LOCAL_DEVELOPMENT_MOCK_CHUNK_SEGMENT
-            || $chunkIndex !== self::LOCAL_DEVELOPMENT_MOCK_CHUNK_INDEX
+            || preg_match(self::LOCAL_DEVELOPMENT_MOCK_CHUNK_INDEX_PATTERN, $chunkIndex) !== 1
         ) {
             return false;
         }

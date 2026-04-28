@@ -14,19 +14,30 @@ use DateTimeImmutable;
 
 final class MockStorageAdapter implements StorageAdapterInterface
 {
-    private const CHUNK_INDEX = 0;
     private const COMPLETION_PROOF_NAME = 'etag';
     private const DETERMINISTIC_EXPIRY = '2100-01-01T00:00:00+00:00';
     private const URL_TEMPLATE = 'mock://uploads/%s/chunk/%d';
 
-    public function createUploadTarget(Asset $asset): UploadTarget
+    /**
+     * @return list<UploadTarget>
+     */
+    public function createUploadTargets(Asset $asset): array
     {
-        return new UploadTarget(
-            sprintf(self::URL_TEMPLATE, (string) $asset->getUploadId(), self::CHUNK_INDEX),
-            UploadHttpMethod::PUT,
-            [],
-            new UploadCompletionProof(self::COMPLETION_PROOF_NAME, UploadCompletionProofSource::RESPONSE_HEADER),
-            new DateTimeImmutable(self::DETERMINISTIC_EXPIRY),
-        );
+        $targets = [];
+
+        $completionProof = new UploadCompletionProof(self::COMPLETION_PROOF_NAME, UploadCompletionProofSource::RESPONSE_HEADER);
+        $expiry = new DateTimeImmutable(self::DETERMINISTIC_EXPIRY);
+
+        for ($chunkIndex = 0; $chunkIndex < $asset->getChunkCount(); $chunkIndex++) {
+            $targets[] = new UploadTarget(
+                sprintf(self::URL_TEMPLATE, (string) $asset->getUploadId(), $chunkIndex),
+                UploadHttpMethod::PUT,
+                [],
+                $completionProof,
+                $expiry,
+            );
+        }
+
+        return $targets;
     }
 }

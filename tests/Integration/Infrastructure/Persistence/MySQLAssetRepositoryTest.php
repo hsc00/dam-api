@@ -5,33 +5,24 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Infrastructure\Persistence;
 
 use App\Domain\Asset\Asset;
-use App\Domain\Asset\AssetStatus;
-use App\Domain\Asset\Exception\StaleAssetWriteException;
 use App\Domain\Asset\ValueObject\AccountId;
 use App\Domain\Asset\ValueObject\AssetId;
 use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 use App\Domain\Asset\ValueObject\UploadId;
 use App\Infrastructure\Persistence\MySQLAssetRepository;
-use App\Tests\Integration\Support\CompareAndSwapRacePdo;
-use Closure;
-use DateTimeImmutable;
 use PDO;
 use PDOException;
 use PHPUnit\Framework\Attributes\Test;
 
-final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
+final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
 {
-    private const DATETIME_FORMAT = 'Y-m-d H:i:s.u';
-    private const MIME_TYPE = 'image/png';
-    private const STALE_ASSET_WRITE_MESSAGE = 'Cannot save stale asset state.';
     private const CREATED_AT_2026_04_01_1300 = '2026-04-01 13:00:00.000000';
-    private const CREATED_AT_2026_04_01_1315 = '2026-04-01 13:15:00.000000';
 
     #[Test]
     public function itReturnsAssetWhenSavingAndReadingAPendingAsset(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '11111111-1111-4111-8111-111111111111',
@@ -47,10 +38,35 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
     }
 
     #[Test]
+    public function itReturnsAssetWhenSavingAndReadingAPendingAssetWithMultipleChunks(): void
+    {
+        // Arrange & Act
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            $repository = new MySQLAssetRepository($connection);
+            $asset = $this->pendingAsset(
+                assetId: '12121212-1212-4121-8121-121212121212',
+                uploadId: '34343434-3434-4434-8434-343434343434',
+                accountId: 'account-pending-chunks',
+                fileName: 'chunked-pending-image.png',
+                createdAt: '2026-04-01 10:15:00.000000',
+                chunkCount: 5,
+            );
+
+            $repository->save($asset);
+            $persistedAsset = $repository->findByUploadId($asset->getUploadId());
+
+            // Assert
+            self::assertNotNull($persistedAsset);
+            self::assertSame(5, $persistedAsset->getChunkCount());
+            $this->assertAssetMatches($asset, $persistedAsset);
+        });
+    }
+
+    #[Test]
     public function itReturnsAssetWhenSavingAndReadingAnUploadedAsset(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $asset = $this->uploadedAsset(
                 assetId: '33333333-3333-4333-8333-333333333333',
@@ -70,7 +86,7 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
     public function itReturnsUpdatedRowWhenAssetStateChanges(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '55555555-5555-4555-8555-555555555555',
@@ -94,7 +110,7 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
     public function itReturnsAcceptedStateWhenUpdatedAtRemainsEqual(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '56565656-5656-4565-8565-565656565656',
@@ -120,7 +136,7 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
     public function itReturnsSingleRowWhenSavingUnchangedAssetTwice(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '77777777-0000-4777-8777-777777777777',
@@ -140,202 +156,10 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
     }
 
     #[Test]
-    public function itThrowsStaleAssetWriteExceptionWhenSameAssetIdentityChangesImmutableField(): void
-    {
-        // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
-            $repository = $this->createRepository($connection);
-            $persistedAsset = $this->pendingAsset(
-                assetId: '12121212-1212-4212-8212-121212121212',
-                uploadId: '34343434-3434-4434-8434-343434343434',
-                accountId: 'account-immutable-field-guard',
-                fileName: 'original-name.png',
-                createdAt: '2026-04-01 12:45:00.000000',
-            );
-            $assetWithChangedImmutableField = $this->uploadedAsset(
-                assetId: (string) $persistedAsset->getId(),
-                uploadId: (string) $persistedAsset->getUploadId(),
-                accountId: (string) $persistedAsset->getAccountId(),
-                fileName: 'renamed-after-upload.png',
-                completionProof: 'etag-immutable-field-change',
-                persistedState: $this->persistedState(
-                    '2026-04-01 12:45:00.000000',
-                    1,
-                    '2026-04-01 12:50:00.000000',
-                ),
-            );
-
-            $repository->save($persistedAsset);
-
-            try {
-                $repository->save($assetWithChangedImmutableField);
-                self::fail('Expected immutable field change to throw a StaleAssetWriteException.');
-            } catch (StaleAssetWriteException $exception) {
-                self::assertSame(self::STALE_ASSET_WRITE_MESSAGE, $exception->getMessage());
-            }
-
-            $storedAsset = $repository->findById($persistedAsset->getId());
-
-            // Assert
-            $this->assertPersistedSingleRowMatches($connection, $persistedAsset, $storedAsset);
-        });
-    }
-
-    #[Test]
-    public function itThrowsStaleAssetWriteExceptionWhenSavingStaleAssetAndPreservesNewerPersistedState(): void
-    {
-        // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
-            $repository = $this->createRepository($connection);
-            $staleAsset = $this->pendingAsset(
-                assetId: '99999999-0000-4999-8999-999999999999',
-                uploadId: 'aaaaaaaa-0000-4aaa-8aaa-aaaaaaaaaaaa',
-                accountId: 'account-stale-save',
-                fileName: 'stale-copy.png',
-                createdAt: self::CREATED_AT_2026_04_01_1300,
-            );
-            $newerAsset = $this->uploadedAsset(
-                assetId: (string) $staleAsset->getId(),
-                uploadId: (string) $staleAsset->getUploadId(),
-                accountId: (string) $staleAsset->getAccountId(),
-                fileName: $staleAsset->getFileName(),
-                completionProof: 'etag-newer-state',
-                persistedState: $this->persistedState(
-                    self::CREATED_AT_2026_04_01_1300,
-                    1,
-                    '2026-04-01 13:05:00.000000',
-                ),
-            );
-
-            $repository->save($staleAsset);
-            $repository->save($newerAsset);
-
-            try {
-                $repository->save($staleAsset);
-                self::fail('Expected stale asset save to throw a StaleAssetWriteException.');
-            } catch (StaleAssetWriteException $exception) {
-                self::assertSame(self::STALE_ASSET_WRITE_MESSAGE, $exception->getMessage());
-            }
-
-            $persistedAsset = $repository->findById($staleAsset->getId());
-
-            // Assert
-            $this->assertPersistedSingleRowMatches($connection, $newerAsset, $persistedAsset);
-        });
-    }
-
-    #[Test]
-    public function itThrowsStaleAssetWriteExceptionWhenCompareAndSwapUpdateLosesRace(): void
-    {
-        // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
-            $repository = $this->createRepository($connection);
-            $persistedAsset = $this->pendingAsset(
-                assetId: '10101010-1010-4010-8010-101010101010',
-                uploadId: '20202020-2020-4020-8020-202020202020',
-                accountId: 'account-compare-and-swap-race',
-                fileName: 'race-window.png',
-                createdAt: self::CREATED_AT_2026_04_01_1315,
-            );
-            $uploadedAsset = $this->uploadedAsset(
-                assetId: (string) $persistedAsset->getId(),
-                uploadId: (string) $persistedAsset->getUploadId(),
-                accountId: (string) $persistedAsset->getAccountId(),
-                fileName: $persistedAsset->getFileName(),
-                completionProof: 'etag-race-winner',
-                persistedState: $this->persistedState(
-                    self::CREATED_AT_2026_04_01_1315,
-                    1,
-                    '2026-04-01 13:20:00.000000',
-                ),
-            );
-            $concurrentPersistedAsset = Asset::reconstitute(
-                new AssetId((string) $persistedAsset->getId()),
-                new UploadId((string) $persistedAsset->getUploadId()),
-                new AccountId((string) $persistedAsset->getAccountId()),
-                $persistedAsset->getFileName(),
-                $persistedAsset->getMimeType(),
-                AssetStatus::FAILED,
-                $this->persistedState(
-                    self::CREATED_AT_2026_04_01_1315,
-                    1,
-                    '2026-04-01 13:18:00.000000',
-                ),
-            );
-
-            $repository->save($persistedAsset);
-
-            $raceConnection = $this->createCompareAndSwapRaceConnection(
-                $this->currentDatabaseName($connection),
-                function () use ($connection, $persistedAsset, $concurrentPersistedAsset): void {
-                    $this->forceFailedAssetState($connection, $persistedAsset, $concurrentPersistedAsset->getUpdatedAt());
-                },
-            );
-            $raceRepository = $this->createRepository($raceConnection);
-
-            try {
-                $raceRepository->save($uploadedAsset);
-                self::fail('Expected compare-and-swap update to throw a StaleAssetWriteException.');
-            } catch (StaleAssetWriteException $exception) {
-                self::assertSame(self::STALE_ASSET_WRITE_MESSAGE, $exception->getMessage());
-            }
-
-            $persistedAfterRace = $repository->findById($persistedAsset->getId());
-
-            // Assert
-            $this->assertPersistedSingleRowMatches($connection, $concurrentPersistedAsset, $persistedAfterRace);
-        });
-    }
-
-    #[Test]
-    public function itReturnsSuccessfullyWhenTheCompareAndSwapUpdateLosesARaceButTheRowAlreadyMatchesTheDesiredState(): void
-    {
-        // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
-            $repository = $this->createRepository($connection);
-            $persistedAsset = $this->pendingAsset(
-                assetId: '30303030-3030-4030-8030-303030303030',
-                uploadId: '40404040-4040-4040-8040-404040404040',
-                accountId: 'account-compare-and-swap-idempotent-race',
-                fileName: 'race-idempotent.png',
-                createdAt: '2026-04-01 13:25:00.000000',
-            );
-            $uploadedAsset = $this->uploadedAsset(
-                assetId: (string) $persistedAsset->getId(),
-                uploadId: (string) $persistedAsset->getUploadId(),
-                accountId: (string) $persistedAsset->getAccountId(),
-                fileName: $persistedAsset->getFileName(),
-                completionProof: 'etag-idempotent-race-winner',
-                persistedState: $this->persistedState(
-                    '2026-04-01 13:25:00.000000',
-                    1,
-                    '2026-04-01 13:30:00.000000',
-                ),
-            );
-
-            $repository->save($persistedAsset);
-
-            $raceConnection = $this->createCompareAndSwapRaceConnection(
-                $this->currentDatabaseName($connection),
-                function () use ($connection, $uploadedAsset): void {
-                    $this->forceUploadedAssetState($connection, $uploadedAsset);
-                },
-            );
-            $raceRepository = $this->createRepository($raceConnection);
-
-            $raceRepository->save($uploadedAsset);
-            $persistedAfterRace = $repository->findById($persistedAsset->getId());
-
-            // Assert
-            $this->assertPersistedSingleRowMatches($connection, $uploadedAsset, $persistedAfterRace);
-        });
-    }
-
-    #[Test]
     public function itReturnsNullWhenAnAssetIsMissing(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $missingAsset = $repository->findById(new AssetId('77777777-7777-4777-8777-777777777777'));
             $missingUpload = $repository->findByUploadId(new UploadId('88888888-8888-4888-8888-888888888888'));
@@ -350,7 +174,7 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
     public function itReturnsMatchingAssetsWhenSearchingByFileNameWithinAccountUsingDeterministicOrdering(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $accountId = new AccountId('account-search');
             $expectedFirst = $this->uploadedAsset(
@@ -409,7 +233,7 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
     public function itReturnsAnEmptyListWhenSearchQueryIsEmptyAfterTrimming(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $results = $repository->searchByFileName(new AccountId('account-empty-search'), " \n\t ");
 
@@ -422,7 +246,7 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
     public function itThrowsPdoExceptionWhenDifferentAssetReusesExistingUploadId(): void
     {
         // Arrange & Act
-        $this->withTemporarySchema(function (PDO $connection): void {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
             $repository = $this->createRepository($connection);
             $existingAsset = $this->pendingAsset(
                 assetId: '55555555-eeee-4555-8555-555555555555',
@@ -459,176 +283,11 @@ final class MySQLAssetRepositoryTest extends BaseAssetsTableTestCase
         return new MySQLAssetRepository($connection);
     }
 
-    private function createCompareAndSwapRaceConnection(string $databaseName, Closure $beforeCompareAndSwap): PDO
-    {
-        $selectedConnection = $this->selectedConnection;
-
-        if ($selectedConnection === null) {
-            self::fail('MySQL connection settings were not initialized.');
-        }
-
-        return new CompareAndSwapRacePdo(
-            sprintf(
-                'mysql:host=%s;port=%d;dbname=%s;charset=utf8mb4',
-                $selectedConnection['host'],
-                $selectedConnection['port'],
-                $databaseName,
-            ),
-            $selectedConnection['user'],
-            $selectedConnection['password'],
-            $beforeCompareAndSwap,
-        );
-    }
-
-    private function currentDatabaseName(PDO $connection): string
-    {
-        $statement = $connection->prepare('SELECT DATABASE() AS database_name');
-        $statement->execute();
-        $row = $statement->fetch();
-
-        if (! is_array($row)) {
-            self::fail('Unexpected database name query result.');
-        }
-
-        $databaseName = $row['database_name'] ?? null;
-
-        if (! is_string($databaseName) || trim($databaseName) === '') {
-            self::fail('Unexpected database name query result.');
-        }
-
-        return $databaseName;
-    }
-
-    private function forceFailedAssetState(PDO $connection, Asset $asset, DateTimeImmutable $updatedAt): void
-    {
-        $statement = $connection->prepare(
-            'UPDATE assets
-             SET status = :status,
-                 updated_at = :updated_at
-             WHERE id = :id',
-        );
-        $statement->execute([
-            'id' => (string) $asset->getId(),
-            'status' => AssetStatus::FAILED->value,
-            'updated_at' => $updatedAt->format(self::DATETIME_FORMAT),
-        ]);
-    }
-
-    private function forceUploadedAssetState(PDO $connection, Asset $asset): void
-    {
-        $statement = $connection->prepare(
-            'UPDATE assets
-             SET status = :status,
-                 chunk_count = :chunk_count,
-                 completion_proof = :completion_proof,
-                 updated_at = :updated_at
-             WHERE id = :id',
-        );
-        $statement->execute([
-            'id' => (string) $asset->getId(),
-            'status' => $asset->getStatus()->value,
-            'chunk_count' => $asset->getChunkCount(),
-            'completion_proof' => $asset->getCompletionProof()?->value,
-            'updated_at' => $asset->getUpdatedAt()->format(self::DATETIME_FORMAT),
-        ]);
-    }
-
     private function assertPersistedSingleRowMatches(PDO $connection, Asset $expectedAsset, ?Asset $actualAsset): void
     {
-        $statement = $connection->prepare('SELECT COUNT(*) AS asset_count FROM assets');
-        $statement->execute();
-        $row = $statement->fetch();
-
-        if (! is_array($row)) {
-            self::fail('Unexpected count query result.');
-        }
-
-        $assetCount = $row['asset_count'] ?? null;
-
-        if (! is_numeric($assetCount)) {
-            self::fail('Unexpected count query result.');
-        }
-
         self::assertNotNull($actualAsset);
-        self::assertSame(1, (int) $assetCount);
+        self::assertSame(1, $this->countAssets($connection));
         $this->assertAssetMatches($expectedAsset, $actualAsset);
-    }
-
-    private function pendingAsset(
-        string $assetId,
-        string $uploadId,
-        string $accountId,
-        string $fileName,
-        string $createdAt,
-        ?string $updatedAt = null,
-        int $chunkCount = 1,
-    ): Asset {
-        return Asset::reconstitute(
-            new AssetId($assetId),
-            new UploadId($uploadId),
-            new AccountId($accountId),
-            $fileName,
-            self::MIME_TYPE,
-            AssetStatus::PENDING,
-            $this->persistedState($createdAt, $chunkCount, $updatedAt),
-        );
-    }
-
-    /**
-     * @param array{createdAt: DateTimeImmutable, chunkCount: int, updatedAt: DateTimeImmutable} $persistedState
-     */
-    private function uploadedAsset(
-        string $assetId,
-        string $uploadId,
-        string $accountId,
-        string $fileName,
-        string $completionProof,
-        array $persistedState,
-    ): Asset {
-        return Asset::reconstituteUploaded(
-            new AssetId($assetId),
-            new UploadId($uploadId),
-            new AccountId($accountId),
-            $fileName,
-            self::MIME_TYPE,
-            new UploadCompletionProofValue($completionProof),
-            $persistedState,
-        );
-    }
-
-    /**
-     * @return array{createdAt: DateTimeImmutable, chunkCount: int, updatedAt: DateTimeImmutable}
-     */
-    private function persistedState(string $createdAt, int $chunkCount = 1, ?string $updatedAt = null): array
-    {
-        return [
-            'createdAt' => new DateTimeImmutable($createdAt, new \DateTimeZone('UTC')),
-            'chunkCount' => $chunkCount,
-            'updatedAt' => new DateTimeImmutable($updatedAt ?? $createdAt, new \DateTimeZone('UTC')),
-        ];
-    }
-
-    private function assertAssetMatches(Asset $expected, Asset $actual): void
-    {
-        self::assertSame((string) $expected->getId(), (string) $actual->getId());
-        self::assertSame((string) $expected->getUploadId(), (string) $actual->getUploadId());
-        self::assertSame((string) $expected->getAccountId(), (string) $actual->getAccountId());
-        self::assertSame($expected->getFileName(), $actual->getFileName());
-        self::assertSame($expected->getMimeType(), $actual->getMimeType());
-        self::assertSame($expected->getStatus(), $actual->getStatus());
-        self::assertSame($expected->getChunkCount(), $actual->getChunkCount());
-        self::assertSame(
-            $expected->getCompletionProof()?->value,
-            $actual->getCompletionProof()?->value,
-        );
-        self::assertSame(
-            $expected->getCreatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
-            $actual->getCreatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
-        );
-        self::assertSame(
-            $expected->getUpdatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
-            $actual->getUpdatedAt()->setTimezone(new \DateTimeZone('UTC'))->format(self::DATETIME_FORMAT),
-        );
     }
 
     private function assertFoundByIdAndUploadId(MySQLAssetRepository $repository, Asset $asset): void

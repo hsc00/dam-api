@@ -38,30 +38,35 @@ final class MockStorageAdapterTest extends TestCase
         $asset = $this->pendingAsset(self::FIRST_ASSET_ID, self::FIRST_UPLOAD_ID, 4);
 
         // Act
-        $target = $adapter->createUploadTarget($asset);
+        $targets = $adapter->createUploadTargets($asset);
 
         // Assert
-        self::assertSame('mock://uploads/' . self::FIRST_UPLOAD_ID . '/chunk/0', $target->url);
-        self::assertSame(UploadHttpMethod::PUT, $target->method);
-        self::assertSame([], $target->signedHeaders);
-        self::assertSame('etag', $target->completionProof->name);
-        self::assertSame(UploadCompletionProofSource::RESPONSE_HEADER, $target->completionProof->source);
-        self::assertEquals(new DateTimeImmutable(self::DETERMINISTIC_EXPIRY), $target->expiresAt);
+        self::assertSame([
+            'mock://uploads/' . self::FIRST_UPLOAD_ID . '/chunk/0',
+            'mock://uploads/' . self::FIRST_UPLOAD_ID . '/chunk/1',
+            'mock://uploads/' . self::FIRST_UPLOAD_ID . '/chunk/2',
+            'mock://uploads/' . self::FIRST_UPLOAD_ID . '/chunk/3',
+        ], $this->targetUrls($targets));
+        self::assertSame(UploadHttpMethod::PUT, $targets[0]->method);
+        self::assertSame([], $targets[0]->signedHeaders);
+        self::assertSame('etag', $targets[0]->completionProof->name);
+        self::assertSame(UploadCompletionProofSource::RESPONSE_HEADER, $targets[0]->completionProof->source);
+        self::assertEquals(new DateTimeImmutable(self::DETERMINISTIC_EXPIRY), $targets[0]->expiresAt);
     }
 
     #[Test]
-    public function itReturnsTheSameUploadTargetWhenCalledRepeatedlyForTheSameAsset(): void
+    public function itReturnsTheSameUploadTargetsWhenCalledRepeatedlyForTheSameAsset(): void
     {
         // Arrange
         $adapter = new MockStorageAdapter();
-        $asset = $this->pendingAsset(self::FIRST_ASSET_ID, self::FIRST_UPLOAD_ID);
+        $asset = $this->pendingAsset(self::FIRST_ASSET_ID, self::FIRST_UPLOAD_ID, 2);
 
         // Act
-        $firstTarget = $adapter->createUploadTarget($asset);
-        $secondTarget = $adapter->createUploadTarget($asset);
+        $firstTargets = $adapter->createUploadTargets($asset);
+        $secondTargets = $adapter->createUploadTargets($asset);
 
         // Assert
-        self::assertSame($this->targetSnapshot($firstTarget), $this->targetSnapshot($secondTarget));
+        self::assertSame($this->targetsSnapshot($firstTargets), $this->targetsSnapshot($secondTargets));
     }
 
     #[Test]
@@ -69,16 +74,22 @@ final class MockStorageAdapterTest extends TestCase
     {
         // Arrange
         $adapter = new MockStorageAdapter();
-        $firstAsset = $this->pendingAsset(self::FIRST_ASSET_ID, self::FIRST_UPLOAD_ID);
-        $secondAsset = $this->pendingAsset(self::SECOND_ASSET_ID, self::SECOND_UPLOAD_ID);
+        $firstAsset = $this->pendingAsset(self::FIRST_ASSET_ID, self::FIRST_UPLOAD_ID, 2);
+        $secondAsset = $this->pendingAsset(self::SECOND_ASSET_ID, self::SECOND_UPLOAD_ID, 2);
 
         // Act
-        $firstTarget = $adapter->createUploadTarget($firstAsset);
-        $secondTarget = $adapter->createUploadTarget($secondAsset);
+        $firstTargets = $adapter->createUploadTargets($firstAsset);
+        $secondTargets = $adapter->createUploadTargets($secondAsset);
 
         // Assert
-        self::assertSame('mock://uploads/' . self::FIRST_UPLOAD_ID . '/chunk/0', $firstTarget->url);
-        self::assertSame('mock://uploads/' . self::SECOND_UPLOAD_ID . '/chunk/0', $secondTarget->url);
+        self::assertSame([
+            'mock://uploads/' . self::FIRST_UPLOAD_ID . '/chunk/0',
+            'mock://uploads/' . self::FIRST_UPLOAD_ID . '/chunk/1',
+        ], $this->targetUrls($firstTargets));
+        self::assertSame([
+            'mock://uploads/' . self::SECOND_UPLOAD_ID . '/chunk/0',
+            'mock://uploads/' . self::SECOND_UPLOAD_ID . '/chunk/1',
+        ], $this->targetUrls($secondTargets));
     }
 
     private function pendingAsset(string $assetId, string $uploadId, int $chunkCount = 1): Asset
@@ -99,27 +110,45 @@ final class MockStorageAdapterTest extends TestCase
     }
 
     /**
-     * @return array{
+     * @param list<UploadTarget> $targets
+     *
+     * @return list<array{
      *     url: string,
      *     method: string,
      *     signedHeaders: list<string>,
      *     completionProofName: string,
      *     completionProofSource: string,
      *     expiresAt: string
-     * }
+     * }>
      */
-    private function targetSnapshot(UploadTarget $target): array
+    private function targetsSnapshot(array $targets): array
     {
-        return [
-            'url' => $target->url,
-            'method' => $target->method->value,
-            'signedHeaders' => array_map(
-                static fn ($signedHeader): string => $signedHeader->name . ':' . $signedHeader->value,
-                $target->signedHeaders,
-            ),
-            'completionProofName' => $target->completionProof->name,
-            'completionProofSource' => $target->completionProof->source->value,
-            'expiresAt' => $target->expiresAt->format(DATE_ATOM),
-        ];
+        return array_map(
+            fn (UploadTarget $target): array => [
+                'url' => $target->url,
+                'method' => $target->method->value,
+                'signedHeaders' => array_map(
+                    static fn ($signedHeader): string => $signedHeader->name . ':' . $signedHeader->value,
+                    $target->signedHeaders,
+                ),
+                'completionProofName' => $target->completionProof->name,
+                'completionProofSource' => $target->completionProof->source->value,
+                'expiresAt' => $target->expiresAt->format(DATE_ATOM),
+            ],
+            $targets,
+        );
+    }
+
+    /**
+     * @param list<UploadTarget> $targets
+     *
+     * @return list<string>
+     */
+    private function targetUrls(array $targets): array
+    {
+        return array_map(
+            static fn (UploadTarget $target): string => $target->url,
+            $targets,
+        );
     }
 }
