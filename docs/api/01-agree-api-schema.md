@@ -107,7 +107,7 @@ mutation StartUpload($input: StartUploadInput!) {
 
 ### `completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!`
 
-Completes one upload after the client has sent the file and captured the required completion proof.
+Completes one upload after the client has sent the file and captured the required completion proof. When accepted, the asset moves into background processing immediately.
 
 **Input Fields**
 
@@ -121,8 +121,18 @@ Completes one upload after the client has sent the file and captured the require
 
 | Field           | Type            | Description                                                    |
 | --------------- | --------------- | -------------------------------------------------------------- |
-| `success.asset` | `Asset`         | Updated asset after a successful completion.                   |
+| `success.asset` | `Asset`         | Updated asset after a successful completion starts processing. |
 | `userErrors`    | `[UserError!]!` | Business validation errors when completion cannot be accepted. |
+
+**Business Error Codes**
+
+| Code                       | Meaning                                                                |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `ASSET_NOT_FOUND`          | The asset id does not exist in the authenticated caller account scope. |
+| `INVALID_ASSET_ID`         | The supplied asset id is not a valid asset identifier.                 |
+| `INVALID_UPLOAD_GRANT`     | The server-issued upload grant is missing or does not match the asset. |
+| `INVALID_COMPLETION_PROOF` | The completion proof is missing or blank.                              |
+| `INVALID_ASSET_STATE`      | The asset is already processing or is otherwise not completable now.   |
 
 **Example**
 
@@ -165,11 +175,12 @@ Non-negative file size in bytes. This allows values beyond the GraphQL `Int` ran
 
 ### `AssetStatus`
 
-| Value      | Meaning                                 |
-| ---------- | --------------------------------------- |
-| `PENDING`  | Upload has started but is not complete. |
-| `UPLOADED` | Upload completed successfully.          |
-| `FAILED`   | Upload failed.                          |
+| Value        | Meaning                                                 |
+| ------------ | ------------------------------------------------------- |
+| `PENDING`    | Upload has started but is not complete.                 |
+| `PROCESSING` | Upload completed and background processing has started. |
+| `UPLOADED`   | Upload completed successfully.                          |
+| `FAILED`     | Upload failed.                                          |
 
 ### `UploadTarget`
 
@@ -226,9 +237,9 @@ Clients must perform a network upload only when `UploadTarget.url` uses `https:/
 
 ### `CompleteUploadSuccess`
 
-| Field   | Type     | Description                                  |
-| ------- | -------- | -------------------------------------------- |
-| `asset` | `Asset!` | Updated asset after a successful completion. |
+| Field   | Type     | Description                                                    |
+| ------- | -------- | -------------------------------------------------------------- |
+| `asset` | `Asset!` | Updated asset after a successful completion starts processing. |
 
 ### `CompleteUploadPayload`
 

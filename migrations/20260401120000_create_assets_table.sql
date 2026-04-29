@@ -12,10 +12,10 @@ CREATE TABLE IF NOT EXISTS assets (
     PRIMARY KEY (id),
     KEY idx_assets_account_id (account_id),
     UNIQUE KEY uq_assets_upload_id (upload_id),
-    CONSTRAINT chk_assets_status CHECK (status IN ('PENDING', 'UPLOADED', 'FAILED')),
+    CONSTRAINT chk_assets_status CHECK (status IN ('PENDING', 'PROCESSING', 'UPLOADED', 'FAILED')),
     CONSTRAINT chk_assets_chunk_count_positive CHECK (chunk_count >= 1),
     CONSTRAINT chk_assets_completion_proof_matches_status CHECK (
-        (status = 'UPLOADED' AND completion_proof IS NOT NULL AND completion_proof REGEXP '[^[:space:]]')
+        (status IN ('PROCESSING', 'UPLOADED') AND completion_proof IS NOT NULL AND completion_proof REGEXP '[^[:space:]]')
         OR (status IN ('PENDING', 'FAILED') AND completion_proof IS NULL)
     ),
     CONSTRAINT chk_assets_updated_at_not_before_created_at CHECK (updated_at >= created_at)

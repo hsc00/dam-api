@@ -25,6 +25,9 @@ enum AssetStatus {
   "The upload has started but is not complete."
   PENDING
 
+  "The upload completed and background processing has started."
+  PROCESSING
+
   "The upload has been completed successfully."
   UPLOADED
 
@@ -283,6 +286,6 @@ type Mutation {
   "Start multiple uploads and receive one upload target per chunk for each accepted file."
   startUploadBatch(input: StartUploadBatchInput!): StartUploadBatchPayload!
 
-  "Complete one upload after the file is sent."
+  "Complete one upload after the file is sent and move it into processing."
   completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!
 }

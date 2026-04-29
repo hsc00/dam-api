@@ -11,6 +11,7 @@ use App\GraphQL\SchemaFactory;
 use App\Http\Exception\MissingEnvironmentVariableException;
 use App\Http\GraphQLHandler;
 use App\Infrastructure\Persistence\MySQLAssetRepository;
+use App\Infrastructure\Processing\MockAssetProcessingJobDispatcher;
 use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
 use Monolog\Handler\StreamHandler;
@@ -117,7 +118,11 @@ try {
         new MockStorageAdapter(),
         $uploadGrantIssuer,
     );
-    $completeUploadService = new CompleteUploadService($assetRepository, $uploadGrantIssuer);
+    $completeUploadService = new CompleteUploadService(
+        $assetRepository,
+        $uploadGrantIssuer,
+        new MockAssetProcessingJobDispatcher(),
+    );
     $schemaFactory = new SchemaFactory(
         new StartUploadResolver($startUploadService),
         new StartUploadBatchResolver($startUploadService),

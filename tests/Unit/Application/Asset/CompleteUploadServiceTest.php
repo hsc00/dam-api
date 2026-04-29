@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Application\Asset;
 
+use App\Application\Asset\AssetProcessingJobDispatcherInterface;
 use App\Application\Asset\Command\CompleteUploadCommand;
 use App\Application\Asset\CompleteUploadService;
 use App\Application\Asset\UploadGrantIssuerInterface;
@@ -11,7 +12,9 @@ use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\AssetStatus;
 use App\Domain\Asset\ValueObject\AccountId;
+use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 use App\Domain\Asset\ValueObject\UploadId;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -19,6 +22,7 @@ use PHPUnit\Framework\TestCase;
 final class CompleteUploadServiceTest extends TestCase
 {
     private AssetRepositoryInterface&MockObject $assets;
+    private AssetProcessingJobDispatcherInterface&MockObject $assetProcessingJobDispatcher;
     private UploadGrantIssuerInterface&MockObject $uploadGrantIssuer;
     private CompleteUploadService $service;
 
@@ -27,12 +31,17 @@ final class CompleteUploadServiceTest extends TestCase
         parent::setUp();
 
         $this->assets = $this->createMock(AssetRepositoryInterface::class);
+        $this->assetProcessingJobDispatcher = $this->createMock(AssetProcessingJobDispatcherInterface::class);
         $this->uploadGrantIssuer = $this->createMock(UploadGrantIssuerInterface::class);
-        $this->service = new CompleteUploadService($this->assets, $this->uploadGrantIssuer);
+        $this->service = new CompleteUploadService(
+            $this->assets,
+            $this->uploadGrantIssuer,
+            $this->assetProcessingJobDispatcher,
+        );
     }
 
     #[Test]
-    public function itMarksPendingAssetAsUploadedWhenGrantAndCompletionProofAreValid(): void
+    public function itMarksPendingAssetAsProcessingAndDispatchesAProcessingJobWhenGrantAndCompletionProofAreValid(): void
     {
         // Arrange
         $asset = $this->createPendingAsset();
@@ -52,6 +61,10 @@ final class CompleteUploadServiceTest extends TestCase
             ->method('issueForAsset')
             ->with($asset)
             ->willReturn('grant-123');
+        $this->assetProcessingJobDispatcher
+            ->expects($this->once())
+            ->method('dispatch')
+            ->with($asset->getId());
 
         // Act
         $result = $this->service->completeUpload(
@@ -66,9 +79,9 @@ final class CompleteUploadServiceTest extends TestCase
         // Assert
         self::assertNotNull($result->success);
         self::assertSame([], $result->userErrors);
-        self::assertSame(AssetStatus::UPLOADED, $result->success->asset['status']);
+        self::assertSame(AssetStatus::PROCESSING, $result->success->asset['status']);
         self::assertCount(1, $savedAssets);
-        self::assertSame(AssetStatus::UPLOADED, $savedAssets[0]->getStatus());
+        self::assertSame(AssetStatus::PROCESSING, $savedAssets[0]->getStatus());
         self::assertSame('etag-123', $savedAssets[0]->getCompletionProof()?->value);
     }
 
@@ -79,6 +92,9 @@ final class CompleteUploadServiceTest extends TestCase
         $this->assets
             ->expects($this->never())
             ->method('findById');
+        $this->assetProcessingJobDispatcher
+            ->expects($this->never())
+            ->method('dispatch');
         $this->uploadGrantIssuer
             ->expects($this->never())
             ->method('issueForAsset');
@@ -113,6 +129,9 @@ final class CompleteUploadServiceTest extends TestCase
         $this->assets
             ->expects($this->never())
             ->method('save');
+        $this->assetProcessingJobDispatcher
+            ->expects($this->never())
+            ->method('dispatch');
         $this->uploadGrantIssuer
             ->expects($this->never())
             ->method('issueForAsset');
@@ -133,6 +152,42 @@ final class CompleteUploadServiceTest extends TestCase
     }
 
     #[Test]
+    public function itReturnsAssetNotFoundWhenTheAssetDoesNotExist(): void
+    {
+        // Arrange
+        $this->assets
+            ->expects($this->once())
+            ->method('findById')
+            ->willReturn(null);
+        $this->assets
+            ->expects($this->never())
+            ->method('save');
+        $this->assetProcessingJobDispatcher
+            ->expects($this->never())
+            ->method('dispatch');
+        $this->uploadGrantIssuer
+            ->expects($this->never())
+            ->method('issueForAsset');
+
+        // Act
+        $result = $this->service->completeUpload(
+            new CompleteUploadCommand(
+                accountId: 'account-123',
+                assetId: '123e4567-e89b-42d3-a456-426614174000',
+                uploadGrant: 'grant-123',
+                completionProof: 'etag-123',
+            ),
+        );
+
+        // Assert
+        self::assertNull($result->success);
+        self::assertCount(1, $result->userErrors);
+        self::assertSame('ASSET_NOT_FOUND', $result->userErrors[0]->code);
+        self::assertSame('Asset not found.', $result->userErrors[0]->message);
+        self::assertSame('assetId', $result->userErrors[0]->field);
+    }
+
+    #[Test]
     public function itReturnsAUserErrorWhenTheUploadGrantDoesNotMatchTheAsset(): void
     {
         // Arrange
@@ -144,6 +199,9 @@ final class CompleteUploadServiceTest extends TestCase
         $this->assets
             ->expects($this->never())
             ->method('save');
+        $this->assetProcessingJobDispatcher
+            ->expects($this->never())
+            ->method('dispatch');
         $this->uploadGrantIssuer
             ->expects($this->once())
             ->method('issueForAsset')
@@ -165,6 +223,63 @@ final class CompleteUploadServiceTest extends TestCase
         self::assertSame('INVALID_UPLOAD_GRANT', $result->userErrors[0]->code);
     }
 
+    #[Test]
+    #[DataProvider('invalidCompletionStateProvider')]
+    public function itReturnsAUserErrorWhenTheAssetCannotBeCompletedFromItsCurrentState(AssetStatus $status, string $expectedMessage): void
+    {
+        // Arrange
+        $asset = match ($status) {
+            AssetStatus::UPLOADED => $this->createUploadedAsset(),
+            AssetStatus::PROCESSING => $this->createProcessingAsset(),
+            AssetStatus::FAILED => $this->createFailedAsset(),
+            default => throw new \UnexpectedValueException('Unsupported asset status for this test.'),
+        };
+        $this->assets
+            ->expects($this->once())
+            ->method('findById')
+            ->willReturn($asset);
+        $this->assets
+            ->expects($this->never())
+            ->method('save');
+        $this->assetProcessingJobDispatcher
+            ->expects($this->never())
+            ->method('dispatch');
+        $this->uploadGrantIssuer
+            ->expects($this->once())
+            ->method('issueForAsset')
+            ->with($asset)
+            ->willReturn('grant-123');
+
+        // Act
+        $result = $this->service->completeUpload(
+            new CompleteUploadCommand(
+                accountId: 'account-123',
+                assetId: (string) $asset->getId(),
+                uploadGrant: 'grant-123',
+                completionProof: 'etag-123',
+            ),
+        );
+
+        // Assert
+        self::assertNull($result->success);
+        self::assertCount(1, $result->userErrors);
+        self::assertSame('INVALID_ASSET_STATE', $result->userErrors[0]->code);
+        self::assertSame($expectedMessage, $result->userErrors[0]->message);
+        self::assertSame('assetId', $result->userErrors[0]->field);
+    }
+
+    /**
+     * @return array<string, array{0: AssetStatus, 1: string}>
+     */
+    public static function invalidCompletionStateProvider(): array
+    {
+        return [
+            'already uploaded' => [AssetStatus::UPLOADED, 'Cannot process asset from current state'],
+            'already processing' => [AssetStatus::PROCESSING, 'Asset already processing'],
+            'failed asset' => [AssetStatus::FAILED, 'Cannot process asset from current state'],
+        ];
+    }
+
     private function createPendingAsset(string $accountId = 'account-123'): Asset
     {
         return Asset::createPending(
@@ -173,5 +288,29 @@ final class CompleteUploadServiceTest extends TestCase
             'report.pdf',
             'application/pdf',
         );
+    }
+
+    private function createProcessingAsset(string $accountId = 'account-123'): Asset
+    {
+        $asset = $this->createPendingAsset($accountId);
+        $asset->markProcessing(new UploadCompletionProofValue('etag-processing'));
+
+        return $asset;
+    }
+
+    private function createFailedAsset(string $accountId = 'account-123'): Asset
+    {
+        $asset = $this->createPendingAsset($accountId);
+        $asset->markFailed();
+
+        return $asset;
+    }
+
+    private function createUploadedAsset(string $accountId = 'account-123'): Asset
+    {
+        $asset = $this->createPendingAsset($accountId);
+        $asset->markUploaded(new UploadCompletionProofValue('etag-uploaded'));
+
+        return $asset;
     }
 }
