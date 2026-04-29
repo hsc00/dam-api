@@ -34,6 +34,7 @@ final class CompleteUploadService
     public function __construct(
         private readonly AssetRepositoryInterface $assets,
         private readonly UploadGrantIssuerInterface $uploadGrantIssuer,
+        private readonly AssetProcessingJobDispatcherInterface $assetProcessingJobDispatcher,
     ) {
     }
 
@@ -70,8 +71,9 @@ final class CompleteUploadService
             $userErrors[] = new UserError(self::INVALID_UPLOAD_GRANT_CODE, self::INVALID_UPLOAD_GRANT_MESSAGE, 'uploadGrant');
         } else {
             try {
-                $asset->markUploaded($completionProof);
+                $asset->markProcessing($completionProof);
                 $this->assets->save($asset);
+                $this->assetProcessingJobDispatcher->dispatch($asset->getId());
                 $success = new CompleteUploadSuccess($this->mapAsset($asset));
             } catch (AssetDomainException $exception) {
                 $userErrors[] = $this->mapDomainException($exception);
@@ -105,6 +107,8 @@ final class CompleteUploadService
     {
         return match ($exception->getMessage()) {
             'Asset already uploaded' => new UserError(self::ASSET_ALREADY_UPLOADED_CODE, $exception->getMessage(), 'assetId'),
+            'Asset already processing' => new UserError(self::INVALID_ASSET_STATE_CODE, $exception->getMessage(), 'assetId'),
+            'Cannot process asset from current state' => new UserError(self::INVALID_ASSET_STATE_CODE, $exception->getMessage(), 'assetId'),
             'Cannot upload asset from current state' => new UserError(self::INVALID_ASSET_STATE_CODE, $exception->getMessage(), 'assetId'),
             default => new UserError(self::COMPLETE_UPLOAD_FAILED_CODE, $exception->getMessage()),
         };

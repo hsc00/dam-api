@@ -179,6 +179,28 @@ abstract class BaseMySQLAssetRepositoryTestCase extends BaseAssetsTableTestCase
     }
 
     /**
+     * @param array{createdAt: DateTimeImmutable, chunkCount: int, updatedAt: DateTimeImmutable} $persistedState
+     */
+    protected function processingAsset(
+        string $assetId,
+        string $uploadId,
+        string $accountId,
+        string $fileName,
+        string $completionProof,
+        array $persistedState,
+    ): Asset {
+        return Asset::reconstituteProcessing(
+            new AssetId($assetId),
+            new UploadId($uploadId),
+            new AccountId($accountId),
+            $fileName,
+            self::MIME_TYPE,
+            new UploadCompletionProofValue($completionProof),
+            $persistedState,
+        );
+    }
+
+    /**
      * @return array{createdAt: DateTimeImmutable, chunkCount: int, updatedAt: DateTimeImmutable}
      */
     protected function persistedState(string $createdAt, int $chunkCount = 1, ?string $updatedAt = null): array

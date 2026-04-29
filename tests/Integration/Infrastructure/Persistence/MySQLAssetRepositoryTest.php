@@ -97,7 +97,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             );
 
             $repository->save($asset);
-            $asset->markUploaded(new UploadCompletionProofValue('etag-after-upload'));
+            $asset->markProcessing(new UploadCompletionProofValue('etag-after-upload'));
             $repository->save($asset);
             $persistedAsset = $repository->findById($asset->getId());
 
@@ -122,7 +122,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             $originalUpdatedAt = $asset->getUpdatedAt()->format(self::DATETIME_FORMAT);
 
             $repository->save($asset);
-            $asset->markUploaded(new UploadCompletionProofValue('etag-equal-updated-at'));
+            $asset->markProcessing(new UploadCompletionProofValue('etag-equal-updated-at'));
             $repository->save($asset);
             $persistedAsset = $repository->findById($asset->getId());
 

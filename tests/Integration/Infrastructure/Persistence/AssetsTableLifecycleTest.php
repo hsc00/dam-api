@@ -18,6 +18,7 @@ final class AssetsTableLifecycleTest extends BaseAssetsTableTestCase
         $this->withTemporarySchema(function (PDO $connection) use ($rowType): void {
             $row = match ($rowType) {
                 'pending' => $this->validPendingRow(),
+                'processing' => $this->validProcessingRow(),
                 'failed' => $this->validFailedRow(),
                 'uploaded' => $this->validUploadedRow(),
                 default => throw new \UnexpectedValueException('Unknown lifecycle row type'),
@@ -50,6 +51,7 @@ final class AssetsTableLifecycleTest extends BaseAssetsTableTestCase
         $this->withTemporarySchema(function (PDO $connection) use ($overrides, $message, $baseRowName, $expectedSqlState, $expectedMessageFragment, $preInsertBaseRow): void {
             $baseRow = $baseRowName === null ? null : match ($baseRowName) {
                 'pending' => $this->validPendingRow(),
+                'processing' => $this->validProcessingRow(),
                 'failed' => $this->validFailedRow(),
                 'uploaded' => $this->validUploadedRow(),
                 default => null,
@@ -75,6 +77,7 @@ final class AssetsTableLifecycleTest extends BaseAssetsTableTestCase
     {
         return [
             ['pending'],
+            ['processing'],
             ['failed'],
             ['uploaded'],
         ];
@@ -87,7 +90,7 @@ final class AssetsTableLifecycleTest extends BaseAssetsTableTestCase
     {
         return [
             'invalid status' => [
-                ['status' => 'PROCESSING'],
+                ['status' => 'READY'],
                 'Invalid status values must be rejected.',
                 'pending',
                 null,
@@ -114,6 +117,22 @@ final class AssetsTableLifecycleTest extends BaseAssetsTableTestCase
                 ['completion_proof' => 'etag-failed-row'],
                 'Non-uploaded failed assets must not persist a completion proof.',
                 'failed',
+                null,
+                'chk_assets_completion_proof_matches_status',
+                false,
+            ],
+            'processing without completion proof' => [
+                ['completion_proof' => null],
+                'Processing assets must persist a completion proof.',
+                'processing',
+                null,
+                'chk_assets_completion_proof_matches_status',
+                false,
+            ],
+            'processing with whitespace completion proof' => [
+                ['completion_proof' => " \t\n "],
+                'Whitespace-only completion proof values must be rejected for processing assets.',
+                'processing',
                 null,
                 'chk_assets_completion_proof_matches_status',
                 false,

@@ -16,6 +16,7 @@ use App\GraphQL\Resolver\StartUploadBatchResolver;
 use App\GraphQL\Resolver\StartUploadResolver;
 use App\GraphQL\SchemaFactory;
 use App\Http\GraphQLHandler;
+use App\Infrastructure\Processing\MockAssetProcessingJobDispatcher;
 use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
 use PHPUnit\Framework\Attributes\Test;
@@ -349,7 +350,7 @@ GRAPHQL,
     public function itExecutesCompleteUploadThroughTheLocalGraphQlHandler(): void
     {
         // Arrange
-        [$handler, $repository] = $this->createHandler();
+        [$handler, $repository, $assetProcessingJobDispatcher] = $this->createHandler();
         $asset = Asset::createPending(
             UploadId::generate(),
             new AccountId('local-test-account'),
@@ -393,31 +394,37 @@ GRAPHQL,
         self::assertSame(200, $response['status']);
         self::assertArrayNotHasKey('errors', $payload);
         self::assertSame([], $payload['data']['completeUpload']['userErrors']);
-        self::assertSame('UPLOADED', $payload['data']['completeUpload']['success']['asset']['status']);
+        self::assertSame('PROCESSING', $payload['data']['completeUpload']['success']['asset']['status']);
         self::assertSame('etag-complete', $repository->savedAssets[0]->getCompletionProof()?->value);
+        self::assertSame([(string) $asset->getId()], $assetProcessingJobDispatcher->dispatchedAssetIds());
     }
 
     /**
-     * @return array{0: GraphQLHandler, 1: InMemoryAssetRepository}
+     * @return array{0: GraphQLHandler, 1: InMemoryAssetRepository, 2: MockAssetProcessingJobDispatcher}
      */
     private function createHandler(): array
     {
         $repository = new InMemoryAssetRepository();
         $uploadGrantIssuer = new LocalUploadGrantIssuer('test-secret');
+        $assetProcessingJobDispatcher = new MockAssetProcessingJobDispatcher();
 
         $startUploadService = new StartUploadService(
             $repository,
             new MockStorageAdapter(),
             $uploadGrantIssuer,
         );
-        $completeUploadService = new CompleteUploadService($repository, $uploadGrantIssuer);
+        $completeUploadService = new CompleteUploadService(
+            $repository,
+            $uploadGrantIssuer,
+            $assetProcessingJobDispatcher,
+        );
         $schemaFactory = new SchemaFactory(
             new StartUploadResolver($startUploadService),
             new StartUploadBatchResolver($startUploadService),
             new CompleteUploadResolver($completeUploadService),
         );
 
-        return [new GraphQLHandler($schemaFactory, 'local-test-account', new NullLogger()), $repository];
+        return [new GraphQLHandler($schemaFactory, 'local-test-account', new NullLogger()), $repository, $assetProcessingJobDispatcher];
     }
 }
 

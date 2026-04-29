@@ -346,13 +346,22 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
         $assetStatus = AssetStatus::from($status);
 
         return match ($assetStatus) {
+            AssetStatus::PROCESSING => Asset::reconstituteProcessing(
+                new AssetId($id),
+                new UploadId($uploadId),
+                new AccountId($accountId),
+                $fileName,
+                $mimeType,
+                $this->requiredCompletionProofValue($completionProof),
+                $persistedState,
+            ),
             AssetStatus::UPLOADED => Asset::reconstituteUploaded(
                 new AssetId($id),
                 new UploadId($uploadId),
                 new AccountId($accountId),
                 $fileName,
                 $mimeType,
-                $this->uploadedCompletionProofValue($completionProof),
+                $this->requiredCompletionProofValue($completionProof),
                 $persistedState,
             ),
             AssetStatus::PENDING,
@@ -379,10 +388,10 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
         return $dateTime;
     }
 
-    private function uploadedCompletionProofValue(mixed $completionProof): UploadCompletionProofValue
+    private function requiredCompletionProofValue(mixed $completionProof): UploadCompletionProofValue
     {
         if (! is_string($completionProof)) {
-            throw new UnexpectedValueException('Uploaded assets must include a completion proof.');
+            throw new UnexpectedValueException('Assets in this state must include a completion proof.');
         }
 
         return new UploadCompletionProofValue($completionProof);

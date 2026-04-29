@@ -23,5 +23,6 @@ nav:
       - US-03 Data & Local Storage Setup: logs/03-data-local-storage-setup.md
       - US-04 Start Multi-file Upload: logs/04-start-multi-file-upload.md
       - US-05 Upload Request Validation: logs/05-upload-request-validation.md
+      - US-06 Mark Upload as Complete: logs/06-mark-upload-complete.md
 plugins:
   - search

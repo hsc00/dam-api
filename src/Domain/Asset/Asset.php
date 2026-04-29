@@ -16,22 +16,12 @@ use DateTimeImmutable;
 
 final class Asset
 {
+    use AssetAccessors;
+
     private const DEFAULT_CHUNK_COUNT = 1;
     private const INVALID_CHUNK_COUNT_MESSAGE = 'Chunk count must be between 1 and 100.';
     private const INVALID_UPDATED_AT_MESSAGE = 'Updated at must not be earlier than created at';
     private const MAX_CHUNK_COUNT = 100;
-
-    private AssetId $id;
-    private UploadId $uploadId;
-    private AccountId $accountId;
-    private string $fileName;
-    private string $mimeType;
-    private AssetStatus $status;
-    private ?UploadCompletionProofValue $completionProof = null;
-    private int $chunkCount;
-    private DateTimeImmutable $createdAt;
-    private ClockInterface $clock;
-    private DateTimeImmutable $updatedAt;
 
     private function __construct(
         AssetId $id,
@@ -82,8 +72,8 @@ final class Asset
     }
 
     /**
-     * Reconstitutes a non-uploaded Asset from persistence.
-     * For UPLOADED status, use reconstituteUploaded() instead.
+     * Reconstitutes an Asset that does not require a completion proof from persistence.
+     * For PROCESSING or UPLOADED status, use reconstituteProcessing() or reconstituteUploaded() instead.
      *
      * @param array{createdAt: DateTimeImmutable, chunkCount?: int, updatedAt?: DateTimeImmutable} $persistedState
      *
@@ -105,6 +95,40 @@ final class Asset
             fileName: $fileName,
             mimeType: $mimeType,
             status: $status,
+        );
+        $asset->clock = new SystemClock();
+
+        $asset->initializeLifecycleState(
+            $persistedState['createdAt'],
+            $persistedState['chunkCount'] ?? self::DEFAULT_CHUNK_COUNT,
+            $persistedState['updatedAt'] ?? null,
+        );
+
+        return $asset;
+    }
+
+    /**
+     * @param array{createdAt: DateTimeImmutable, chunkCount?: int, updatedAt?: DateTimeImmutable} $persistedState
+     *
+     * @throws AssetDomainException
+     */
+    public static function reconstituteProcessing(
+        AssetId $id,
+        UploadId $uploadId,
+        AccountId $accountId,
+        string $fileName,
+        string $mimeType,
+        UploadCompletionProofValue $completionProof,
+        array $persistedState,
+    ): self {
+        $asset = new self(
+            id: $id,
+            uploadId: $uploadId,
+            accountId: $accountId,
+            fileName: $fileName,
+            mimeType: $mimeType,
+            status: AssetStatus::PROCESSING,
+            completionProof: $completionProof,
         );
         $asset->clock = new SystemClock();
 
@@ -179,13 +203,22 @@ final class Asset
      */
     private static function assertCompletionProofMatchesStatus(AssetStatus $status, ?UploadCompletionProofValue $completionProof): void
     {
-        if ($status === AssetStatus::UPLOADED && $completionProof === null) {
-            throw new AssetDomainException('Uploaded assets must have completion proof');
+        if (self::statusRequiresCompletionProof($status) && $completionProof === null) {
+            throw new AssetDomainException(match ($status) {
+                AssetStatus::PROCESSING => 'Processing assets must have completion proof',
+                AssetStatus::UPLOADED => 'Uploaded assets must have completion proof',
+                default => 'Assets in this state must have completion proof',
+            });
         }
 
-        if ($status !== AssetStatus::UPLOADED && $completionProof !== null) {
-            throw new AssetDomainException('Only uploaded assets can have completion proof');
+        if (! self::statusRequiresCompletionProof($status) && $completionProof !== null) {
+            throw new AssetDomainException('Only uploaded or processing assets can have completion proof');
         }
+    }
+
+    private static function statusRequiresCompletionProof(AssetStatus $status): bool
+    {
+        return $status === AssetStatus::PROCESSING || $status === AssetStatus::UPLOADED;
     }
 
     /**
@@ -233,6 +266,28 @@ final class Asset
     /**
      * @throws AssetDomainException
      */
+    public function markProcessing(UploadCompletionProofValue $completionProof): void
+    {
+        if ($this->status === AssetStatus::PROCESSING) {
+            throw new AssetDomainException('Asset already processing');
+        }
+
+        if ($this->status !== AssetStatus::PENDING) {
+            throw new AssetDomainException('Cannot process asset from current state');
+        }
+
+        $this->completionProof = $completionProof;
+        $this->status = AssetStatus::PROCESSING;
+        $nextUpdatedAt = $this->clock->now();
+
+        if ($nextUpdatedAt > $this->updatedAt) {
+            $this->updatedAt = $nextUpdatedAt;
+        }
+    }
+
+    /**
+     * @throws AssetDomainException
+     */
     public function markFailed(): void
     {
         if ($this->status === AssetStatus::UPLOADED) {
@@ -251,58 +306,4 @@ final class Asset
         }
     }
 
-    public function getId(): AssetId
-    {
-        return $this->id;
-    }
-
-    public function getUploadId(): UploadId
-    {
-        return $this->uploadId;
-    }
-
-    public function getAccountId(): AccountId
-    {
-        return $this->accountId;
-    }
-
-    public function getFileName(): string
-    {
-        return $this->fileName;
-    }
-
-    public function getMimeType(): string
-    {
-        return $this->mimeType;
-    }
-
-    public function getStatus(): AssetStatus
-    {
-        return $this->status;
-    }
-
-    public function getCompletionProof(): ?UploadCompletionProofValue
-    {
-        return $this->completionProof;
-    }
-
-    public function getChunkCount(): int
-    {
-        return $this->chunkCount;
-    }
-
-    public function getCreatedAt(): DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): DateTimeImmutable
-    {
-        return $this->updatedAt;
-    }
-
-    public function equals(Asset $other): bool
-    {
-        return $this->id->equals($other->id);
-    }
 }
