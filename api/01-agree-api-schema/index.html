@@ -1173,6 +1173,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logs/06-mark-upload-complete/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-06 Mark Upload as Complete
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1660,7 +1688,7 @@ revises the schema.</p>
 }
 </code></pre>
 <h3 id="completeuploadinput-completeuploadinput-completeuploadpayload"><code>completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!</code></h3>
-<p>Completes one upload after the client has sent the file and captured the required completion proof.</p>
+<p>Completes one upload after the client has sent the file and captured the required completion proof. When accepted, the asset moves into background processing immediately.</p>
 <p><strong>Input Fields</strong></p>
 <table>
 <thead>
@@ -1705,12 +1733,43 @@ revises the schema.</p>
 <tr>
 <td><code>success.asset</code></td>
 <td><code>Asset</code></td>
-<td>Updated asset after a successful completion.</td>
+<td>Updated asset after a successful completion starts processing.</td>
 </tr>
 <tr>
 <td><code>userErrors</code></td>
 <td><code>[UserError!]!</code></td>
 <td>Business validation errors when completion cannot be accepted.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Business Error Codes</strong></p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ASSET_NOT_FOUND</code></td>
+<td>The asset id does not exist in the authenticated caller account scope.</td>
+</tr>
+<tr>
+<td><code>INVALID_ASSET_ID</code></td>
+<td>The supplied asset id is not a valid asset identifier.</td>
+</tr>
+<tr>
+<td><code>INVALID_UPLOAD_GRANT</code></td>
+<td>The server-issued upload grant is missing or does not match the asset.</td>
+</tr>
+<tr>
+<td><code>INVALID_COMPLETION_PROOF</code></td>
+<td>The completion proof is missing or blank.</td>
+</tr>
+<tr>
+<td><code>INVALID_ASSET_STATE</code></td>
+<td>The asset is already processing or is otherwise not completable now.</td>
 </tr>
 </tbody>
 </table>
@@ -1771,6 +1830,10 @@ revises the schema.</p>
 <tr>
 <td><code>PENDING</code></td>
 <td>Upload has started but is not complete.</td>
+</tr>
+<tr>
+<td><code>PROCESSING</code></td>
+<td>Upload completed and background processing has started.</td>
 </tr>
 <tr>
 <td><code>UPLOADED</code></td>
@@ -1956,7 +2019,7 @@ revises the schema.</p>
 <tr>
 <td><code>asset</code></td>
 <td><code>Asset!</code></td>
-<td>Updated asset after a successful completion.</td>
+<td>Updated asset after a successful completion starts processing.</td>
 </tr>
 </tbody>
 </table>

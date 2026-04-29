@@ -11,10 +11,8 @@
       
       
       
-        <link rel="prev" href="../03-domain-first-idempotent-upload/">
+        <link rel="prev" href="../05-upload-request-validation/">
       
-      
-        <link rel="next" href="../../logs/01-agree-api-schema/">
       
       
         
@@ -25,7 +23,7 @@
     
     
       
-        <title>Asset Domain Contracts - DAM API Docs</title>
+        <title>US-06 Mark Upload as Complete - DAM API Docs</title>
       
     
     
@@ -66,7 +64,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#adr-04-asset-domain-contracts" class="md-skip">
+        <a href="#implementation-log-us-06-mark-upload-as-complete" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +100,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Asset Domain Contracts
+              US-06 Mark Upload as Complete
             
           </span>
         </div>
@@ -498,20 +496,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -532,7 +528,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -550,7 +546,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../01-tooling-choices/" class="md-nav__link">
+      <a href="../../adr/01-tooling-choices/" class="md-nav__link">
         
   
   
@@ -578,7 +574,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../02-security-choices/" class="md-nav__link">
+      <a href="../../adr/02-security-choices/" class="md-nav__link">
         
   
   
@@ -606,7 +602,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../03-domain-first-idempotent-upload/" class="md-nav__link">
+      <a href="../../adr/03-domain-first-idempotent-upload/" class="md-nav__link">
         
   
   
@@ -614,6 +610,230 @@
     
   
     Domain-first Modeling and Idempotent Upload Flow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../adr/04-asset-domain-contracts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Asset Domain Contracts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Implementation Logs
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Implementation Logs
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../01-agree-api-schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-01 Agree API Schema
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../02-domain-model-core-objects/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-02 Domain Model Core Objects
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../03-data-local-storage-setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-03 Data & Local Storage Setup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../04-start-multi-file-upload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-04 Start Multi-file Upload
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../05-upload-request-validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-05 Upload Request Validation
   
 
     
@@ -650,7 +870,7 @@
   <span class="md-ellipsis">
     
   
-    Asset Domain Contracts
+    US-06 Mark Upload as Complete
   
 
     
@@ -668,7 +888,7 @@
   <span class="md-ellipsis">
     
   
-    Asset Domain Contracts
+    US-06 Mark Upload as Complete
   
 
     
@@ -694,10 +914,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#purpose" class="md-nav__link">
+  <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Purpose
+        Summary
       
     </span>
   </a>
@@ -705,10 +925,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#asset-repository-contract" class="md-nav__link">
+  <a href="#implementation-details" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Asset Repository Contract
+        Implementation Details
       
     </span>
   </a>
@@ -716,10 +936,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#storage-adapter-contract" class="md-nav__link">
+  <a href="#files-changed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Storage Adapter Contract
+        Files Changed
       
     </span>
   </a>
@@ -727,10 +947,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#added-to-complete-us-02" class="md-nav__link">
+  <a href="#validation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Added to complete US-02
+        Validation
       
     </span>
   </a>
@@ -738,10 +958,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#contract-boundary" class="md-nav__link">
+  <a href="#delivery-chunks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Contract Boundary
+        Delivery Chunks
       
     </span>
   </a>
@@ -752,228 +972,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Implementation Logs
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Implementation Logs
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../logs/01-agree-api-schema/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    US-01 Agree API Schema
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../logs/02-domain-model-core-objects/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    US-02 Domain Model Core Objects
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../logs/03-data-local-storage-setup/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    US-03 Data & Local Storage Setup
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../logs/04-start-multi-file-upload/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    US-04 Start Multi-file Upload
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../logs/05-upload-request-validation/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    US-05 Upload Request Validation
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../logs/06-mark-upload-complete/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    US-06 Mark Upload as Complete
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1013,10 +1011,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#purpose" class="md-nav__link">
+  <a href="#summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Purpose
+        Summary
       
     </span>
   </a>
@@ -1024,10 +1022,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#asset-repository-contract" class="md-nav__link">
+  <a href="#implementation-details" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Asset Repository Contract
+        Implementation Details
       
     </span>
   </a>
@@ -1035,10 +1033,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#storage-adapter-contract" class="md-nav__link">
+  <a href="#files-changed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Storage Adapter Contract
+        Files Changed
       
     </span>
   </a>
@@ -1046,10 +1044,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#added-to-complete-us-02" class="md-nav__link">
+  <a href="#validation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Added to complete US-02
+        Validation
       
     </span>
   </a>
@@ -1057,10 +1055,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#contract-boundary" class="md-nav__link">
+  <a href="#delivery-chunks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Contract Boundary
+        Delivery Chunks
       
     </span>
   </a>
@@ -1084,100 +1082,57 @@
 
 
 
-<h1 id="adr-04-asset-domain-contracts">ADR-04: Asset Domain Contracts</h1>
-<h2 id="purpose">Purpose</h2>
-<p>This document records the domain contract between the <code>Asset</code> aggregate, persistence, and storage for US-02. It is an implementation-level contract and belongs with the ADRs as permanent architecture documentation.</p>
-<h2 id="asset-repository-contract">Asset Repository Contract</h2>
-<p><code>AssetRepositoryInterface</code> must provide these behaviors.</p>
-<table>
-<thead>
-<tr>
-<th>Method</th>
-<th>Required behavior</th>
-<th>Why US-02 needs it</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>save(Asset $asset): void</code></td>
-<td>Persist enough state to reconstruct the same domain object later. This includes <code>id</code>, <code>uploadId</code>, <code>accountId</code>, <code>fileName</code>, <code>mimeType</code>, <code>status</code>, <code>chunkCount</code>, <code>createdAt</code>, <code>updatedAt</code>, and <code>completionProof</code> when the asset is uploaded.</td>
-<td>The <code>Asset</code> aggregate is the source of truth for lifecycle state. Persistence cannot drop uploaded-state proof data.</td>
-</tr>
-<tr>
-<td><code>findById(AssetId $assetId): ?Asset</code></td>
-<td>Return the matching asset or <code>null</code> when none exists.</td>
-<td>Later read and completion flows need a stable lookup by asset identity.</td>
-</tr>
-<tr>
-<td><code>findByUploadId(UploadId $uploadId): ?Asset</code></td>
-<td>Return the matching asset or <code>null</code> when none exists.</td>
-<td>The upload identifier is part of the upload flow contract and supports retry-safe lookup.</td>
-</tr>
-<tr>
-<td><code>searchByFileName(AccountId $accountId, string $query): array</code></td>
-<td>Return only assets for the supplied account whose <code>fileName</code> contains the trimmed query as a plain-text, case-insensitive substring. Results are ordered by <code>createdAt</code> descending, then <code>id</code> ascending. Return an empty list when the trimmed query is empty.</td>
-<td>Search flows need deterministic account-scoped matching without turning an empty query into a full scan.</td>
-</tr>
-</tbody>
-</table>
-<p>Persistence must store <code>accountId</code>, <code>fileName</code>, <code>mimeType</code>, and uploaded-state <code>completionProof</code> values without truncating them to an undocumented 255-character ceiling. In this chunk the domain still models those fields as trimmed non-empty text, so persistence must preserve the full value it receives.</p>
-<p>Persistence must store <code>chunkCount</code> as a positive integer and <code>updatedAt</code> as a timestamp that is never earlier than <code>createdAt</code>. Newly created pending assets start with <code>chunkCount = 1</code> and <code>updatedAt === createdAt</code>; successful status transitions advance <code>updatedAt</code> monotonically and never move it backward.</p>
-<p>Repository implementations must also preserve the uploaded-state invariant during reads.</p>
+<h1 id="implementation-log-us-06-mark-upload-as-complete">Implementation Log: US-06 Mark Upload as Complete</h1>
+<p><strong>Feature:</strong> US-06 Mark Upload as Complete</p>
+<h2 id="summary">Summary</h2>
+<p>US-06 completed the upload-finalization path. A valid <code>completeUpload</code> call now accepts the client completion proof, moves the asset from <code>PENDING</code> to <code>PROCESSING</code>, persists that state, and dispatches a background processing job. Missing assets and invalid lifecycle states stay in the mutation payload as user-facing business errors rather than surfacing as GraphQL transport failures.</p>
+<h2 id="implementation-details">Implementation Details</h2>
 <ul>
-<li><code>PENDING</code> and <code>FAILED</code> assets are reconstituted with <code>Asset::reconstitute(...)</code>, including persisted <code>chunkCount</code>, <code>createdAt</code>, and <code>updatedAt</code>.</li>
-<li><code>UPLOADED</code> assets are reconstituted with <code>Asset::reconstituteUploaded(...)</code>, including the same persisted lifecycle fields plus a completion proof value.</li>
-<li>An uploaded record without a non-empty completion proof, a record with <code>chunkCount &lt; 1</code>, or a record with <code>updatedAt &lt; createdAt</code> is invalid domain state and must not be returned as a valid <code>Asset</code>.</li>
+<li>Extended the asset lifecycle with <code>PROCESSING</code> so upload completion can represent the accepted post-upload state without pretending that downstream work has already finished.</li>
+<li>Added <code>Asset::markProcessing(...)</code> plus processing-state reconstitution to keep the completion-proof invariant in the domain layer and preserve the proof after upload acceptance.</li>
+<li>Added <code>AssetProcessingJobDispatcherInterface</code> at the application boundary and invoked it from <code>CompleteUploadService</code> only after a successful state transition and repository save.</li>
+<li>Kept the GraphQL resolver thin by continuing to map only application results into the mutation payload while updating the SDL and handler expectations to expose the new <code>PROCESSING</code> status.</li>
+<li>Tightened persistence coverage so the assets table accepts <code>PROCESSING</code> rows, still requires completion proof for proof-bearing states, and maps processing rows back into domain objects.</li>
+<li>Extracted integration-test lifecycle row fixtures into a dedicated trait so the shared base test class stayed within the repository method-count rule.</li>
 </ul>
-<h2 id="storage-adapter-contract">Storage Adapter Contract</h2>
-<p><code>StorageAdapterInterface</code> must return a fully typed <code>UploadTarget</code> for an accepted <code>Asset</code>.</p>
-<table>
-<thead>
-<tr>
-<th>Upload target field</th>
-<th>Required behavior</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>url</code></td>
-<td>Must be an absolute URL. HTTPS is required except for local-development loopback URLs and deterministic <code>mock://uploads/{uploadId}/chunk/0</code> targets.</td>
-<td>Validated by <code>UploadTarget</code>.</td>
-</tr>
-<tr>
-<td><code>method</code></td>
-<td>Must be a supported domain upload method.</td>
-<td>The current domain contract supports <code>PUT</code>.</td>
-</tr>
-<tr>
-<td><code>signedHeaders</code></td>
-<td>Must be a list of <code>UploadParameter</code> objects.</td>
-<td>The contract avoids provider-specific associative arrays.</td>
-</tr>
-<tr>
-<td><code>completionProof</code></td>
-<td>Must describe which proof the client captures and where it comes from.</td>
-<td>Expressed as <code>UploadCompletionProof</code> plus <code>UploadCompletionProofSource</code>.</td>
-</tr>
-<tr>
-<td><code>expiresAt</code></td>
-<td>Must state when the target stops being valid.</td>
-<td>Consumers should treat it as a hard expiry.</td>
-</tr>
-</tbody>
-</table>
-<p>Storage adapters own signing, credentials, bucket selection, and provider-specific response details. Those details stay in infrastructure and are translated into the typed domain contract before being returned.</p>
-<p>The current storage adapter interface remains singular. Until the contract grows multi-part semantics, local-development adapters return deterministic chunk <code>0</code> targets.</p>
-<h2 id="added-to-complete-us-02">Added to complete US-02</h2>
-<p>The accepted delivery extended slightly beyond the original story so the domain contract would be complete.</p>
+<h2 id="files-changed">Files Changed</h2>
 <ul>
-<li><code>findByUploadId(...)</code> was added to the repository contract so upload flows can resolve an asset by upload identifier.</li>
-<li><code>searchByFileName(...)</code> was added to the repository contract so account-scoped file-name search has deterministic semantics before the repository implementation lands.</li>
-<li><code>StorageAdapterInterface</code> and the typed upload-target model were added so upload instructions are represented as domain types instead of untyped infrastructure payloads.</li>
-<li>A completion-proof requirement was added to both upload completion and uploaded-state reconstitution so <code>UPLOADED</code> cannot exist without proof.</li>
+<li><code>src/Application/Asset/AssetProcessingJobDispatcherInterface.php</code> — added the application port for scheduling background processing work.</li>
+<li><code>src/Application/Asset/CompleteUploadService.php</code> — changed upload completion to move assets into processing, persist them, and dispatch processing jobs.</li>
+<li><code>src/Domain/Asset/Asset.php</code> — added processing-state transition and reconstitution rules while preserving completion-proof invariants.</li>
+<li><code>src/Domain/Asset/AssetAccessors.php</code> — extracted accessor-heavy read methods from the aggregate to stay within the class-size limit.</li>
+<li><code>src/Domain/Asset/AssetStatus.php</code> — added the <code>PROCESSING</code> lifecycle enum value.</li>
+<li><code>src/GraphQL/Schema/schema.graphql</code> — documented <code>PROCESSING</code> in the GraphQL status enum and clarified the complete-upload mutation description.</li>
+<li><code>src/Infrastructure/Persistence/MySQLAssetRepository.php</code> — mapped persisted processing rows and reused proof validation for proof-bearing states.</li>
+<li><code>src/Infrastructure/Processing/MockAssetProcessingJobDispatcher.php</code> — provided the local/dev processing dispatcher stub.</li>
+<li><code>migrations/20260401120000_create_assets_table.sql</code> — allowed <code>PROCESSING</code> in the assets status constraint and required completion proof for processing rows.</li>
+<li><code>public/index.php</code> — wired the complete-upload service with the mock processing dispatcher.</li>
+<li><code>tests/Unit/Application/Asset/CompleteUploadServiceTest.php</code> — added service coverage for processing transition, job dispatch, and invalid-state rejections.</li>
+<li><code>tests/Unit/Http/GraphQLHandlerTest.php</code> — verified the local GraphQL handler returns <code>PROCESSING</code> and dispatches exactly one job on success.</li>
+<li><code>tests/Integration/Infrastructure/Persistence/AssetsTableLifecycleTest.php</code> — added processing-row acceptance and processing-proof constraint coverage.</li>
+<li><code>tests/Integration/Infrastructure/Persistence/AssetLifecycleFixtureRows.php</code> — extracted shared lifecycle row fixtures from the oversized base test class.</li>
+<li><code>tests/Integration/Infrastructure/Persistence/BaseAssetsTableTestCase.php</code> — consumed the extracted fixture trait.</li>
+<li><code>tests/Integration/Infrastructure/Persistence/BaseMySQLAssetRepositoryTestCase.php</code> — added a processing-asset helper for repository tests.</li>
+<li><code>tests/Integration/Infrastructure/Persistence/MySQLAssetRepositoryTest.php</code> — updated repository lifecycle tests to persist the new processing transition.</li>
+<li><code>docs/api/01-agree-api-schema.md</code> — aligned the public API contract page with the shipped <code>completeUpload</code> behavior.</li>
 </ul>
-<h2 id="contract-boundary">Contract Boundary</h2>
-<p>This page is the durable contract for US-02. Infrastructure implementations may vary, but repository and storage adapters must continue to satisfy these behaviors and return values.</p>
+<h2 id="validation">Validation</h2>
+<ul>
+<li><code>vendor/bin/phpunit --configuration phpunit.xml tests/Unit/Domain/Asset/AssetTest.php tests/Unit/Application/Asset/CompleteUploadServiceTest.php tests/Unit/Http/GraphQLHandlerTest.php</code> — passed; PHPUnit reported only the existing missing code coverage driver warning.</li>
+<li><code>vendor/bin/phpunit --configuration phpunit.xml tests/Integration/Infrastructure/Persistence/AssetsTableLifecycleTest.php tests/Integration/Infrastructure/Persistence/MySQLAssetRepositoryTest.php</code> — passed inside the containerized PHP runtime with MySQL available.</li>
+<li><code>composer fix:check</code> — passed in the running app container after applying formatter-only normalization to the touched files.</li>
+<li><code>composer analyse</code> — passed.</li>
+<li><code>composer test</code> — passed.</li>
+<li><code>composer test:integration</code> — passed.</li>
+<li><code>composer check</code> — passed.</li>
+<li>Editor diagnostics for the touched PHP files were clean after extracting the integration fixture trait and fixing trailing-newline issues.</li>
+</ul>
+<h2 id="delivery-chunks">Delivery Chunks</h2>
+<ul>
+<li>Lifecycle contract revision — introduced <code>PROCESSING</code> and updated the domain, schema, and persistence layers to treat it as the accepted post-upload state.</li>
+<li>Background work dispatch — added the application port and local dispatcher stub so successful completions schedule processing work.</li>
+<li>Focused verification and docs — tightened unit and integration coverage for accepted and rejected completion paths, then aligned the published API docs and implementation log.</li>
+</ul>
 
 
 
