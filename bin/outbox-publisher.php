@@ -5,8 +5,13 @@ declare(strict_types=1);
 use App\Domain\Asset\ValueObject\AssetId;
 use App\Http\Exception\MissingEnvironmentVariableException;
 use App\Infrastructure\Processing\RedisJobQueuePublisher;
+use Monolog\Handler\StreamHandler;
+use Monolog\Logger;
 
 require_once __DIR__ . '/../vendor/autoload.php';
+
+$logger = new Logger('outbox-publisher');
+$logger->pushHandler(new StreamHandler('php://stderr', Logger::INFO));
 
 $projectRoot = dirname(__DIR__);
 $envFile = $projectRoot . '/.env';
@@ -46,20 +51,29 @@ try {
 
     $publisher = RedisJobQueuePublisher::fromConnectionConfiguration($redisHost, $redisPort, $redisPassword);
 
-    $batchSize = (int) ($_ENV['OUTBOX_BATCH_SIZE'] ?? 10);
+    $rawBatchSize = $_ENV['OUTBOX_BATCH_SIZE'] ?? getenv('OUTBOX_BATCH_SIZE') ?: '10';
+    $batchSize = filter_var($rawBatchSize, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($batchSize === false) {
+        $logger->critical('OUTBOX_BATCH_SIZE must be a positive integer.', ['value' => $rawBatchSize]);
+        exit(1);
+    }
+
+    $maxAttempts = 5;
 
     while (true) {
         try {
             $pdo->beginTransaction();
 
             $stmt = $pdo->prepare(
-                'SELECT id, `queue`, payload
+                'SELECT id, `queue`, payload, attempts
                  FROM outbox_messages
                  WHERE published_at IS NULL
+                   AND attempts < :max_attempts
                  ORDER BY created_at
                  LIMIT :limit
                  FOR UPDATE SKIP LOCKED',
             );
+            $stmt->bindValue('max_attempts', $maxAttempts, PDO::PARAM_INT);
             $stmt->bindValue('limit', $batchSize, PDO::PARAM_INT);
             $stmt->execute();
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -74,8 +88,8 @@ try {
                 try {
                     $payload = json_decode($row['payload'], true, 512, JSON_THROW_ON_ERROR);
                     if (! isset($payload['assetId']) || ! is_string($payload['assetId'])) {
-                        error_log('Invalid outbox payload for id ' . $row['id']);
-                        $pdo->prepare('UPDATE outbox_messages SET attempts = attempts + 1 WHERE id = :id')
+                        $logger->error('Invalid outbox payload, marking terminal.', ['outboxId' => $row['id'], 'row' => $row]);
+                        $pdo->prepare('UPDATE outbox_messages SET attempts = attempts + 1, published_at = UTC_TIMESTAMP(6) WHERE id = :id')
                             ->execute(['id' => $row['id']]);
                         continue;
                     }
@@ -86,9 +100,15 @@ try {
                     $pdo->prepare('UPDATE outbox_messages SET published_at = UTC_TIMESTAMP(6) WHERE id = :id')
                         ->execute(['id' => $row['id']]);
                 } catch (Throwable $e) {
-                    error_log('Failed to publish outbox message ' . $row['id'] . ': ' . $e->getMessage());
-                    $pdo->prepare('UPDATE outbox_messages SET attempts = attempts + 1 WHERE id = :id')
-                        ->execute(['id' => $row['id']]);
+                    if ((int) $row['attempts'] + 1 >= $maxAttempts) {
+                        $logger->error('Outbox message reached max attempts, marking terminal.', ['outboxId' => $row['id'], 'maxAttempts' => $maxAttempts, 'exception' => $e]);
+                        $pdo->prepare('UPDATE outbox_messages SET attempts = attempts + 1, published_at = UTC_TIMESTAMP(6) WHERE id = :id')
+                            ->execute(['id' => $row['id']]);
+                    } else {
+                        $logger->warning('Failed to publish outbox message, will retry.', ['outboxId' => $row['id'], 'attempts' => (int) $row['attempts'] + 1, 'exception' => $e]);
+                        $pdo->prepare('UPDATE outbox_messages SET attempts = attempts + 1 WHERE id = :id')
+                            ->execute(['id' => $row['id']]);
+                    }
                 }
             }
 
@@ -102,14 +122,14 @@ try {
                 // Suppressed intentionally: the primary loop error $e is already
                 // captured and will be logged below. A rollback failure here is
                 // a secondary cleanup error and must not replace the root cause.
-                unset($suppressed);
+                $logger->debug('Rollback failed after outbox loop error.', ['exception' => $suppressed, 'rootException' => $e]);
             }
 
-            error_log('Outbox loop error: ' . $e->getMessage());
+            $logger->error('Outbox loop error.', ['exception' => $e]);
             sleep(1);
         }
     }
 } catch (Throwable $exception) {
-    error_log('Fatal: ' . $exception->getMessage());
+    $logger->critical('Fatal error in outbox publisher.', ['exception' => $exception]);
     exit(1);
 }

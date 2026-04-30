@@ -25,6 +25,13 @@ final class RedisAssetTerminalStatusCache implements AssetTerminalStatusCacheInt
         private readonly int $ttlJitterSeconds = self::DEFAULT_TTL_JITTER_SECONDS,
         private readonly string $keyPrefix = self::DEFAULT_KEY_PREFIX,
     ) {
+        if ($ttlSeconds <= 0) {
+            throw new \InvalidArgumentException('ttlSeconds must be a positive integer, got ' . $ttlSeconds . '.');
+        }
+
+        if ($ttlJitterSeconds < 0) {
+            throw new \InvalidArgumentException('ttlJitterSeconds must be a non-negative integer, got ' . $ttlJitterSeconds . '.');
+        }
     }
 
     public static function fromConnectionConfiguration(

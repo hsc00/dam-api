@@ -57,8 +57,8 @@ final class AssetTest extends TestCase
         self::assertSame(self::MIME_TYPE, $asset->getMimeType());
         self::assertSame(AssetStatus::PENDING, $asset->getStatus());
         self::assertSame(self::DEFAULT_CHUNK_COUNT, $asset->getChunkCount());
-        self::assertGreaterThanOrEqual($beforeCreation->getTimestamp(), $asset->getCreatedAt()->getTimestamp());
-        self::assertLessThanOrEqual($afterCreation->getTimestamp(), $asset->getCreatedAt()->getTimestamp());
+        self::assertGreaterThanOrEqual($beforeCreation->format('U.u'), $asset->getCreatedAt()->format('U.u'));
+        self::assertLessThanOrEqual($afterCreation->format('U.u'), $asset->getCreatedAt()->format('U.u'));
         self::assertSame($asset->getCreatedAt(), $asset->getUpdatedAt());
     }
 
@@ -410,7 +410,7 @@ final class AssetTest extends TestCase
         // Assert
         self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
         self::assertEquals($this->createCompletionProofValue(), $asset->getCompletionProof());
-        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
     }
 
     #[Test]
@@ -429,7 +429,7 @@ final class AssetTest extends TestCase
         // Assert
         self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
         self::assertSame($completionProof, $asset->getCompletionProof());
-        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
     }
 
     #[Test]
@@ -445,7 +445,7 @@ final class AssetTest extends TestCase
         // Assert
         self::assertSame(AssetStatus::PENDING, $asset->getStatus());
         self::assertNull($asset->getCompletionProof());
-        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
     }
 
     #[Test]
@@ -524,7 +524,7 @@ final class AssetTest extends TestCase
 
         // Assert
         self::assertSame(AssetStatus::FAILED, $asset->getStatus());
-        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
     }
 
     #[Test]
@@ -540,7 +540,7 @@ final class AssetTest extends TestCase
         // Assert
         self::assertSame(AssetStatus::FAILED, $asset->getStatus());
         self::assertNull($asset->getCompletionProof());
-        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
     }
 
     #[Test]

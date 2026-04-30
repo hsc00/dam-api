@@ -112,9 +112,6 @@ try {
     $database = requireEnv('DB_DATABASE');
     $user = requireEnv('DB_USER');
     $password = requireEnv('DB_PASSWORD');
-    $redisHost = requireEnv('REDIS_HOST');
-    $redisPort = (int) requireEnv('REDIS_PORT');
-    $redisPassword = optionalEnv('REDIS_PASSWORD');
 
     $pdo = new PDO(
         sprintf(

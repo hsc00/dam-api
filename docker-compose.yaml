@@ -55,6 +55,7 @@ services:
       context: .
       dockerfile: Dockerfile
     command: ["php", "bin/asset-processing-worker.php"]
+    restart: unless-stopped
     env_file: .env
     volumes:
       - ./:/var/www/html:delegated
@@ -69,6 +70,7 @@ services:
       context: .
       dockerfile: Dockerfile
     command: ["php", "bin/outbox-publisher.php"]
+    restart: unless-stopped
     env_file: .env
     volumes:
       - ./:/var/www/html:delegated

@@ -104,6 +104,10 @@ final class CompleteUploadService
 
             $this->transactionManager->commit();
         } catch (\Throwable $e) {
+            // Restore the in-memory asset to PENDING so the caller's reference
+            // is not left in PROCESSING after a failed transaction.
+            $asset->restorePending();
+
             try {
                 $this->transactionManager->rollBack();
             } catch (\Throwable $suppressed) {

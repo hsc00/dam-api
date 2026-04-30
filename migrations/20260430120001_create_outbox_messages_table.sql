@@ -6,5 +6,5 @@ CREATE TABLE IF NOT EXISTS outbox_messages (
   attempts INT NOT NULL DEFAULT 0,
   created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   published_at DATETIME(6) NULL,
-  INDEX idx_queue_published (`queue`, `published_at`)
+  INDEX idx_published_queue (`published_at`, `queue`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
