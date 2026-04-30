@@ -47,11 +47,15 @@ final class RedisAssetTerminalStatusCache implements AssetTerminalStatusCacheInt
 
     public function store(AssetId $assetId, AssetStatus $status): void
     {
-        ($this->storeStatus)(
+        $written = ($this->storeStatus)(
             $this->keyPrefix . (string) $assetId,
             $status->value,
             $this->ttlSeconds + random_int(0, $this->ttlJitterSeconds),
         );
+
+        if ($written === false) {
+            throw RedisAssetTerminalStatusCacheException::storeFailed();
+        }
     }
 
     private static function connect(string $host, int $port, ?string $password): object

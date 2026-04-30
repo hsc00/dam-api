@@ -16,7 +16,6 @@ use App\GraphQL\Resolver\StartUploadBatchResolver;
 use App\GraphQL\Resolver\StartUploadResolver;
 use App\GraphQL\SchemaFactory;
 use App\Http\GraphQLHandler;
-use App\Infrastructure\Processing\MockAssetProcessingJobDispatcher;
 use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
 use PHPUnit\Framework\Attributes\Test;
@@ -350,7 +349,7 @@ GRAPHQL,
     public function itExecutesCompleteUploadThroughTheLocalGraphQlHandler(): void
     {
         // Arrange
-        [$handler, $repository, $assetProcessingJobDispatcher] = $this->createHandler();
+        [$handler, $repository, $outbox] = $this->createHandler();
         $asset = Asset::createPending(
             UploadId::generate(),
             new AccountId('local-test-account'),
@@ -396,17 +395,23 @@ GRAPHQL,
         self::assertSame([], $payload['data']['completeUpload']['userErrors']);
         self::assertSame('PROCESSING', $payload['data']['completeUpload']['success']['asset']['status']);
         self::assertSame('etag-complete', $repository->savedAssets[0]->getCompletionProof()?->value);
-        self::assertSame([(string) $asset->getId()], $assetProcessingJobDispatcher->dispatchedAssetIds());
+
+        self::assertCount(1, $outbox->messages);
+        /** @var array<string, mixed> $decoded */
+        $decoded = json_decode($outbox->messages[0]['payload'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame((string) $asset->getId(), $decoded['assetId']);
     }
 
     /**
-     * @return array{0: GraphQLHandler, 1: InMemoryAssetRepository, 2: MockAssetProcessingJobDispatcher}
+     * @return array{0: GraphQLHandler, 1: InMemoryAssetRepository, 2: InMemoryOutboxRepository}
      */
     private function createHandler(): array
     {
         $repository = new InMemoryAssetRepository();
         $uploadGrantIssuer = new LocalUploadGrantIssuer('test-secret');
-        $assetProcessingJobDispatcher = new MockAssetProcessingJobDispatcher();
+
+        $outbox = new InMemoryOutboxRepository();
+        $transactionManager = $this->createMock(\App\Application\Transaction\TransactionManagerInterface::class);
 
         $startUploadService = new StartUploadService(
             $repository,
@@ -416,7 +421,8 @@ GRAPHQL,
         $completeUploadService = new CompleteUploadService(
             $repository,
             $uploadGrantIssuer,
-            $assetProcessingJobDispatcher,
+            $transactionManager,
+            $outbox,
         );
         $schemaFactory = new SchemaFactory(
             new StartUploadResolver($startUploadService),
@@ -424,7 +430,18 @@ GRAPHQL,
             new CompleteUploadResolver($completeUploadService),
         );
 
-        return [new GraphQLHandler($schemaFactory, 'local-test-account', new NullLogger()), $repository, $assetProcessingJobDispatcher];
+        return [new GraphQLHandler($schemaFactory, 'local-test-account', new NullLogger()), $repository, $outbox];
+    }
+}
+
+final class InMemoryOutboxRepository implements \App\Application\Outbox\OutboxRepositoryInterface
+{
+    /** @var list<array{queue: string, payload: string}> */
+    public array $messages = [];
+
+    public function enqueue(string $queueName, string $payload): void
+    {
+        $this->messages[] = ['queue' => $queueName, 'payload' => $payload];
     }
 }
 

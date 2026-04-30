@@ -101,5 +101,7 @@ try {
         gc_collect_cycles();
     }
 } catch (\Throwable $exception) {
+    $logger->critical('Asset processing worker stopped unexpectedly.', ['exception' => $exception]);
+
     exit(1);
 }

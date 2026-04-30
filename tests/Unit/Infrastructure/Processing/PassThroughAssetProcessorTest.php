@@ -17,7 +17,7 @@ use PHPUnit\Framework\TestCase;
 final class PassThroughAssetProcessorTest extends TestCase
 {
     #[Test]
-    public function itLeavesAProcessingAssetReadyForTerminalPersistence(): void
+    public function itReturnsProcessingAssetReadyForTerminalPersistenceWhenAssetIsPassThrough(): void
     {
         // Arrange
         $processor = new PassThroughAssetProcessor();

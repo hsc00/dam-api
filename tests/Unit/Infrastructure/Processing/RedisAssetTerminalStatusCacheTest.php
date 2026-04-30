@@ -16,7 +16,7 @@ final class RedisAssetTerminalStatusCacheTest extends TestCase
     private const ASSET_ID = '123e4567-e89b-42d3-a456-426614174000';
 
     #[Test]
-    public function itStoresTheTerminalAssetStatusWithTheConfiguredTtl(): void
+    public function itStoresTerminalAssetStatusWithTheConfiguredTtlWhenCalled(): void
     {
         // Arrange
         $capturedKey = null;

@@ -190,7 +190,7 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
     private function isAllowedStatusTransition(AssetStatus $persistedStatus, AssetStatus $nextStatus): bool
     {
         return match ($persistedStatus) {
-            AssetStatus::PENDING => $nextStatus !== AssetStatus::PENDING,
+            AssetStatus::PENDING => $nextStatus === AssetStatus::PROCESSING,
             AssetStatus::PROCESSING => $nextStatus === AssetStatus::PENDING || $nextStatus === AssetStatus::UPLOADED || $nextStatus === AssetStatus::FAILED,
             AssetStatus::UPLOADED,
             AssetStatus::FAILED => false,

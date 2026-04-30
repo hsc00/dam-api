@@ -64,6 +64,20 @@ services:
       redis:
         condition: service_healthy
 
+  outbox-publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["php", "bin/outbox-publisher.php"]
+    env_file: .env
+    volumes:
+      - ./:/var/www/html:delegated
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   nginx:
     image: nginx:1.26
     depends_on:

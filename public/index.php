@@ -11,7 +11,8 @@ use App\GraphQL\SchemaFactory;
 use App\Http\Exception\MissingEnvironmentVariableException;
 use App\Http\GraphQLHandler;
 use App\Infrastructure\Persistence\MySQLAssetRepository;
-use App\Infrastructure\Processing\RedisJobQueuePublisher;
+use App\Infrastructure\Persistence\MySQLOutboxRepository;
+use App\Infrastructure\Persistence\PDOTransactionManager;
 use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
 use Monolog\Handler\StreamHandler;
@@ -137,10 +138,13 @@ try {
         new MockStorageAdapter(),
         $uploadGrantIssuer,
     );
+    $transactionManager = new PDOTransactionManager($pdo);
+    $outboxRepository = new MySQLOutboxRepository($pdo);
     $completeUploadService = new CompleteUploadService(
         $assetRepository,
         $uploadGrantIssuer,
-        RedisJobQueuePublisher::fromConnectionConfiguration($redisHost, $redisPort, $redisPassword),
+        $transactionManager,
+        $outboxRepository,
     );
     $schemaFactory = new SchemaFactory(
         new StartUploadResolver($startUploadService),

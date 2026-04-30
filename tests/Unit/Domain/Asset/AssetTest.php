@@ -528,7 +528,7 @@ final class AssetTest extends TestCase
     }
 
     #[Test]
-    public function itClearsCompletionProofWhenProcessingAssetIsMarkedFailed(): void
+    public function itReturnsClearedCompletionProofWhenProcessingAssetIsMarkedFailed(): void
     {
         // Arrange
         $asset = $this->reconstituteProcessingAsset();

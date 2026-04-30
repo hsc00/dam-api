@@ -50,7 +50,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
     }
 
     #[Test]
-    public function itReleasesReservedJobsWhenDurablePersistenceFailsAfterReservation(): void
+    public function itEmitsReleasedJobWhenDurablePersistenceFailsAfterReservation(): void
     {
         // Arrange
         $acknowledgeCalls = 0;
@@ -99,7 +99,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
     }
 
     #[Test]
-    public function itReleasesReservedJobsWhenTheHandlerReturnsRetryDelivery(): void
+    public function itEmitsReleasedJobWhenTheHandlerReturnsRetryDelivery(): void
     {
         // Arrange
         $acknowledgeCalls = 0;
@@ -139,7 +139,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
     }
 
     #[Test]
-    public function itAcknowledgesDiscardedUnknownAssetsWithoutRequeueingThem(): void
+    public function itReturnsAcknowledgementForDiscardedUnknownAssetsWithoutRequeueing(): void
     {
         // Arrange
         $acknowledgeCalls = 0;
@@ -179,7 +179,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
     }
 
     #[Test]
-    public function itAcknowledgesHandledTerminalFailuresWithoutRetryingThem(): void
+    public function itReturnsAcknowledgementForHandledTerminalFailuresWithoutRetrying(): void
     {
         // Arrange
         $acknowledgeCalls = 0;
@@ -219,7 +219,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
     }
 
     #[Test]
-    public function itAppliesBoundedBackoffAndStopsAfterRepeatedConsumerFailures(): void
+    public function itThrowsAfterBoundedBackoffWhenConsumerFailsRepeatedly(): void
     {
         // Arrange
         $errors = [];

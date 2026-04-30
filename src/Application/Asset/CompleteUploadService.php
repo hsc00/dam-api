@@ -8,6 +8,8 @@ use App\Application\Asset\Command\CompleteUploadCommand;
 use App\Application\Asset\Result\CompleteUploadResult;
 use App\Application\Asset\Result\CompleteUploadSuccess;
 use App\Application\Asset\Result\UserError;
+use App\Application\Outbox\OutboxRepositoryInterface;
+use App\Application\Transaction\TransactionManagerInterface;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\Exception\AssetDomainException;
@@ -22,8 +24,7 @@ final class CompleteUploadService
     private const ASSET_NOT_FOUND_CODE = 'ASSET_NOT_FOUND';
     private const ASSET_NOT_FOUND_MESSAGE = 'Asset not found.';
     private const COMPLETE_UPLOAD_FAILED_CODE = 'COMPLETE_UPLOAD_FAILED';
-    private const DISPATCH_COMPENSATION_FAILURE_REASON = 'Failed to dispatch asset processing job and restore asset state.';
-    private const DISPATCH_FAILURE_REASON = 'Failed to dispatch asset processing job.';
+
     private const INVALID_ASSET_ID_CODE = 'INVALID_ASSET_ID';
     private const INVALID_ASSET_ID_MESSAGE = 'assetId must be a valid asset id.';
     private const INVALID_ASSET_STATE_CODE = 'INVALID_ASSET_STATE';
@@ -37,7 +38,8 @@ final class CompleteUploadService
     public function __construct(
         private readonly AssetRepositoryInterface $assets,
         private readonly UploadGrantIssuerInterface $uploadGrantIssuer,
-        private readonly AssetProcessingJobDispatcherInterface $assetProcessingJobDispatcher,
+        private readonly TransactionManagerInterface $transactionManager,
+        private readonly OutboxRepositoryInterface $outboxRepository,
     ) {
     }
 
@@ -91,12 +93,27 @@ final class CompleteUploadService
     private function markProcessingAndDispatch(Asset $asset, UploadCompletionProofValue $completionProof): void
     {
         $asset->markProcessing($completionProof);
-        $this->assets->save($asset);
 
         try {
-            $this->assetProcessingJobDispatcher->dispatch($asset->getId());
-        } catch (\Throwable $dispatchFailure) {
-            $this->restorePendingAfterDispatchFailure($asset, $dispatchFailure);
+            $this->transactionManager->beginTransaction();
+
+            $this->assets->save($asset);
+
+            $payload = json_encode(['assetId' => (string) $asset->getId()], JSON_THROW_ON_ERROR);
+            $this->outboxRepository->enqueue('asset-processing', $payload);
+
+            $this->transactionManager->commit();
+        } catch (\Throwable $e) {
+            try {
+                $this->transactionManager->rollBack();
+            } catch (\Throwable $suppressed) {
+                // Suppressed intentionally: the primary failure $e is already
+                // captured and will be rethrown below. A rollback failure here
+                // is a secondary cleanup error and must not replace the root cause.
+                unset($suppressed);
+            }
+
+            throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $e);
         }
     }
 
@@ -116,21 +133,6 @@ final class CompleteUploadService
         } catch (\InvalidArgumentException $exception) {
             return null;
         }
-    }
-
-    private function restorePendingAfterDispatchFailure(Asset $asset, \Throwable $dispatchFailure): never
-    {
-        try {
-            $asset->restorePending();
-            $this->assets->save($asset);
-        } catch (\Throwable $compensationFailure) {
-            throw RepositoryUnavailableException::forReason(
-                self::DISPATCH_COMPENSATION_FAILURE_REASON,
-                $compensationFailure,
-            );
-        }
-
-        throw RepositoryUnavailableException::forReason(self::DISPATCH_FAILURE_REASON, $dispatchFailure);
     }
 
     private function mapDomainException(AssetDomainException $exception): UserError

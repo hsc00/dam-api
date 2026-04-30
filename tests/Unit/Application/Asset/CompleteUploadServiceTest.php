@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Application\Asset;
 
-use App\Application\Asset\AssetProcessingJobDispatcherInterface;
 use App\Application\Asset\Command\CompleteUploadCommand;
 use App\Application\Asset\CompleteUploadService;
 use App\Application\Asset\UploadGrantIssuerInterface;
+use App\Application\Outbox\OutboxRepositoryInterface;
+use App\Application\Transaction\TransactionManagerInterface;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\AssetStatus;
@@ -23,7 +24,8 @@ use PHPUnit\Framework\TestCase;
 final class CompleteUploadServiceTest extends TestCase
 {
     private AssetRepositoryInterface&MockObject $assets;
-    private AssetProcessingJobDispatcherInterface&MockObject $assetProcessingJobDispatcher;
+    private TransactionManagerInterface&MockObject $transactionManager;
+    private OutboxRepositoryInterface&MockObject $outboxRepository;
     private UploadGrantIssuerInterface&MockObject $uploadGrantIssuer;
     private CompleteUploadService $service;
 
@@ -32,12 +34,14 @@ final class CompleteUploadServiceTest extends TestCase
         parent::setUp();
 
         $this->assets = $this->createMock(AssetRepositoryInterface::class);
-        $this->assetProcessingJobDispatcher = $this->createMock(AssetProcessingJobDispatcherInterface::class);
+        $this->transactionManager = $this->createMock(TransactionManagerInterface::class);
+        $this->outboxRepository = $this->createMock(OutboxRepositoryInterface::class);
         $this->uploadGrantIssuer = $this->createMock(UploadGrantIssuerInterface::class);
         $this->service = new CompleteUploadService(
             $this->assets,
             $this->uploadGrantIssuer,
-            $this->assetProcessingJobDispatcher,
+            $this->transactionManager,
+            $this->outboxRepository,
         );
     }
 
@@ -62,10 +66,17 @@ final class CompleteUploadServiceTest extends TestCase
             ->method('issueForAsset')
             ->with($asset)
             ->willReturn('grant-123');
-        $this->assetProcessingJobDispatcher
+        $this->transactionManager->expects($this->once())->method('beginTransaction');
+        $this->transactionManager->expects($this->once())->method('commit');
+        $this->outboxRepository
             ->expects($this->once())
-            ->method('dispatch')
-            ->with($asset->getId());
+            ->method('enqueue')
+            ->with('asset-processing', $this->callback(static function (string $payload) use ($asset): bool {
+                /** @var array<string, mixed> $data */
+                $data = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+
+                return isset($data['assetId']) && $data['assetId'] === (string) $asset->getId();
+            }));
 
         // Act
         $result = $this->service->completeUpload(
@@ -87,33 +98,33 @@ final class CompleteUploadServiceTest extends TestCase
     }
 
     #[Test]
-    public function itRestoresTheAssetToPendingWhenDispatchFailsAfterSavingProcessingState(): void
+    public function itThrowsWhenOutboxEnqueueFailsAndDoesNotSaveTwice(): void
     {
         // Arrange
         $asset = $this->createPendingAsset();
-        $savedStatuses = [];
-        $savedCompletionProofs = [];
+        $savedAssets = [];
         $this->assets
             ->expects($this->once())
             ->method('findById')
             ->willReturn($asset);
         $this->assets
-            ->expects($this->exactly(2))
+            ->expects($this->once())
             ->method('save')
-            ->willReturnCallback(static function (Asset $savedAsset) use (&$savedStatuses, &$savedCompletionProofs): void {
-                $savedStatuses[] = $savedAsset->getStatus();
-                $savedCompletionProofs[] = $savedAsset->getCompletionProof()?->value;
+            ->willReturnCallback(static function (Asset $savedAsset) use (&$savedAssets): void {
+                $savedAssets[] = $savedAsset;
             });
         $this->uploadGrantIssuer
             ->expects($this->once())
             ->method('issueForAsset')
             ->with($asset)
             ->willReturn('grant-123');
-        $this->assetProcessingJobDispatcher
+
+        $this->transactionManager->expects($this->once())->method('beginTransaction');
+        $this->transactionManager->expects($this->once())->method('rollBack');
+        $this->outboxRepository
             ->expects($this->once())
-            ->method('dispatch')
-            ->with($asset->getId())
-            ->willThrowException(new \RuntimeException('redis unavailable'));
+            ->method('enqueue')
+            ->willThrowException(new \RuntimeException('db down'));
 
         // Act
         try {
@@ -126,16 +137,13 @@ final class CompleteUploadServiceTest extends TestCase
                 ),
             );
 
-            self::fail('Expected completeUpload() to throw when dispatch fails.');
+            self::fail('Expected completeUpload() to throw when outbox enqueue fails.');
         } catch (RepositoryUnavailableException $exception) {
             // Assert
-            self::assertSame('Failed to dispatch asset processing job.', $exception->getMessage());
+            self::assertSame('Repository failure', $exception->getMessage());
         }
 
-        self::assertSame([AssetStatus::PROCESSING, AssetStatus::PENDING], $savedStatuses);
-        self::assertSame(['etag-123', null], $savedCompletionProofs);
-        self::assertSame(AssetStatus::PENDING, $asset->getStatus());
-        self::assertNull($asset->getCompletionProof());
+        self::assertCount(1, $savedAssets);
     }
 
     #[Test]
@@ -145,9 +153,9 @@ final class CompleteUploadServiceTest extends TestCase
         $this->assets
             ->expects($this->never())
             ->method('findById');
-        $this->assetProcessingJobDispatcher
+        $this->outboxRepository
             ->expects($this->never())
-            ->method('dispatch');
+            ->method('enqueue');
         $this->uploadGrantIssuer
             ->expects($this->never())
             ->method('issueForAsset');
@@ -182,9 +190,9 @@ final class CompleteUploadServiceTest extends TestCase
         $this->assets
             ->expects($this->never())
             ->method('save');
-        $this->assetProcessingJobDispatcher
+        $this->outboxRepository
             ->expects($this->never())
-            ->method('dispatch');
+            ->method('enqueue');
         $this->uploadGrantIssuer
             ->expects($this->never())
             ->method('issueForAsset');
@@ -215,9 +223,9 @@ final class CompleteUploadServiceTest extends TestCase
         $this->assets
             ->expects($this->never())
             ->method('save');
-        $this->assetProcessingJobDispatcher
+        $this->outboxRepository
             ->expects($this->never())
-            ->method('dispatch');
+            ->method('enqueue');
         $this->uploadGrantIssuer
             ->expects($this->never())
             ->method('issueForAsset');
@@ -252,9 +260,9 @@ final class CompleteUploadServiceTest extends TestCase
         $this->assets
             ->expects($this->never())
             ->method('save');
-        $this->assetProcessingJobDispatcher
+        $this->outboxRepository
             ->expects($this->never())
-            ->method('dispatch');
+            ->method('enqueue');
         $this->uploadGrantIssuer
             ->expects($this->once())
             ->method('issueForAsset')
@@ -294,9 +302,9 @@ final class CompleteUploadServiceTest extends TestCase
         $this->assets
             ->expects($this->never())
             ->method('save');
-        $this->assetProcessingJobDispatcher
+        $this->outboxRepository
             ->expects($this->never())
-            ->method('dispatch');
+            ->method('enqueue');
         $this->uploadGrantIssuer
             ->expects($this->once())
             ->method('issueForAsset')
