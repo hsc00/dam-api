@@ -178,17 +178,23 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
             throw new StaleAssetWriteException(self::STALE_WRITE_MESSAGE);
         }
 
-        if ($persistedAsset->getStatus() !== AssetStatus::PENDING) {
-            throw new StaleAssetWriteException(self::STALE_WRITE_MESSAGE);
-        }
-
-        if ($asset->getStatus() === AssetStatus::PENDING) {
+        if (! $this->isAllowedStatusTransition($persistedAsset->getStatus(), $asset->getStatus())) {
             throw new StaleAssetWriteException(self::STALE_WRITE_MESSAGE);
         }
 
         if ($asset->getUpdatedAt() < $persistedAsset->getUpdatedAt()) {
             throw new StaleAssetWriteException(self::STALE_WRITE_MESSAGE);
         }
+    }
+
+    private function isAllowedStatusTransition(AssetStatus $persistedStatus, AssetStatus $nextStatus): bool
+    {
+        return match ($persistedStatus) {
+            AssetStatus::PENDING => $nextStatus === AssetStatus::PROCESSING,
+            AssetStatus::PROCESSING => $nextStatus === AssetStatus::PENDING || $nextStatus === AssetStatus::UPLOADED || $nextStatus === AssetStatus::FAILED,
+            AssetStatus::UPLOADED,
+            AssetStatus::FAILED => false,
+        };
     }
 
     private function updateMutableFields(Asset $asset, Asset $persistedAsset): void

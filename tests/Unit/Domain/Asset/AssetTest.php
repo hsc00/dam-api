@@ -57,8 +57,8 @@ final class AssetTest extends TestCase
         self::assertSame(self::MIME_TYPE, $asset->getMimeType());
         self::assertSame(AssetStatus::PENDING, $asset->getStatus());
         self::assertSame(self::DEFAULT_CHUNK_COUNT, $asset->getChunkCount());
-        self::assertGreaterThanOrEqual($beforeCreation->getTimestamp(), $asset->getCreatedAt()->getTimestamp());
-        self::assertLessThanOrEqual($afterCreation->getTimestamp(), $asset->getCreatedAt()->getTimestamp());
+        self::assertGreaterThanOrEqual($beforeCreation->format('U.u'), $asset->getCreatedAt()->format('U.u'));
+        self::assertLessThanOrEqual($afterCreation->format('U.u'), $asset->getCreatedAt()->format('U.u'));
         self::assertSame($asset->getCreatedAt(), $asset->getUpdatedAt());
     }
 
@@ -410,7 +410,58 @@ final class AssetTest extends TestCase
         // Assert
         self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
         self::assertEquals($this->createCompletionProofValue(), $asset->getCompletionProof());
-        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
+    }
+
+    #[Test]
+    public function itReturnsAssetWithUploadedStatusWhenProcessingAssetIsMarkedUploaded(): void
+    {
+        // Arrange
+        $asset = $this->reconstituteProcessingAsset();
+        $originalUpdatedAt = $asset->getUpdatedAt();
+        $completionProof = $asset->getCompletionProof();
+
+        self::assertNotNull($completionProof);
+
+        // Act
+        $asset->markUploaded($completionProof);
+
+        // Assert
+        self::assertSame(AssetStatus::UPLOADED, $asset->getStatus());
+        self::assertSame($completionProof, $asset->getCompletionProof());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
+    }
+
+    #[Test]
+    public function itReturnsAssetWithPendingStatusWhenProcessingAssetIsRestoredToPending(): void
+    {
+        // Arrange
+        $asset = $this->reconstituteProcessingAsset();
+        $originalUpdatedAt = $asset->getUpdatedAt();
+
+        // Act
+        $asset->restorePending();
+
+        // Assert
+        self::assertSame(AssetStatus::PENDING, $asset->getStatus());
+        self::assertNull($asset->getCompletionProof());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
+    }
+
+    #[Test]
+    public function itThrowsAssetDomainExceptionWhenPendingAssetIsRestoredToPending(): void
+    {
+        // Arrange
+        $asset = $this->reconstituteAsset();
+        $originalUpdatedAt = $asset->getUpdatedAt();
+
+        // Act
+        $this->assertTransitionRejected(
+            fn () => $asset->restorePending(),
+            'Only processing assets can be restored to pending',
+            $asset,
+            $originalUpdatedAt,
+        );
     }
 
     #[Test]
@@ -473,7 +524,23 @@ final class AssetTest extends TestCase
 
         // Assert
         self::assertSame(AssetStatus::FAILED, $asset->getStatus());
-        self::assertGreaterThan($originalUpdatedAt->getTimestamp(), $asset->getUpdatedAt()->getTimestamp());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
+    }
+
+    #[Test]
+    public function itReturnsClearedCompletionProofWhenProcessingAssetIsMarkedFailed(): void
+    {
+        // Arrange
+        $asset = $this->reconstituteProcessingAsset();
+        $originalUpdatedAt = $asset->getUpdatedAt();
+
+        // Act
+        $asset->markFailed();
+
+        // Assert
+        self::assertSame(AssetStatus::FAILED, $asset->getStatus());
+        self::assertNull($asset->getCompletionProof());
+        self::assertGreaterThan($originalUpdatedAt->format('U.u'), $asset->getUpdatedAt()->format('U.u'));
     }
 
     #[Test]
@@ -637,6 +704,26 @@ final class AssetTest extends TestCase
         $updatedAt ??= new DateTimeImmutable(self::UPDATED_AT);
 
         return Asset::reconstituteUploaded(
+            new AssetId(self::ASSET_ID),
+            new UploadId(self::FIRST_UPLOAD_ID),
+            new AccountId(self::ACCOUNT_ID),
+            self::FILE_NAME,
+            self::MIME_TYPE,
+            new UploadCompletionProofValue($completionProof),
+            $this->persistedState($createdAt, $chunkCount, $updatedAt),
+        );
+    }
+
+    private function reconstituteProcessingAsset(
+        ?DateTimeImmutable $createdAt = null,
+        ?DateTimeImmutable $updatedAt = null,
+        int $chunkCount = self::CHUNK_COUNT,
+        string $completionProof = self::COMPLETION_PROOF_VALUE,
+    ): Asset {
+        $createdAt ??= new DateTimeImmutable(self::CREATED_AT);
+        $updatedAt ??= new DateTimeImmutable(self::UPDATED_AT);
+
+        return Asset::reconstituteProcessing(
             new AssetId(self::ASSET_ID),
             new UploadId(self::FIRST_UPLOAD_ID),
             new AccountId(self::ACCOUNT_ID),

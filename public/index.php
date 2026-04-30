@@ -11,7 +11,8 @@ use App\GraphQL\SchemaFactory;
 use App\Http\Exception\MissingEnvironmentVariableException;
 use App\Http\GraphQLHandler;
 use App\Infrastructure\Persistence\MySQLAssetRepository;
-use App\Infrastructure\Processing\MockAssetProcessingJobDispatcher;
+use App\Infrastructure\Persistence\MySQLOutboxRepository;
+use App\Infrastructure\Persistence\PDOTransactionManager;
 use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
 use Monolog\Handler\StreamHandler;
@@ -69,6 +70,22 @@ function requireEnv(string $name): string
     return (string) $val;
 }
 
+/**
+ * Retrieve an optional environment variable.
+ */
+function optionalEnv(string $name): ?string
+{
+    $val = $_ENV[$name] ?? getenv($name);
+
+    if ($val === false || $val === null) {
+        return null;
+    }
+
+    $normalizedValue = trim((string) $val);
+
+    return $normalizedValue === '' ? null : $normalizedValue;
+}
+
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
 
 if (php_sapi_name() === 'cli-server') {
@@ -118,10 +135,13 @@ try {
         new MockStorageAdapter(),
         $uploadGrantIssuer,
     );
+    $transactionManager = new PDOTransactionManager($pdo);
+    $outboxRepository = new MySQLOutboxRepository($pdo);
     $completeUploadService = new CompleteUploadService(
         $assetRepository,
         $uploadGrantIssuer,
-        new MockAssetProcessingJobDispatcher(),
+        $transactionManager,
+        $outboxRepository,
     );
     $schemaFactory = new SchemaFactory(
         new StartUploadResolver($startUploadService),

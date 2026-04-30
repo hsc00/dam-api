@@ -50,6 +50,36 @@ services:
       redis:
         condition: service_healthy
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["php", "bin/asset-processing-worker.php"]
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./:/var/www/html:delegated
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  outbox-publisher:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["php", "bin/outbox-publisher.php"]
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./:/var/www/html:delegated
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   nginx:
     image: nginx:1.26
     depends_on:

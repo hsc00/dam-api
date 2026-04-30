@@ -21,8 +21,8 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itReturnsAssetWhenSavingAndReadingAPendingAsset(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '11111111-1111-4111-8111-111111111111',
@@ -32,7 +32,10 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 createdAt: '2026-04-01 10:00:00.000000',
             );
 
+            // Act
             $repository->save($asset);
+
+            // Assert
             $this->assertFoundByIdAndUploadId($repository, $asset);
         });
     }
@@ -40,8 +43,8 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itReturnsAssetWhenSavingAndReadingAPendingAssetWithMultipleChunks(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = new MySQLAssetRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '12121212-1212-4121-8121-121212121212',
@@ -52,6 +55,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 chunkCount: 5,
             );
 
+            // Act
             $repository->save($asset);
             $persistedAsset = $repository->findByUploadId($asset->getUploadId());
 
@@ -65,8 +69,8 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itReturnsAssetWhenSavingAndReadingAnUploadedAsset(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
             $asset = $this->uploadedAsset(
                 assetId: '33333333-3333-4333-8333-333333333333',
@@ -77,7 +81,10 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 persistedState: $this->persistedState('2026-04-01 09:00:00.000000', 3, '2026-04-01 09:05:00.000000'),
             );
 
+            // Act
             $repository->save($asset);
+
+            // Assert
             $this->assertFoundByIdAndUploadId($repository, $asset);
         });
     }
@@ -85,8 +92,8 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itReturnsUpdatedRowWhenAssetStateChanges(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '55555555-5555-4555-8555-555555555555',
@@ -95,9 +102,10 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 fileName: 'asset-before-upload.png',
                 createdAt: '2020-01-01 12:00:00.000000',
             );
-
             $repository->save($asset);
             $asset->markProcessing(new UploadCompletionProofValue('etag-after-upload'));
+
+            // Act
             $repository->save($asset);
             $persistedAsset = $repository->findById($asset->getId());
 
@@ -107,10 +115,92 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     }
 
     #[Test]
+    public function itReturnsUpdatedRowWhenProcessingAssetTransitionsToUploaded(): void
+    {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
+            $repository = $this->createRepository($connection);
+            $asset = $this->processingAsset(
+                assetId: '57575757-5757-4575-8575-575757575757',
+                uploadId: '68686868-6868-4686-8686-686868686868',
+                accountId: 'account-processing-uploaded',
+                fileName: 'processed-asset.png',
+                completionProof: 'etag-processing-uploaded',
+                persistedState: $this->persistedState('2026-04-01 12:05:00.000000', 2, '2026-04-01 12:10:00.000000'),
+            );
+            $completionProof = $asset->getCompletionProof();
+            self::assertNotNull($completionProof);
+            $repository->save($asset);
+            $asset->markUploaded($completionProof);
+
+            // Act
+            $repository->save($asset);
+            $persistedAsset = $repository->findById($asset->getId());
+
+            // Assert
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
+        });
+    }
+
+    #[Test]
+    public function itReturnsUpdatedRowWhenProcessingAssetTransitionsBackToPending(): void
+    {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
+            $repository = $this->createRepository($connection);
+            $asset = $this->processingAsset(
+                assetId: '58585858-5858-4585-8585-585858585858',
+                uploadId: '69696969-6969-4696-8696-696969696969',
+                accountId: 'account-processing-pending',
+                fileName: 'processing-to-pending.png',
+                completionProof: 'etag-processing-pending',
+                persistedState: $this->persistedState('2026-04-01 12:12:00.000000', 3, '2026-04-01 12:18:00.000000'),
+            );
+            $repository->save($asset);
+            $asset->restorePending();
+
+            // Act
+            $repository->save($asset);
+            $persistedAsset = $repository->findById($asset->getId());
+
+            // Assert
+            self::assertNull($asset->getCompletionProof());
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
+        });
+    }
+
+    #[Test]
+    public function itReturnsUpdatedRowWhenProcessingAssetTransitionsToFailed(): void
+    {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
+            $repository = $this->createRepository($connection);
+            $asset = $this->processingAsset(
+                assetId: '59595959-5959-4595-8595-595959595959',
+                uploadId: '6a6a6a6a-6a6a-46a6-86a6-6a6a6a6a6a6a',
+                accountId: 'account-processing-failed',
+                fileName: 'failed-after-processing.png',
+                completionProof: 'etag-processing-failed',
+                persistedState: $this->persistedState('2026-04-01 12:15:00.000000', 4, '2026-04-01 12:20:00.000000'),
+            );
+            $repository->save($asset);
+            $asset->markFailed();
+
+            // Act
+            $repository->save($asset);
+            $persistedAsset = $repository->findById($asset->getId());
+
+            // Assert
+            self::assertNull($asset->getCompletionProof());
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
+        });
+    }
+
+    #[Test]
     public function itReturnsAcceptedStateWhenUpdatedAtRemainsEqual(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '56565656-5656-4565-8565-565656565656',
@@ -120,9 +210,10 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 createdAt: '9999-01-01 00:00:00.000000',
             );
             $originalUpdatedAt = $asset->getUpdatedAt()->format(self::DATETIME_FORMAT);
-
             $repository->save($asset);
             $asset->markProcessing(new UploadCompletionProofValue('etag-equal-updated-at'));
+
+            // Act
             $repository->save($asset);
             $persistedAsset = $repository->findById($asset->getId());
 
@@ -135,8 +226,8 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itReturnsSingleRowWhenSavingUnchangedAssetTwice(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
             $asset = $this->pendingAsset(
                 assetId: '77777777-0000-4777-8777-777777777777',
@@ -146,6 +237,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 createdAt: '2026-04-01 12:30:00.000000',
             );
 
+            // Act
             $repository->save($asset);
             $repository->save($asset);
             $persistedAsset = $repository->findById($asset->getId());
@@ -158,9 +250,11 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itReturnsNullWhenAnAssetIsMissing(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
+
+            // Act
             $missingAsset = $repository->findById(new AssetId('77777777-7777-4777-8777-777777777777'));
             $missingUpload = $repository->findByUploadId(new UploadId('88888888-8888-4888-8888-888888888888'));
 
@@ -173,8 +267,8 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itReturnsMatchingAssetsWhenSearchingByFileNameWithinAccountUsingDeterministicOrdering(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
             $accountId = new AccountId('account-search');
             $expectedFirst = $this->uploadedAsset(
@@ -219,6 +313,8 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             $repository->save($expectedFirst);
             $repository->save($sameAccountNonMatch);
             $repository->save($expectedSecond);
+
+            // Act
             $results = $repository->searchByFileName($accountId, '  repORT  ');
 
             // Assert
@@ -232,9 +328,11 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itReturnsAnEmptyListWhenSearchQueryIsEmptyAfterTrimming(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
+
+            // Act
             $results = $repository->searchByFileName(new AccountId('account-empty-search'), " \n\t ");
 
             // Assert
@@ -245,8 +343,8 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     #[Test]
     public function itThrowsPdoExceptionWhenDifferentAssetReusesExistingUploadId(): void
     {
-        // Arrange & Act
         $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
             $repository = $this->createRepository($connection);
             $existingAsset = $this->pendingAsset(
                 assetId: '55555555-eeee-4555-8555-555555555555',
@@ -262,14 +360,14 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 fileName: 'replacement.png',
                 createdAt: '2026-04-01 11:05:00.000000',
             );
-
             $repository->save($existingAsset);
-
             $this->expectException(PDOException::class);
 
+            // Act
             try {
                 $repository->save($duplicateUploadIdAsset);
             } finally {
+                // Assert
                 $persistedAsset = $repository->findByUploadId($existingAsset->getUploadId());
 
                 $this->assertPersistedSingleRowMatches($connection, $existingAsset, $persistedAsset);
