@@ -11,7 +11,6 @@ use App\Infrastructure\Processing\Exception\RedisJobQueuePublisherException;
 final class RedisJobQueuePublisher implements AssetProcessingJobDispatcherInterface
 {
     private const DEFAULT_QUEUE_NAME = 'asset-processing';
-    private const INITIAL_RETRY_COUNT = 0;
 
     /**
      * @param \Closure $publishJob
@@ -43,10 +42,7 @@ final class RedisJobQueuePublisher implements AssetProcessingJobDispatcherInterf
 
     public function dispatch(AssetId $assetId): void
     {
-        $payload = json_encode([
-            'assetId' => (string) $assetId,
-            'retryCount' => self::INITIAL_RETRY_COUNT,
-        ], JSON_THROW_ON_ERROR);
+        $payload = \App\Infrastructure\Processing\AssetProcessingJobPayload::initial($assetId)->toJson();
 
         ($this->publishJob)($this->queueName, $payload);
     }

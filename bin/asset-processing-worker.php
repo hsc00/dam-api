@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Application\Asset\HandleAssetProcessingJobService;
+use App\Application\Asset\HandleAssetProcessingRetryExhaustionService;
 use App\Http\Exception\MissingEnvironmentVariableException;
 use App\Infrastructure\Persistence\MySQLAssetRepository;
 use App\Infrastructure\Processing\AssetProcessingJobWorker;
@@ -70,16 +71,18 @@ try {
     );
 
     $assets = new MySQLAssetRepository($pdo);
+    $assetTerminalStatusCache = RedisAssetTerminalStatusCache::fromConnectionConfiguration(
+        requireEnv('REDIS_HOST'),
+        (int) requireEnv('REDIS_PORT'),
+        optionalEnv('REDIS_PASSWORD'),
+    );
     $service = new HandleAssetProcessingJobService(
         $assets,
         new PassThroughAssetProcessor(),
-        RedisAssetTerminalStatusCache::fromConnectionConfiguration(
-            requireEnv('REDIS_HOST'),
-            (int) requireEnv('REDIS_PORT'),
-            optionalEnv('REDIS_PASSWORD'),
-        ),
+        $assetTerminalStatusCache,
     );
-    $worker = new AssetProcessingJobWorker($service, $logger);
+    $retryExhaustionService = new HandleAssetProcessingRetryExhaustionService($assets, $assetTerminalStatusCache);
+    $worker = new AssetProcessingJobWorker($service, $retryExhaustionService, $logger);
     $consumer = RedisJobQueueConsumer::fromConnectionConfiguration(
         requireEnv('REDIS_HOST'),
         (int) requireEnv('REDIS_PORT'),

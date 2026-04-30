@@ -23,6 +23,11 @@ final class RedisJobQueueConsumerException extends RuntimeException
         return new self('Failed to connect to the Redis job queue consumer.');
     }
 
+    public static function deadLetterFailed(): self
+    {
+        return new self('Failed to dead-letter asset processing job.');
+    }
+
     public static function releaseFailed(): self
     {
         return new self('Failed to release asset processing job.');

@@ -70,7 +70,7 @@ final class AssetProcessingWorkerLoop
         }
 
         try {
-            $this->finalizeReservation($reservation, $result->delivery);
+            $this->finalizeReservation($reservation, $result);
         } catch (\Throwable $exception) {
             $this->handleInfrastructureFailure($exception);
 
@@ -80,12 +80,13 @@ final class AssetProcessingWorkerLoop
         $this->consecutiveInfrastructureFailures = 0;
     }
 
-    private function finalizeReservation(ReservedAssetProcessingJob $reservation, AssetProcessingJobDelivery $delivery): void
+    private function finalizeReservation(ReservedAssetProcessingJob $reservation, AssetProcessingJobHandlingResult $result): void
     {
-        match ($delivery) {
+        match ($result->delivery) {
+            AssetProcessingJobDelivery::DEAD_LETTER => $reservation->deadLetter($result->queuePayload),
             AssetProcessingJobDelivery::HANDLED => $reservation->acknowledge(),
             AssetProcessingJobDelivery::DISCARD => $reservation->discard(),
-            AssetProcessingJobDelivery::RETRY => $reservation->release(),
+            AssetProcessingJobDelivery::RETRY => $reservation->release($result->queuePayload),
         };
     }
 

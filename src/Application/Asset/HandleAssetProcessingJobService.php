@@ -7,29 +7,27 @@ namespace App\Application\Asset;
 use App\Application\Asset\Command\HandleAssetProcessingJobCommand;
 use App\Application\Asset\Exception\TerminalAssetProcessingException;
 use App\Application\Asset\Result\HandleAssetProcessingJobResult;
-use App\Application\Asset\Result\TerminalStatusCacheStoreResult as AssetTerminalStatusCacheStoreResult;
+use App\Application\Asset\Result\TerminalStatusCacheStoreResult;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\AssetStatus;
-use App\Domain\Asset\Exception\RepositoryUnavailableException;
-use App\Domain\Asset\Exception\StaleAssetWriteException;
-use App\Domain\Asset\ValueObject\AssetId;
 use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 
 final class HandleAssetProcessingJobService
 {
-    private const REPOSITORY_FAILURE_REASON = 'Repository failure';
+    private readonly \App\Application\Asset\TerminalAssetPersistenceService $terminalAssetPersistence;
 
     public function __construct(
-        private readonly AssetRepositoryInterface $assets,
+        AssetRepositoryInterface $assets,
         private readonly AssetProcessorInterface $assetProcessor,
-        private readonly AssetTerminalStatusCacheInterface $assetTerminalStatusCache,
+        AssetTerminalStatusCacheInterface $assetTerminalStatusCache,
     ) {
+        $this->terminalAssetPersistence = new \App\Application\Asset\TerminalAssetPersistenceService($assets, $assetTerminalStatusCache);
     }
 
     public function handle(HandleAssetProcessingJobCommand $command): HandleAssetProcessingJobResult
     {
-        $asset = $this->findAsset($command->assetId);
+        $asset = $this->terminalAssetPersistence->findAsset($command->assetId);
 
         if ($asset === null) {
             $result = HandleAssetProcessingJobResult::discardedUnknownAsset((string) $command->assetId);
@@ -54,7 +52,7 @@ final class HandleAssetProcessingJobService
 
         return $this->persistTerminalAsset(
             $asset,
-            static fn (string $assetId, AssetTerminalStatusCacheStoreResult $cacheResult): HandleAssetProcessingJobResult => HandleAssetProcessingJobResult::processedUploaded(
+            static fn (string $assetId, TerminalStatusCacheStoreResult $cacheResult): HandleAssetProcessingJobResult => HandleAssetProcessingJobResult::processedUploaded(
                 $assetId,
                 $cacheResult->stored,
                 $cacheResult->error,
@@ -68,7 +66,7 @@ final class HandleAssetProcessingJobService
 
         return $this->persistTerminalAsset(
             $asset,
-            static fn (string $assetId, AssetTerminalStatusCacheStoreResult $cacheResult): HandleAssetProcessingJobResult => HandleAssetProcessingJobResult::processedFailed(
+            static fn (string $assetId, TerminalStatusCacheStoreResult $cacheResult): HandleAssetProcessingJobResult => HandleAssetProcessingJobResult::processedFailed(
                 $assetId,
                 $cacheResult->stored,
                 $processingErrorMessage,
@@ -78,44 +76,18 @@ final class HandleAssetProcessingJobService
     }
 
     /**
-     * @param \Closure(string, AssetTerminalStatusCacheStoreResult): HandleAssetProcessingJobResult $terminalResultFactory
+     * @param \Closure(string, TerminalStatusCacheStoreResult): HandleAssetProcessingJobResult $terminalResultFactory
      */
     private function persistTerminalAsset(Asset $asset, \Closure $terminalResultFactory): HandleAssetProcessingJobResult
     {
-        $staleResult = $this->saveAsset($asset);
-
-        if ($staleResult instanceof HandleAssetProcessingJobResult) {
-            return $staleResult;
-        }
-
-        return $terminalResultFactory(
-            (string) $asset->getId(),
-            $this->cacheTerminalStatus($asset),
+        return $this->terminalAssetPersistence->persistTerminalAsset(
+            $asset,
+            $terminalResultFactory,
+            static fn (string $assetId, AssetStatus $assetStatus): HandleAssetProcessingJobResult => HandleAssetProcessingJobResult::skippedAssetNotProcessing(
+                $assetId,
+                $assetStatus,
+            ),
         );
-    }
-
-    private function saveAsset(Asset $asset): ?HandleAssetProcessingJobResult
-    {
-        try {
-            $this->assets->save($asset);
-        } catch (StaleAssetWriteException $exception) {
-            return $this->staleResult($asset->getId(), $exception);
-        } catch (\Throwable $exception) {
-            throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $exception);
-        }
-
-        return null;
-    }
-
-    private function staleResult(AssetId $assetId, StaleAssetWriteException $exception): HandleAssetProcessingJobResult
-    {
-        $currentAsset = $this->findAsset($assetId);
-
-        if ($currentAsset !== null && $currentAsset->getStatus() !== AssetStatus::PROCESSING) {
-            return HandleAssetProcessingJobResult::skippedAssetNotProcessing((string) $assetId, $currentAsset->getStatus());
-        }
-
-        throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $exception);
     }
 
     private function processingCompletionProof(Asset $asset): UploadCompletionProofValue
@@ -127,37 +99,5 @@ final class HandleAssetProcessingJobService
         }
 
         return $completionProof;
-    }
-
-    private function cacheTerminalStatus(Asset $asset): AssetTerminalStatusCacheStoreResult
-    {
-        try {
-            // Terminal status caching is best-effort after MySQL persistence succeeds.
-            $this->assetTerminalStatusCache->store($asset->getId(), $asset->getStatus());
-        } catch (\Throwable $exception) {
-            return AssetTerminalStatusCacheStoreResult::failed($this->terminalStatusCacheError($exception));
-        }
-
-        return AssetTerminalStatusCacheStoreResult::storedSuccessfully();
-    }
-
-    private function findAsset(AssetId $assetId): ?Asset
-    {
-        try {
-            return $this->assets->findById($assetId);
-        } catch (\Throwable $exception) {
-            throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $exception);
-        }
-    }
-
-    private function terminalStatusCacheError(\Throwable $exception): string
-    {
-        $message = trim($exception->getMessage());
-
-        if ($message === '') {
-            return get_debug_type($exception);
-        }
-
-        return get_debug_type($exception) . ': ' . $message;
     }
 }

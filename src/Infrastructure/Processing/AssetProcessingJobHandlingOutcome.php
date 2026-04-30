@@ -6,6 +6,7 @@ namespace App\Infrastructure\Processing;
 
 enum AssetProcessingJobHandlingOutcome: string
 {
+    case DEAD_LETTERED = 'DEAD_LETTERED';
     case DISCARDED_INVALID_ASSET_ID = 'DISCARDED_INVALID_ASSET_ID';
     case DISCARDED_MALFORMED_PAYLOAD = 'DISCARDED_MALFORMED_PAYLOAD';
     case DISCARDED_UNKNOWN_ASSET = 'DISCARDED_UNKNOWN_ASSET';

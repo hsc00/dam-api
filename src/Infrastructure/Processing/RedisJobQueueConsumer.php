@@ -12,6 +12,7 @@ final class RedisJobQueueConsumer implements AssetProcessingJobConsumerInterface
     private const DEFAULT_QUEUE_NAME = 'asset-processing';
     private const DEFAULT_RESERVE_POLL_INTERVAL_MICROSECONDS = 250_000;
     private const DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 30;
+    private const FAILED_QUEUE_SUFFIX = ':failed';
     private const RESERVED_QUEUE_SUFFIX = ':reserved';
     private const RESERVED_QUEUE_SEQUENCE_SUFFIX = ':sequence';
     private const RESERVED_ENTRY_PREFIX = 'v1';
@@ -44,24 +45,29 @@ return reservation
 LUA;
 
     private readonly ?\Closure $recoverExpiredJobs;
+    private readonly string $failedQueueName;
     private readonly string $reservedQueueName;
 
     /**
      * @param \Closure(string, string, int): ?string $reserveJob
      * @param \Closure(string, string): void $acknowledgeJob
-     * @param \Closure(string, string, string): void $releaseJob
+     * @param \Closure(string, string, string, string): void $releaseJob
+     * @param \Closure(string, string, string, string): void $deadLetterJob
      * @param null|\Closure(string, string, int): void $recoverExpiredJobs
      */
     public function __construct(
         private readonly \Closure $reserveJob,
         private readonly \Closure $acknowledgeJob,
         private readonly \Closure $releaseJob,
+        private readonly \Closure $deadLetterJob,
         private readonly string $queueName = self::DEFAULT_QUEUE_NAME,
         ?string $reservedQueueName = null,
+        ?string $failedQueueName = null,
         private readonly int $blockTimeoutSeconds = self::DEFAULT_BLOCK_TIMEOUT_SECONDS,
         private readonly int $visibilityTimeoutSeconds = self::DEFAULT_VISIBILITY_TIMEOUT_SECONDS,
         ?\Closure $recoverExpiredJobs = null,
     ) {
+        $this->failedQueueName = $failedQueueName ?? $queueName . self::FAILED_QUEUE_SUFFIX;
         $this->reservedQueueName = $reservedQueueName ?? $queueName . self::RESERVED_QUEUE_SUFFIX;
         $this->recoverExpiredJobs = $recoverExpiredJobs;
     }
@@ -74,39 +80,25 @@ LUA;
         int $blockTimeoutSeconds = self::DEFAULT_BLOCK_TIMEOUT_SECONDS,
         int $visibilityTimeoutSeconds = self::DEFAULT_VISIBILITY_TIMEOUT_SECONDS,
     ): self {
-        $redis = null;
-
-        return new self(
-            static function (string $targetQueue, string $reservedQueue, int $timeout) use (&$redis, $host, $port, $password): ?string {
-                $redis ??= self::connect($host, $port, $password);
-
-                return self::reserveJob(
-                    $redis,
-                    $targetQueue,
-                    $reservedQueue,
-                    self::reservationQueueSequenceKey($reservedQueue),
-                    $timeout,
-                );
-            },
-            static function (string $reservedQueue, string $reservation) use (&$redis, $host, $port, $password): void {
-                $redis ??= self::connect($host, $port, $password);
-
-                self::acknowledgeJob($redis, $reservedQueue, $reservation);
-            },
-            static function (string $targetQueue, string $reservedQueue, string $reservation) use (&$redis, $host, $port, $password): void {
-                $redis ??= self::connect($host, $port, $password);
-
-                self::releaseJob($redis, $targetQueue, $reservedQueue, $reservation);
-            },
+        return self::fromRedisConnectionFactory(
+            static fn (): object => self::connect($host, $port, $password),
             $queueName,
-            null,
             $blockTimeoutSeconds,
             $visibilityTimeoutSeconds,
-            static function (string $targetQueue, string $reservedQueue, int $timeout) use (&$redis, $host, $port, $password): void {
-                $redis ??= self::connect($host, $port, $password);
+        );
+    }
 
-                self::recoverExpiredJobs($redis, $targetQueue, $reservedQueue, $timeout);
-            },
+    public static function fromRedisConnection(
+        object $redis,
+        string $queueName = self::DEFAULT_QUEUE_NAME,
+        int $blockTimeoutSeconds = self::DEFAULT_BLOCK_TIMEOUT_SECONDS,
+        int $visibilityTimeoutSeconds = self::DEFAULT_VISIBILITY_TIMEOUT_SECONDS,
+    ): self {
+        return self::fromRedisConnectionFactory(
+            static fn (): object => $redis,
+            $queueName,
+            $blockTimeoutSeconds,
+            $visibilityTimeoutSeconds,
         );
     }
 
@@ -129,8 +121,57 @@ LUA;
             function () use ($reservation): void {
                 ($this->acknowledgeJob)($this->reservedQueueName, $reservation);
             },
-            function () use ($reservation): void {
-                ($this->releaseJob)($this->queueName, $this->reservedQueueName, $reservation);
+            function (string $queuePayload) use ($reservation): void {
+                ($this->releaseJob)($this->queueName, $this->reservedQueueName, $reservation, $queuePayload);
+            },
+            function (string $queuePayload) use ($reservation): void {
+                ($this->deadLetterJob)($this->failedQueueName, $this->reservedQueueName, $reservation, $queuePayload);
+            },
+        );
+    }
+
+    /**
+     * @param \Closure(): object $redisFactory
+     */
+    private static function fromRedisConnectionFactory(
+        \Closure $redisFactory,
+        string $queueName,
+        int $blockTimeoutSeconds,
+        int $visibilityTimeoutSeconds,
+    ): self {
+        $redis = null;
+        $connection = static function () use (&$redis, $redisFactory): object {
+            $redis ??= $redisFactory();
+
+            return $redis;
+        };
+
+        return new self(
+            static function (string $targetQueue, string $reservedQueue, int $timeout) use ($connection): ?string {
+                return self::reserveJob(
+                    $connection(),
+                    $targetQueue,
+                    $reservedQueue,
+                    self::reservationQueueSequenceKey($reservedQueue),
+                    $timeout,
+                );
+            },
+            static function (string $reservedQueue, string $reservation) use ($connection): void {
+                self::acknowledgeJob($connection(), $reservedQueue, $reservation);
+            },
+            static function (string $targetQueue, string $reservedQueue, string $reservation, string $payload) use ($connection): void {
+                self::releaseJob($connection(), $targetQueue, $reservedQueue, $reservation, $payload);
+            },
+            static function (string $targetQueue, string $reservedQueue, string $reservation, string $payload) use ($connection): void {
+                self::deadLetterJob($connection(), $targetQueue, $reservedQueue, $reservation, $payload);
+            },
+            $queueName,
+            null,
+            null,
+            $blockTimeoutSeconds,
+            $visibilityTimeoutSeconds,
+            static function (string $targetQueue, string $reservedQueue, int $timeout) use ($connection): void {
+                self::recoverExpiredJobs($connection(), $targetQueue, $reservedQueue, $timeout);
             },
         );
     }
@@ -233,12 +274,12 @@ LUA;
         string $reservedQueueName,
         string $reservation,
     ): void {
-        $result = self::invokeRedisMethod(
+        $result = self::moveReservedJob(
             $redis,
-            'eval',
-            self::REQUEUE_RESERVED_JOB_SCRIPT,
-            [$queueName, $reservedQueueName, $reservation, self::payloadFromReservation($reservation)],
-            2,
+            $queueName,
+            $reservedQueueName,
+            $reservation,
+            self::payloadFromReservation($reservation),
         );
 
         if (! is_int($result) || ($result !== 0 && $result !== 1)) {
@@ -315,19 +356,48 @@ LUA;
         }
     }
 
-    private static function releaseJob(object $redis, string $queueName, string $reservedQueueName, string $reservation): void
-    {
-        $result = self::invokeRedisMethod(
-            $redis,
-            'eval',
-            self::REQUEUE_RESERVED_JOB_SCRIPT,
-            [$queueName, $reservedQueueName, $reservation, self::payloadFromReservation($reservation)],
-            2,
-        );
+    private static function deadLetterJob(
+        object $redis,
+        string $queueName,
+        string $reservedQueueName,
+        string $reservation,
+        string $payload,
+    ): void {
+        $result = self::moveReservedJob($redis, $queueName, $reservedQueueName, $reservation, $payload);
+
+        if (! is_int($result) || $result !== 1) {
+            throw RedisJobQueueConsumerException::deadLetterFailed();
+        }
+    }
+
+    private static function releaseJob(
+        object $redis,
+        string $queueName,
+        string $reservedQueueName,
+        string $reservation,
+        string $payload,
+    ): void {
+        $result = self::moveReservedJob($redis, $queueName, $reservedQueueName, $reservation, $payload);
 
         if (! is_int($result) || $result !== 1) {
             throw RedisJobQueueConsumerException::releaseFailed();
         }
+    }
+
+    private static function moveReservedJob(
+        object $redis,
+        string $queueName,
+        string $reservedQueueName,
+        string $reservation,
+        string $payload,
+    ): mixed {
+        return self::invokeRedisMethod(
+            $redis,
+            'eval',
+            self::REQUEUE_RESERVED_JOB_SCRIPT,
+            [$queueName, $reservedQueueName, $reservation, $payload],
+            2,
+        );
     }
 
     private static function invokeRedisMethod(object $redis, string $method, mixed ...$arguments): mixed
