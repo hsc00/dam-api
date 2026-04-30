@@ -107,6 +107,86 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     }
 
     #[Test]
+    public function itReturnsUpdatedRowWhenProcessingAssetTransitionsToUploaded(): void
+    {
+        // Arrange & Act
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
+            $asset = $this->processingAsset(
+                assetId: '57575757-5757-4575-8575-575757575757',
+                uploadId: '68686868-6868-4686-8686-686868686868',
+                accountId: 'account-processing-uploaded',
+                fileName: 'processed-asset.png',
+                completionProof: 'etag-processing-uploaded',
+                persistedState: $this->persistedState('2026-04-01 12:05:00.000000', 2, '2026-04-01 12:10:00.000000'),
+            );
+            $completionProof = $asset->getCompletionProof();
+
+            self::assertNotNull($completionProof);
+
+            $repository->save($asset);
+            $asset->markUploaded($completionProof);
+            $repository->save($asset);
+            $persistedAsset = $repository->findById($asset->getId());
+
+            // Assert
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
+        });
+    }
+
+    #[Test]
+    public function itReturnsUpdatedRowWhenProcessingAssetTransitionsBackToPending(): void
+    {
+        // Arrange & Act
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
+            $asset = $this->processingAsset(
+                assetId: '58585858-5858-4585-8585-585858585858',
+                uploadId: '69696969-6969-4696-8696-696969696969',
+                accountId: 'account-processing-pending',
+                fileName: 'processing-to-pending.png',
+                completionProof: 'etag-processing-pending',
+                persistedState: $this->persistedState('2026-04-01 12:12:00.000000', 3, '2026-04-01 12:18:00.000000'),
+            );
+
+            $repository->save($asset);
+            $asset->restorePending();
+            $repository->save($asset);
+            $persistedAsset = $repository->findById($asset->getId());
+
+            // Assert
+            self::assertNull($asset->getCompletionProof());
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
+        });
+    }
+
+    #[Test]
+    public function itReturnsUpdatedRowWhenProcessingAssetTransitionsToFailed(): void
+    {
+        // Arrange & Act
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            $repository = $this->createRepository($connection);
+            $asset = $this->processingAsset(
+                assetId: '59595959-5959-4595-8595-595959595959',
+                uploadId: '6a6a6a6a-6a6a-46a6-86a6-6a6a6a6a6a6a',
+                accountId: 'account-processing-failed',
+                fileName: 'failed-after-processing.png',
+                completionProof: 'etag-processing-failed',
+                persistedState: $this->persistedState('2026-04-01 12:15:00.000000', 4, '2026-04-01 12:20:00.000000'),
+            );
+
+            $repository->save($asset);
+            $asset->markFailed();
+            $repository->save($asset);
+            $persistedAsset = $repository->findById($asset->getId());
+
+            // Assert
+            self::assertNull($asset->getCompletionProof());
+            $this->assertPersistedSingleRowMatches($connection, $asset, $persistedAsset);
+        });
+    }
+
+    #[Test]
     public function itReturnsAcceptedStateWhenUpdatedAtRemainsEqual(): void
     {
         // Arrange & Act

@@ -22,6 +22,8 @@ final class CompleteUploadService
     private const ASSET_NOT_FOUND_CODE = 'ASSET_NOT_FOUND';
     private const ASSET_NOT_FOUND_MESSAGE = 'Asset not found.';
     private const COMPLETE_UPLOAD_FAILED_CODE = 'COMPLETE_UPLOAD_FAILED';
+    private const DISPATCH_COMPENSATION_FAILURE_REASON = 'Failed to dispatch asset processing job and restore asset state.';
+    private const DISPATCH_FAILURE_REASON = 'Failed to dispatch asset processing job.';
     private const INVALID_ASSET_ID_CODE = 'INVALID_ASSET_ID';
     private const INVALID_ASSET_ID_MESSAGE = 'assetId must be a valid asset id.';
     private const INVALID_ASSET_STATE_CODE = 'INVALID_ASSET_STATE';
@@ -29,6 +31,7 @@ final class CompleteUploadService
     private const INVALID_COMPLETION_PROOF_MESSAGE = 'completionProof is required.';
     private const INVALID_UPLOAD_GRANT_CODE = 'INVALID_UPLOAD_GRANT';
     private const INVALID_UPLOAD_GRANT_MESSAGE = 'uploadGrant is invalid.';
+    private const REPOSITORY_FAILURE_REASON = 'Repository failure';
     private const UPLOAD_GRANT_REQUIRED_MESSAGE = 'uploadGrant is required.';
 
     public function __construct(
@@ -63,26 +66,38 @@ final class CompleteUploadService
             return new CompleteUploadResult($success, $userErrors);
         }
 
-        $asset = $this->assets->findById($assetId);
+        try {
+            $asset = $this->assets->findById($assetId);
 
-        if ($asset === null || (string) $asset->getAccountId() !== (string) $accountId) {
-            $userErrors[] = new UserError(self::ASSET_NOT_FOUND_CODE, self::ASSET_NOT_FOUND_MESSAGE, 'assetId');
-        } elseif (! hash_equals($this->uploadGrantIssuer->issueForAsset($asset), $uploadGrant)) {
-            $userErrors[] = new UserError(self::INVALID_UPLOAD_GRANT_CODE, self::INVALID_UPLOAD_GRANT_MESSAGE, 'uploadGrant');
-        } else {
-            try {
-                $asset->markProcessing($completionProof);
-                $this->assets->save($asset);
-                $this->assetProcessingJobDispatcher->dispatch($asset->getId());
+            if ($asset === null || (string) $asset->getAccountId() !== (string) $accountId) {
+                $userErrors[] = new UserError(self::ASSET_NOT_FOUND_CODE, self::ASSET_NOT_FOUND_MESSAGE, 'assetId');
+            } elseif (! hash_equals($this->uploadGrantIssuer->issueForAsset($asset), $uploadGrant)) {
+                $userErrors[] = new UserError(self::INVALID_UPLOAD_GRANT_CODE, self::INVALID_UPLOAD_GRANT_MESSAGE, 'uploadGrant');
+            } else {
+                $this->markProcessingAndDispatch($asset, $completionProof);
                 $success = new CompleteUploadSuccess($this->mapAsset($asset));
-            } catch (AssetDomainException $exception) {
-                $userErrors[] = $this->mapDomainException($exception);
-            } catch (\Throwable $exception) {
-                throw RepositoryUnavailableException::forReason('Repository failure', $exception);
             }
+        } catch (RepositoryUnavailableException $exception) {
+            throw $exception;
+        } catch (AssetDomainException $exception) {
+            $userErrors[] = $this->mapDomainException($exception);
+        } catch (\Throwable $exception) {
+            throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $exception);
         }
 
         return new CompleteUploadResult($success, $userErrors);
+    }
+
+    private function markProcessingAndDispatch(Asset $asset, UploadCompletionProofValue $completionProof): void
+    {
+        $asset->markProcessing($completionProof);
+        $this->assets->save($asset);
+
+        try {
+            $this->assetProcessingJobDispatcher->dispatch($asset->getId());
+        } catch (\Throwable $dispatchFailure) {
+            $this->restorePendingAfterDispatchFailure($asset, $dispatchFailure);
+        }
     }
 
     private function assetId(string $value): ?AssetId
@@ -101,6 +116,21 @@ final class CompleteUploadService
         } catch (\InvalidArgumentException $exception) {
             return null;
         }
+    }
+
+    private function restorePendingAfterDispatchFailure(Asset $asset, \Throwable $dispatchFailure): never
+    {
+        try {
+            $asset->restorePending();
+            $this->assets->save($asset);
+        } catch (\Throwable $compensationFailure) {
+            throw RepositoryUnavailableException::forReason(
+                self::DISPATCH_COMPENSATION_FAILURE_REASON,
+                $compensationFailure,
+            );
+        }
+
+        throw RepositoryUnavailableException::forReason(self::DISPATCH_FAILURE_REASON, $dispatchFailure);
     }
 
     private function mapDomainException(AssetDomainException $exception): UserError

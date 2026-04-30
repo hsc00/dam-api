@@ -250,7 +250,7 @@ final class Asset
             throw new AssetDomainException('Asset already uploaded');
         }
 
-        if ($this->status !== AssetStatus::PENDING) {
+        if ($this->status !== AssetStatus::PENDING && $this->status !== AssetStatus::PROCESSING) {
             throw new AssetDomainException('Cannot upload asset from current state');
         }
 
@@ -288,6 +288,24 @@ final class Asset
     /**
      * @throws AssetDomainException
      */
+    public function restorePending(): void
+    {
+        if ($this->status !== AssetStatus::PROCESSING) {
+            throw new AssetDomainException('Only processing assets can be restored to pending');
+        }
+
+        $this->completionProof = null;
+        $this->status = AssetStatus::PENDING;
+        $nextUpdatedAt = $this->clock->now();
+
+        if ($nextUpdatedAt > $this->updatedAt) {
+            $this->updatedAt = $nextUpdatedAt;
+        }
+    }
+
+    /**
+     * @throws AssetDomainException
+     */
     public function markFailed(): void
     {
         if ($this->status === AssetStatus::UPLOADED) {
@@ -298,6 +316,7 @@ final class Asset
             return;
         }
 
+        $this->completionProof = null;
         $this->status = AssetStatus::FAILED;
         $nextUpdatedAt = $this->clock->now();
 

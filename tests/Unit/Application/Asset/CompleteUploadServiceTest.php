@@ -11,6 +11,7 @@ use App\Application\Asset\UploadGrantIssuerInterface;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\AssetStatus;
+use App\Domain\Asset\Exception\RepositoryUnavailableException;
 use App\Domain\Asset\ValueObject\AccountId;
 use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 use App\Domain\Asset\ValueObject\UploadId;
@@ -83,6 +84,58 @@ final class CompleteUploadServiceTest extends TestCase
         self::assertCount(1, $savedAssets);
         self::assertSame(AssetStatus::PROCESSING, $savedAssets[0]->getStatus());
         self::assertSame('etag-123', $savedAssets[0]->getCompletionProof()?->value);
+    }
+
+    #[Test]
+    public function itRestoresTheAssetToPendingWhenDispatchFailsAfterSavingProcessingState(): void
+    {
+        // Arrange
+        $asset = $this->createPendingAsset();
+        $savedStatuses = [];
+        $savedCompletionProofs = [];
+        $this->assets
+            ->expects($this->once())
+            ->method('findById')
+            ->willReturn($asset);
+        $this->assets
+            ->expects($this->exactly(2))
+            ->method('save')
+            ->willReturnCallback(static function (Asset $savedAsset) use (&$savedStatuses, &$savedCompletionProofs): void {
+                $savedStatuses[] = $savedAsset->getStatus();
+                $savedCompletionProofs[] = $savedAsset->getCompletionProof()?->value;
+            });
+        $this->uploadGrantIssuer
+            ->expects($this->once())
+            ->method('issueForAsset')
+            ->with($asset)
+            ->willReturn('grant-123');
+        $this->assetProcessingJobDispatcher
+            ->expects($this->once())
+            ->method('dispatch')
+            ->with($asset->getId())
+            ->willThrowException(new \RuntimeException('redis unavailable'));
+
+        // Act
+        try {
+            $this->service->completeUpload(
+                new CompleteUploadCommand(
+                    accountId: 'account-123',
+                    assetId: (string) $asset->getId(),
+                    uploadGrant: 'grant-123',
+                    completionProof: 'etag-123',
+                ),
+            );
+
+            self::fail('Expected completeUpload() to throw when dispatch fails.');
+        } catch (RepositoryUnavailableException $exception) {
+            // Assert
+            self::assertSame('Failed to dispatch asset processing job.', $exception->getMessage());
+        }
+
+        self::assertSame([AssetStatus::PROCESSING, AssetStatus::PENDING], $savedStatuses);
+        self::assertSame(['etag-123', null], $savedCompletionProofs);
+        self::assertSame(AssetStatus::PENDING, $asset->getStatus());
+        self::assertNull($asset->getCompletionProof());
     }
 
     #[Test]

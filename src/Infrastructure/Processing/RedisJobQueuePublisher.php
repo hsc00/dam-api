@@ -29,10 +29,14 @@ final class RedisJobQueuePublisher implements AssetProcessingJobDispatcherInterf
         ?string $password = null,
         string $queueName = self::DEFAULT_QUEUE_NAME,
     ): self {
-        $redis = self::connect($host, $port, $password);
+        $redis = null;
 
         return new self(
-            static fn (string $targetQueue, string $payload): int => self::pushJob($redis, $targetQueue, $payload),
+            static function (string $targetQueue, string $payload) use (&$redis, $host, $port, $password): int {
+                $redis ??= self::connect($host, $port, $password);
+
+                return self::pushJob($redis, $targetQueue, $payload);
+            },
             $queueName,
         );
     }
