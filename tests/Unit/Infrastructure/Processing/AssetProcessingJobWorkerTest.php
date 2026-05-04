@@ -9,6 +9,7 @@ use App\Application\Asset\AssetTerminalStatusCacheInterface;
 use App\Application\Asset\Exception\RetryableAssetProcessingException;
 use App\Application\Asset\Exception\TerminalAssetProcessingException;
 use App\Application\Asset\HandleAssetProcessingJobService;
+use App\Application\Asset\HandleAssetProcessingRetryExhaustionService;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\AssetStatus;
@@ -18,6 +19,7 @@ use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 use App\Domain\Asset\ValueObject\UploadId;
 use App\Infrastructure\Processing\AssetProcessingJobDelivery;
 use App\Infrastructure\Processing\AssetProcessingJobHandlingOutcome;
+use App\Infrastructure\Processing\AssetProcessingJobPayload;
 use App\Infrastructure\Processing\AssetProcessingJobWorker;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -46,7 +48,11 @@ final class AssetProcessingJobWorkerTest extends TestCase
             $this->assetProcessor,
             $this->assetTerminalStatusCache,
         );
-        $this->worker = new AssetProcessingJobWorker($this->service, $this->logger);
+        $this->worker = new AssetProcessingJobWorker(
+            $this->service,
+            new HandleAssetProcessingRetryExhaustionService($this->assets, $this->assetTerminalStatusCache),
+            $this->logger,
+        );
     }
 
     #[Test]
@@ -85,7 +91,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
     public function itSanitizesInvalidAssetIdPayloadLogging(): void
     {
         // Arrange
-        $payload = '{"assetId":"not-a-uuid","retryCount":0}';
+        $payload = self::payload('not-a-uuid');
         $this->assets
             ->expects($this->never())
             ->method('findById');
@@ -118,7 +124,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
     {
         // Arrange
         $assetId = '123e4567-e89b-42d3-a456-426614174000';
-        $payload = '{"assetId":"' . $assetId . '","retryCount":0}';
+        $payload = self::payload($assetId);
         $this->assets
             ->expects($this->once())
             ->method('findById')
@@ -158,7 +164,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
     {
         // Arrange
         $asset = $this->createFailedAsset();
-        $payload = '{"assetId":"' . (string) $asset->getId() . '","retryCount":0}';
+        $payload = self::payload((string) $asset->getId());
         $this->assets
             ->expects($this->once())
             ->method('findById')
@@ -192,7 +198,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
     {
         // Arrange
         $asset = $this->createProcessingAsset();
-        $payload = '{"assetId":"' . (string) $asset->getId() . '","retryCount":8}';
+        $payload = self::payload((string) $asset->getId(), 8);
         $this->assets
             ->expects($this->once())
             ->method('findById')
@@ -233,7 +239,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
     {
         // Arrange
         $asset = $this->createProcessingAsset();
-        $payload = '{"assetId":"' . (string) $asset->getId() . '","retryCount":1}';
+        $payload = self::payload((string) $asset->getId(), 1);
         $this->assets
             ->expects($this->once())
             ->method('findById')
@@ -277,11 +283,11 @@ final class AssetProcessingJobWorkerTest extends TestCase
     }
 
     #[Test]
-    public function itReturnsRetryDeliveryWhenProcessingFailsWithARetryableError(): void
+    public function itIncrementsRetryCountAndReturnsRetryDeliveryWhenProcessingFailsBelowTheRetryLimit(): void
     {
         // Arrange
         $asset = $this->createProcessingAsset();
-        $payload = '{"assetId":"' . (string) $asset->getId() . '","retryCount":2}';
+        $payload = self::payload((string) $asset->getId(), 1);
         $this->assets
             ->expects($this->once())
             ->method('findById')
@@ -319,6 +325,151 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame(AssetProcessingJobDelivery::RETRY, $result->delivery);
         self::assertSame((string) $asset->getId(), $result->assetId);
         self::assertSame('temporary processor outage', $result->processingErrorMessage);
+        self::assertSame(self::payload((string) $asset->getId(), 2), $result->queuedPayload());
+    }
+
+    #[Test]
+    public function itDeadLettersJobsAndMarksTheAssetFailedWhenTheRetryLimitIsExceeded(): void
+    {
+        // Arrange
+        $asset = $this->createProcessingAsset();
+        $payload = self::payload((string) $asset->getId(), 2);
+        $this->assets
+            ->expects($this->exactly(2))
+            ->method('findById')
+            ->willReturnOnConsecutiveCalls($asset, $asset);
+        $this->assetProcessor
+            ->expects($this->once())
+            ->method('process')
+            ->with($asset)
+            ->willThrowException(new RetryableAssetProcessingException('temporary processor outage'));
+        $this->assets
+            ->expects($this->once())
+            ->method('save')
+            ->with(self::callback(static fn (Asset $savedAsset): bool => $savedAsset->getStatus() === AssetStatus::FAILED && $savedAsset->getCompletionProof() === null));
+        $this->assetTerminalStatusCache
+            ->expects($this->once())
+            ->method('store')
+            ->with(
+                self::callback(static fn (AssetId $assetId): bool => (string) $assetId === (string) $asset->getId()),
+                AssetStatus::FAILED,
+            );
+        $this->logger
+            ->expects($this->once())
+            ->method('warning')
+            ->with('Moved asset processing job to failed queue after retry budget exhausted.', [
+                'assetId' => (string) $asset->getId(),
+                'reason' => 'temporary processor outage',
+                'status' => 'FAILED',
+                'terminalStatusCached' => true,
+            ]);
+        $this->logger
+            ->expects($this->never())
+            ->method('error');
+        $this->logger
+            ->expects($this->never())
+            ->method('info');
+
+        // Act
+        $result = $this->worker->consume($payload);
+
+        // Assert
+        self::assertSame(AssetProcessingJobHandlingOutcome::DEAD_LETTERED, $result->outcome);
+        self::assertSame(AssetProcessingJobDelivery::DEAD_LETTER, $result->delivery);
+        self::assertSame((string) $asset->getId(), $result->assetId);
+        self::assertSame(AssetStatus::FAILED, $result->assetStatus);
+        self::assertTrue($result->terminalStatusCached);
+        self::assertSame('temporary processor outage', $result->processingErrorMessage);
+        self::assertSame(self::payload((string) $asset->getId(), 3), $result->queuedPayload());
+    }
+
+    #[Test]
+    public function itDiscardsExhaustedRetriesWhenTheAssetCannotBeFoundDuringExhaustionHandling(): void
+    {
+        // Arrange
+        $asset = $this->createProcessingAsset();
+        $payload = self::payload((string) $asset->getId(), 2);
+        $this->assets
+            ->expects($this->exactly(2))
+            ->method('findById')
+            ->willReturnOnConsecutiveCalls($asset, null);
+        $this->assetProcessor
+            ->expects($this->once())
+            ->method('process')
+            ->with($asset)
+            ->willThrowException(new RetryableAssetProcessingException('temporary processor outage'));
+        $this->assets
+            ->expects($this->never())
+            ->method('save');
+        $this->assetTerminalStatusCache
+            ->expects($this->never())
+            ->method('store');
+        $this->logger
+            ->expects($this->once())
+            ->method('error')
+            ->with('Discarded asset processing job for unknown asset.', ['assetId' => (string) $asset->getId()]);
+        $this->logger
+            ->expects($this->never())
+            ->method('warning');
+        $this->logger
+            ->expects($this->never())
+            ->method('info');
+
+        // Act
+        $result = $this->worker->consume($payload);
+
+        // Assert
+        self::assertSame(AssetProcessingJobHandlingOutcome::DISCARDED_UNKNOWN_ASSET, $result->outcome);
+        self::assertSame(AssetProcessingJobDelivery::DISCARD, $result->delivery);
+        self::assertSame((string) $asset->getId(), $result->assetId);
+        self::assertNull($result->queuedPayload());
+    }
+
+    #[Test]
+    public function itDiscardsExhaustedRetriesWhenTheAssetIsAlreadyNoLongerProcessing(): void
+    {
+        // Arrange
+        $processingAsset = $this->createProcessingAsset();
+        $failedAsset = $this->createFailedAsset();
+        $payload = self::payload((string) $processingAsset->getId(), 2);
+        $this->assets
+            ->expects($this->exactly(2))
+            ->method('findById')
+            ->willReturnOnConsecutiveCalls($processingAsset, $failedAsset);
+        $this->assetProcessor
+            ->expects($this->once())
+            ->method('process')
+            ->with($processingAsset)
+            ->willThrowException(new RetryableAssetProcessingException('temporary processor outage'));
+        $this->assets
+            ->expects($this->never())
+            ->method('save');
+        $this->assetTerminalStatusCache
+            ->expects($this->never())
+            ->method('store');
+        $this->logger
+            ->expects($this->once())
+            ->method('info')
+            ->with('Skipped asset processing job because asset is not in PROCESSING state.', [
+                'assetId' => (string) $processingAsset->getId(),
+                'status' => 'FAILED',
+            ]);
+        $this->logger
+            ->expects($this->never())
+            ->method('warning');
+        $this->logger
+            ->expects($this->never())
+            ->method('error');
+
+        // Act
+        $result = $this->worker->consume($payload);
+
+        // Assert
+        self::assertSame(AssetProcessingJobHandlingOutcome::SKIPPED_ASSET_NOT_PROCESSING, $result->outcome);
+        self::assertSame(AssetProcessingJobDelivery::DISCARD, $result->delivery);
+        self::assertSame((string) $processingAsset->getId(), $result->assetId);
+        self::assertSame(AssetStatus::FAILED, $result->assetStatus);
+        self::assertNull($result->queuedPayload());
     }
 
     #[Test]
@@ -326,7 +477,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
     {
         // Arrange
         $asset = $this->createProcessingAsset();
-        $payload = '{"assetId":"' . (string) $asset->getId() . '","retryCount":3}';
+        $payload = self::payload((string) $asset->getId(), 3);
         $this->assets
             ->expects($this->once())
             ->method('findById')
@@ -362,6 +513,11 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame(AssetProcessingJobHandlingOutcome::PROCESSED_ASSET_UPLOADED, $result->outcome);
         self::assertSame(AssetProcessingJobDelivery::HANDLED, $result->delivery);
         self::assertFalse($result->terminalStatusCached);
+    }
+
+    private static function payload(string $assetId, int $retryCount = 0): string
+    {
+        return (new AssetProcessingJobPayload($assetId, $retryCount))->toJson();
     }
 
     private function createPendingAsset(): Asset

@@ -34,10 +34,13 @@ final class RedisJobQueuePublisherTest extends TestCase
 
         // Assert
         self::assertSame('asset-processing', $capturedQueueName);
-        self::assertSame([
-            'assetId' => self::ASSET_ID,
-            'retryCount' => 0,
-        ], json_decode((string) $capturedPayload, true, 512, JSON_THROW_ON_ERROR));
+        self::assertIsString($capturedPayload);
+
+        $queuePayload = \App\Infrastructure\Processing\AssetProcessingJobPayload::fromJson($capturedPayload);
+
+        self::assertInstanceOf(\App\Infrastructure\Processing\AssetProcessingJobPayload::class, $queuePayload);
+        self::assertSame(self::ASSET_ID, $queuePayload->assetId());
+        self::assertSame(0, $queuePayload->retryCount());
     }
 
     #[Test]

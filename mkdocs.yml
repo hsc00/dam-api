@@ -24,5 +24,7 @@ nav:
       - US-04 Start Multi-file Upload: logs/04-start-multi-file-upload.md
       - US-05 Upload Request Validation: logs/05-upload-request-validation.md
       - US-06 Mark Upload as Complete: logs/06-mark-upload-complete.md
+      - US-07 Background Job Processing: logs/07-background-job-processing.md
+      - US-08 Failed-job Handling: logs/08-failed-job-handling.md
 plugins:
   - search

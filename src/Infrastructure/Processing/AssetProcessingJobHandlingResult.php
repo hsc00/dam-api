@@ -18,6 +18,7 @@ final readonly class AssetProcessingJobHandlingResult
         public ?bool $terminalStatusCached = null,
         public ?string $terminalStatusCacheError = null,
         public ?string $processingErrorMessage = null,
+        public ?string $queuePayload = null,
     ) {
     }
 
@@ -34,6 +35,26 @@ final readonly class AssetProcessingJobHandlingResult
     public static function discardedUnknownAsset(string $assetId): self
     {
         return new self(AssetProcessingJobHandlingOutcome::DISCARDED_UNKNOWN_ASSET, AssetProcessingJobDelivery::DISCARD, $assetId);
+    }
+
+    public static function deadLettered(
+        string $assetId,
+        string $processingErrorMessage,
+        ?string $queuePayload = null,
+        ?AssetStatus $assetStatus = null,
+        ?bool $terminalStatusCached = null,
+        ?string $terminalStatusCacheError = null,
+    ): self {
+        return new self(
+            outcome: AssetProcessingJobHandlingOutcome::DEAD_LETTERED,
+            delivery: AssetProcessingJobDelivery::DEAD_LETTER,
+            assetId: $assetId,
+            assetStatus: $assetStatus,
+            terminalStatusCached: $terminalStatusCached,
+            terminalStatusCacheError: $terminalStatusCacheError,
+            processingErrorMessage: $processingErrorMessage,
+            queuePayload: $queuePayload,
+        );
     }
 
     public static function processedFailed(
@@ -65,16 +86,14 @@ final readonly class AssetProcessingJobHandlingResult
         );
     }
 
-    public static function retryableProcessingFailure(string $assetId, string $processingErrorMessage): self
+    public static function retryableProcessingFailure(string $assetId, string $processingErrorMessage, ?string $queuePayload = null): self
     {
         return new self(
-            AssetProcessingJobHandlingOutcome::RETRYABLE_PROCESSING_FAILURE,
-            AssetProcessingJobDelivery::RETRY,
-            $assetId,
-            null,
-            null,
-            null,
-            $processingErrorMessage,
+            outcome: AssetProcessingJobHandlingOutcome::RETRYABLE_PROCESSING_FAILURE,
+            delivery: AssetProcessingJobDelivery::RETRY,
+            assetId: $assetId,
+            processingErrorMessage: $processingErrorMessage,
+            queuePayload: $queuePayload,
         );
     }
 
@@ -86,6 +105,11 @@ final readonly class AssetProcessingJobHandlingResult
             $assetId,
             $assetStatus,
         );
+    }
+
+    public function queuedPayload(): ?string
+    {
+        return $this->queuePayload;
     }
 
     public static function fromApplicationResult(HandleAssetProcessingJobResult $result): self
@@ -109,5 +133,4 @@ final readonly class AssetProcessingJobHandlingResult
             ),
         };
     }
-
 }

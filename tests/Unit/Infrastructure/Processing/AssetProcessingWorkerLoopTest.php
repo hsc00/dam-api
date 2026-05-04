@@ -8,6 +8,7 @@ use App\Domain\Asset\Exception\RepositoryUnavailableException;
 use App\Infrastructure\Processing\AssetProcessingJobConsumerInterface;
 use App\Infrastructure\Processing\AssetProcessingJobHandlerInterface;
 use App\Infrastructure\Processing\AssetProcessingJobHandlingResult;
+use App\Infrastructure\Processing\AssetProcessingJobPayload;
 use App\Infrastructure\Processing\AssetProcessingWorkerLoop;
 use App\Infrastructure\Processing\Exception\RedisJobQueueConsumerException;
 use App\Infrastructure\Processing\ReservedAssetProcessingJob;
@@ -19,7 +20,6 @@ use Psr\Log\LoggerInterface;
 final class AssetProcessingWorkerLoopTest extends TestCase
 {
     private const ASSET_ID = '123e4567-e89b-42d3-a456-426614174000';
-    private const PAYLOAD = '{"assetId":"123e4567-e89b-42d3-a456-426614174000","retryCount":0}';
 
     private AssetProcessingJobConsumerInterface&MockObject $consumer;
     private AssetProcessingJobHandlerInterface&MockObject $handler;
@@ -55,14 +55,20 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         // Arrange
         $acknowledgeCalls = 0;
         $releaseCalls = 0;
+        $deadLetterCalls = 0;
         $errors = [];
         $reservation = new ReservedAssetProcessingJob(
-            self::PAYLOAD,
+            self::payload(),
             static function () use (&$acknowledgeCalls): void {
                 $acknowledgeCalls++;
             },
-            static function () use (&$releaseCalls): void {
+            static function (string $payload) use (&$releaseCalls): void {
+                self::assertIsString($payload);
                 $releaseCalls++;
+            },
+            static function (string $payload) use (&$deadLetterCalls): void {
+                self::assertIsString($payload);
+                $deadLetterCalls++;
             },
         );
         $this->consumer
@@ -72,7 +78,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         $this->handler
             ->expects($this->once())
             ->method('consume')
-            ->with(self::PAYLOAD)
+            ->with(self::payload())
             ->willThrowException(RepositoryUnavailableException::forReason('Repository failure'));
         $this->logger
             ->expects($this->once())
@@ -90,6 +96,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         // Assert
         self::assertSame(0, $acknowledgeCalls);
         self::assertSame(1, $releaseCalls);
+        self::assertSame(0, $deadLetterCalls);
         self::assertSame([1_000], $this->sleepCalls);
         self::assertCount(1, $errors);
         self::assertSame('Asset processing worker iteration failed.', $errors[0][0]);
@@ -104,13 +111,20 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         // Arrange
         $acknowledgeCalls = 0;
         $releaseCalls = 0;
+        $releasedPayload = null;
+        $deadLetterCalls = 0;
         $reservation = new ReservedAssetProcessingJob(
-            self::PAYLOAD,
+            self::payload(),
             static function () use (&$acknowledgeCalls): void {
                 $acknowledgeCalls++;
             },
-            static function () use (&$releaseCalls): void {
+            static function (string $payload) use (&$releaseCalls, &$releasedPayload): void {
                 $releaseCalls++;
+                $releasedPayload = $payload;
+            },
+            static function (string $payload) use (&$deadLetterCalls): void {
+                self::assertIsString($payload);
+                $deadLetterCalls++;
             },
         );
         $this->consumer
@@ -120,8 +134,8 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         $this->handler
             ->expects($this->once())
             ->method('consume')
-            ->with(self::PAYLOAD)
-            ->willReturn(AssetProcessingJobHandlingResult::retryableProcessingFailure(self::ASSET_ID, 'temporary processor outage'));
+            ->with(self::payload())
+            ->willReturn(AssetProcessingJobHandlingResult::retryableProcessingFailure(self::ASSET_ID, 'temporary processor outage', self::payload(2)));
         $this->logger
             ->expects($this->never())
             ->method('error');
@@ -135,22 +149,31 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         // Assert
         self::assertSame(0, $acknowledgeCalls);
         self::assertSame(1, $releaseCalls);
+        self::assertSame(expected: self::payload(2), actual: $releasedPayload);
+        self::assertSame(0, $deadLetterCalls);
         self::assertSame([], $this->sleepCalls);
     }
 
     #[Test]
-    public function itReturnsAcknowledgementForDiscardedUnknownAssetsWithoutRequeueing(): void
+    public function itMovesJobsToTheFailedQueueWhenTheHandlerReturnsDeadLetterDelivery(): void
     {
         // Arrange
         $acknowledgeCalls = 0;
         $releaseCalls = 0;
+        $deadLetterCalls = 0;
+        $deadLetterPayload = null;
         $reservation = new ReservedAssetProcessingJob(
-            self::PAYLOAD,
+            self::payload(),
             static function () use (&$acknowledgeCalls): void {
                 $acknowledgeCalls++;
             },
-            static function () use (&$releaseCalls): void {
+            static function (string $payload) use (&$releaseCalls): void {
+                self::assertIsString($payload);
                 $releaseCalls++;
+            },
+            static function (string $payload) use (&$deadLetterCalls, &$deadLetterPayload): void {
+                $deadLetterCalls++;
+                $deadLetterPayload = $payload;
             },
         );
         $this->consumer
@@ -160,7 +183,55 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         $this->handler
             ->expects($this->once())
             ->method('consume')
-            ->with(self::PAYLOAD)
+            ->with(self::payload())
+            ->willReturn(AssetProcessingJobHandlingResult::deadLettered(self::ASSET_ID, 'retry budget exhausted', self::payload(3)));
+        $this->logger
+            ->expects($this->never())
+            ->method('error');
+        $this->logger
+            ->expects($this->never())
+            ->method('critical');
+
+        // Act
+        $this->loop->runOnce();
+
+        // Assert
+        self::assertSame(0, $acknowledgeCalls);
+        self::assertSame(0, $releaseCalls);
+        self::assertSame(1, $deadLetterCalls);
+        self::assertSame(expected: self::payload(3), actual: $deadLetterPayload);
+        self::assertSame([], $this->sleepCalls);
+    }
+
+    #[Test]
+    public function itReturnsAcknowledgementForDiscardedUnknownAssetsWithoutRequeueing(): void
+    {
+        // Arrange
+        $acknowledgeCalls = 0;
+        $releaseCalls = 0;
+        $deadLetterCalls = 0;
+        $reservation = new ReservedAssetProcessingJob(
+            self::payload(),
+            static function () use (&$acknowledgeCalls): void {
+                $acknowledgeCalls++;
+            },
+            static function (string $payload) use (&$releaseCalls): void {
+                self::assertIsString($payload);
+                $releaseCalls++;
+            },
+            static function (string $payload) use (&$deadLetterCalls): void {
+                self::assertIsString($payload);
+                $deadLetterCalls++;
+            },
+        );
+        $this->consumer
+            ->expects($this->once())
+            ->method('reserveNext')
+            ->willReturn($reservation);
+        $this->handler
+            ->expects($this->once())
+            ->method('consume')
+            ->with(self::payload())
             ->willReturn(AssetProcessingJobHandlingResult::discardedUnknownAsset(self::ASSET_ID));
         $this->logger
             ->expects($this->never())
@@ -175,6 +246,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         // Assert
         self::assertSame(1, $acknowledgeCalls);
         self::assertSame(0, $releaseCalls);
+        self::assertSame(0, $deadLetterCalls);
         self::assertSame([], $this->sleepCalls);
     }
 
@@ -184,13 +256,19 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         // Arrange
         $acknowledgeCalls = 0;
         $releaseCalls = 0;
+        $deadLetterCalls = 0;
         $reservation = new ReservedAssetProcessingJob(
-            self::PAYLOAD,
+            self::payload(),
             static function () use (&$acknowledgeCalls): void {
                 $acknowledgeCalls++;
             },
-            static function () use (&$releaseCalls): void {
+            static function (string $payload) use (&$releaseCalls): void {
+                self::assertIsString($payload);
                 $releaseCalls++;
+            },
+            static function (string $payload) use (&$deadLetterCalls): void {
+                self::assertIsString($payload);
+                $deadLetterCalls++;
             },
         );
         $this->consumer
@@ -200,7 +278,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         $this->handler
             ->expects($this->once())
             ->method('consume')
-            ->with(self::PAYLOAD)
+            ->with(self::payload())
             ->willReturn(AssetProcessingJobHandlingResult::processedFailed(self::ASSET_ID, true, 'processor crashed'));
         $this->logger
             ->expects($this->never())
@@ -215,6 +293,7 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         // Assert
         self::assertSame(1, $acknowledgeCalls);
         self::assertSame(0, $releaseCalls);
+        self::assertSame(0, $deadLetterCalls);
         self::assertSame([], $this->sleepCalls);
     }
 
@@ -266,5 +345,10 @@ final class AssetProcessingWorkerLoopTest extends TestCase
         self::assertSame('Asset processing worker stopped after repeated infrastructure failures.', $criticals[0][0]);
         self::assertSame(3, $criticals[0][1]['consecutiveFailures']);
         self::assertInstanceOf(RedisJobQueueConsumerException::class, $criticals[0][1]['exception']);
+    }
+
+    private static function payload(int $retryCount = 0): string
+    {
+        return (new AssetProcessingJobPayload(self::ASSET_ID, $retryCount))->toJson();
     }
 }

@@ -70,7 +70,7 @@ final class AssetProcessingWorkerLoop
         }
 
         try {
-            $this->finalizeReservation($reservation, $result->delivery);
+            $this->finalizeReservation($reservation, $result);
         } catch (\Throwable $exception) {
             $this->handleInfrastructureFailure($exception);
 
@@ -80,13 +80,23 @@ final class AssetProcessingWorkerLoop
         $this->consecutiveInfrastructureFailures = 0;
     }
 
-    private function finalizeReservation(ReservedAssetProcessingJob $reservation, AssetProcessingJobDelivery $delivery): void
+    private function finalizeReservation(ReservedAssetProcessingJob $reservation, AssetProcessingJobHandlingResult $result): void
     {
-        match ($delivery) {
+        match ($result->delivery) {
+            AssetProcessingJobDelivery::DEAD_LETTER => $reservation->deadLetter($this->requiredQueuePayload($result)),
             AssetProcessingJobDelivery::HANDLED => $reservation->acknowledge(),
             AssetProcessingJobDelivery::DISCARD => $reservation->discard(),
-            AssetProcessingJobDelivery::RETRY => $reservation->release(),
+            AssetProcessingJobDelivery::RETRY => $reservation->release($this->requiredQueuePayload($result)),
         };
+    }
+
+    private function requiredQueuePayload(AssetProcessingJobHandlingResult $result): string
+    {
+        if ($result->queuePayload === null) {
+            throw new \LogicException('Queue payload is required for retry or dead-letter deliveries.');
+        }
+
+        return $result->queuePayload;
     }
 
     private function releaseReservationAfterHandlerFailure(ReservedAssetProcessingJob $reservation, \Throwable $exception): void
