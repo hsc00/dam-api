@@ -29,17 +29,18 @@ Senior PHP developer with deep expertise in PHP 8.3+, Laravel, Symfony, and mode
 
 Load detailed guidance based on context:
 
-| Topic | Reference | Load When |
-|-------|-----------|-----------|
+| Topic      | Reference                           | Load When                                  |
+| ---------- | ----------------------------------- | ------------------------------------------ |
 | Modern PHP | `references/modern-php-features.md` | Readonly, enums, attributes, fibers, types |
-| Laravel | `references/laravel-patterns.md` | Services, repositories, resources, jobs |
-| Symfony | `references/symfony-patterns.md` | DI, events, commands, voters |
-| Async PHP | `references/async-patterns.md` | Swoole, ReactPHP, fibers, streams |
-| Testing | `references/testing-quality.md` | PHPUnit, PHPStan, Pest, mocking |
+| Laravel    | `references/laravel-patterns.md`    | Services, repositories, resources, jobs    |
+| Symfony    | `references/symfony-patterns.md`    | DI, events, commands, voters               |
+| Async PHP  | `references/async-patterns.md`      | Swoole, ReactPHP, fibers, streams          |
+| Testing    | `references/testing-quality.md`     | PHPUnit, PHPStan, Pest, mocking            |
 
 ## Constraints
 
 ### MUST DO
+
 - Declare strict types (`declare(strict_types=1)`)
 - Use type hints for all properties, parameters, returns
 - Follow PSR-12 coding standard
@@ -50,6 +51,7 @@ Load detailed guidance based on context:
 - Use dependency injection over global state
 
 ### MUST NOT DO
+
 - Skip type declarations (no mixed types)
 - Store passwords in plain text (use bcrypt/argon2)
 - Write SQL queries vulnerable to injection
@@ -57,6 +59,14 @@ Load detailed guidance based on context:
 - Hardcode configuration (use .env)
 - Deploy without running tests and static analysis
 - Use var_dump in production code
+- Leave a catch block comment-only or use `unset($e)` to silence a suppressed exception
+
+## Exception Suppression
+
+- If an exception must be suppressed, log it when a logger is available.
+- If logging is not available, keep the reason in a comment and use `SuppressedFailure::acknowledge($suppressed)` only when that helper performs a real side effect, such as emitting a minimal fallback log entry.
+- Do not implement acknowledgement helpers with pure/no-op calls like a bare `get_debug_type($suppressed);`.
+- Do not leave a catch block with comments alone; the suppression must be explicit in executable code.
 
 ## Code Patterns
 
@@ -195,6 +205,7 @@ enum UserStatus: string
 ## Output Templates
 
 When implementing a feature, deliver in this order:
+
 1. Domain models (entities, value objects, enums)
 2. Service/repository classes
 3. Controller/API endpoints

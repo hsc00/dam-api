@@ -6,7 +6,7 @@ namespace App\Infrastructure\Processing\Exception;
 
 use RuntimeException;
 
-final class RedisAssetTerminalStatusCacheException extends RuntimeException
+final class RedisAssetStatusCacheException extends RuntimeException
 {
     public static function storeFailed(): self
     {

@@ -20,9 +20,9 @@ final class HandleAssetProcessingJobService
     public function __construct(
         AssetRepositoryInterface $assets,
         private readonly AssetProcessorInterface $assetProcessor,
-        AssetTerminalStatusCacheInterface $assetTerminalStatusCache,
+        AssetStatusCacheInterface $assetStatusCache,
     ) {
-        $this->terminalAssetPersistence = new \App\Application\Asset\TerminalAssetPersistenceService($assets, $assetTerminalStatusCache);
+        $this->terminalAssetPersistence = new \App\Application\Asset\TerminalAssetPersistenceService($assets, $assetStatusCache);
     }
 
     public function handle(HandleAssetProcessingJobCommand $command): HandleAssetProcessingJobResult

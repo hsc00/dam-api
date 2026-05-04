@@ -72,7 +72,9 @@ final readonly class UploadId
 - `eval()` — forbidden entirely
 - Raw SQL string concatenation involving variables — use `PDO::prepare()` + named parameters
 - `$_GET`, `$_POST`, `$_SERVER` — forbidden outside `src/Http/`
-- `error_log()` — use Monolog structured logging
+- `error_log()` — use Monolog structured logging in normal application code; the narrow
+  exception is the fallback inside `SuppressedFailure::acknowledge()` when no logger is
+  available for a suppressed secondary failure
 - `var_dump()`, `print_r()` — forbidden in production code paths
 - Static state (`static $x = ...`) — avoid; use constructor injection
 - `new` inside class bodies outside constructors/factories — prefer injected dependencies
@@ -84,20 +86,25 @@ final readonly class UploadId
   error to the caller.
 - If you intentionally suppress a secondary/cleanup exception, still reference or log the
   suppressed exception so it is not silently discarded and so static analyzers/readers
-  can see the rationale. Example:
+  can see the rationale. Comment-only catch blocks are not enough; add a real statement that
+  uses the exception, such as structured logging or a named helper like
+  `SuppressedFailure::acknowledge($suppressed)`, which must perform a real side effect.
+  Helper implementations that only call pure/no-op functions, such as a bare
+  `get_debug_type($suppressed);`, are not acceptable. Example:
 
 ```php
 try {
   // cleanup that may fail
 } catch (\Throwable $suppressed) {
+  SuppressedFailure::acknowledge($suppressed);
   // Suppressed intentionally after primary failure is already handled.
   // Prefer logging when a logger is available to aid debugging:
   // $this->logger->debug('Cleanup failed after primary error', ['exception' => $suppressed]);
-  //
-  // If logging is not desirable, keep an explicit comment explaining why
-  // the exception is intentionally ignored (do NOT use unset()).
 }
 ```
+
+- When a logger is not available, `SuppressedFailure::acknowledge()` should emit a minimal
+  fallback log entry instead of using a fake acknowledgement helper.
 
 - Prefer structured logging (Monolog/PSR-3). When possible include context and the
   exception object:

@@ -6,6 +6,7 @@ namespace App\GraphQL;
 
 use App\GraphQL\Exception\SchemaLoadException;
 use App\GraphQL\Resolver\CompleteUploadResolver;
+use App\GraphQL\Resolver\GetAssetResolver;
 use App\GraphQL\Resolver\StartUploadBatchResolver;
 use App\GraphQL\Resolver\StartUploadResolver;
 use DateTimeImmutable;
@@ -20,6 +21,7 @@ use GraphQL\Utils\BuildSchema;
 final class SchemaFactory
 {
     public function __construct(
+        private readonly GetAssetResolver $getAssetResolver,
         private readonly StartUploadResolver $startUploadResolver,
         private readonly StartUploadBatchResolver $startUploadBatchResolver,
         private readonly CompleteUploadResolver $completeUploadResolver,
@@ -38,6 +40,7 @@ final class SchemaFactory
             $schemaSource,
             function (array $typeConfig): array {
                 return match ($typeConfig['name'] ?? null) {
+                    'Query' => $this->decorateQuery($typeConfig),
                     'Mutation' => $this->decorateMutation($typeConfig),
                     'ByteCount' => $this->decorateByteCountScalar($typeConfig),
                     'DateTime' => $this->decorateDateTimeScalar($typeConfig),
@@ -45,6 +48,23 @@ final class SchemaFactory
                 };
             },
         );
+    }
+
+    /**
+     * @param array<string, mixed> $typeConfig
+     *
+     * @return array<string, mixed>
+     */
+    private function decorateQuery(array $typeConfig): array
+    {
+        $typeConfig['resolveField'] = function (mixed $source, array $args, mixed $contextValue, ResolveInfo $resolveInfo): mixed {
+            return match ($resolveInfo->fieldName) {
+                'asset' => $this->getAssetResolver->resolve($source, $args, $contextValue, $resolveInfo),
+                default => null,
+            };
+        };
+
+        return $typeConfig;
     }
 
     /**

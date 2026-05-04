@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Application\Exception\SuppressedFailure;
 use App\GraphQL\SchemaFactory;
 use GraphQL\Error\Error as GraphQLError;
 use GraphQL\GraphQL;
@@ -11,6 +12,7 @@ use Psr\Log\LoggerInterface;
 
 final class GraphQLHandler
 {
+    private const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
     private const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 
     public function __construct(
@@ -51,10 +53,10 @@ final class GraphQLHandler
                     try {
                         $this->logger->error('GraphQL handler error', ['exception' => $e, 'operation' => $operationName]);
                     } catch (\Throwable $suppressed) {
-                        unset($suppressed);
+                        SuppressedFailure::acknowledge($suppressed);
                     }
 
-                    $response = $this->jsonResponse(500, ['errors' => [['message' => 'Internal server error']]]);
+                    $response = $this->jsonResponse(500, ['errors' => [['message' => self::INTERNAL_SERVER_ERROR_MESSAGE]]]);
                 }
             } else {
                 $response = $this->jsonResponse(405, [
@@ -169,7 +171,7 @@ final class GraphQLHandler
             // If this is not a GraphQL\Error\Error, treat it as internal.
             if (! $error instanceof GraphQLError) {
                 return [
-                    'message' => 'Internal server error',
+                    'message' => self::INTERNAL_SERVER_ERROR_MESSAGE,
                     'extensions' => [
                         'code' => 'INTERNAL_SERVER_ERROR',
                         'category' => 'INTERNAL',
@@ -180,7 +182,7 @@ final class GraphQLHandler
             // If the GraphQL Error wraps an internal exception, return a sanitized payload.
             if ($error->getPrevious() !== null) {
                 return [
-                    'message' => 'Internal server error',
+                    'message' => self::INTERNAL_SERVER_ERROR_MESSAGE,
                     'extensions' => [
                         'code' => 'INTERNAL_SERVER_ERROR',
                         'category' => 'INTERNAL',

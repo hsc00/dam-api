@@ -39,8 +39,8 @@
     "test:integration": "@php -d opcache.jit=0 -d xdebug.mode=off vendor/phpunit/phpunit/phpunit --no-coverage --configuration phpunit.xml --testsuite=integration",
     "test:coverage": "@php -d opcache.jit=0 -d xdebug.mode=coverage vendor/phpunit/phpunit/phpunit --configuration phpunit.xml --testsuite=unit",
     "analyse": "@php -d opcache.jit=0 -d memory_limit=512M vendor/bin/phpstan analyse -c phpstan.neon --no-progress",
-    "fix": "@php vendor/bin/php-cs-fixer fix",
-    "fix:check": "@php vendor/bin/php-cs-fixer fix --dry-run --diff",
+    "fix": "@php -d opcache.jit=0 vendor/bin/php-cs-fixer fix",
+    "fix:check": "@php -d opcache.jit=0 vendor/bin/php-cs-fixer fix --dry-run --diff",
     "mutate": "vendor/bin/infection --configuration=infection.json5 --threads=max",
     "check": [
       "@fix:check",

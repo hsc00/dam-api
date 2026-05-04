@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Application\Asset;
 
-use App\Application\Asset\AssetTerminalStatusCacheInterface;
+use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\Command\HandleAssetProcessingRetryExhaustionCommand;
 use App\Application\Asset\HandleAssetProcessingRetryExhaustionService;
 use App\Application\Asset\Result\AssetProcessingRetryExhaustionOutcome;
@@ -27,7 +27,7 @@ final class HandleAssetProcessingRetryExhaustionServiceTest extends TestCase
     private const UNKNOWN_ASSET_ID = '123e4567-e89b-42d3-a456-426614174000';
 
     private AssetRepositoryInterface&MockObject $assets;
-    private AssetTerminalStatusCacheInterface&MockObject $assetTerminalStatusCache;
+    private AssetStatusCacheInterface&MockObject $assetTerminalStatusCache;
     private HandleAssetProcessingRetryExhaustionService $service;
 
     protected function setUp(): void
@@ -35,7 +35,7 @@ final class HandleAssetProcessingRetryExhaustionServiceTest extends TestCase
         parent::setUp();
 
         $this->assets = $this->createMock(AssetRepositoryInterface::class);
-        $this->assetTerminalStatusCache = $this->createMock(AssetTerminalStatusCacheInterface::class);
+        $this->assetTerminalStatusCache = $this->createMock(AssetStatusCacheInterface::class);
         $this->service = new HandleAssetProcessingRetryExhaustionService(
             $this->assets,
             $this->assetTerminalStatusCache,

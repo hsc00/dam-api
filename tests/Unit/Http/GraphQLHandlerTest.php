@@ -4,18 +4,24 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Http;
 
+use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\CompleteUploadService;
+use App\Application\Asset\GetAssetService;
 use App\Application\Asset\StartUploadService;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
+use App\Domain\Asset\AssetStatus;
 use App\Domain\Asset\ValueObject\AccountId;
 use App\Domain\Asset\ValueObject\AssetId;
+use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 use App\Domain\Asset\ValueObject\UploadId;
 use App\GraphQL\Resolver\CompleteUploadResolver;
+use App\GraphQL\Resolver\GetAssetResolver;
 use App\GraphQL\Resolver\StartUploadBatchResolver;
 use App\GraphQL\Resolver\StartUploadResolver;
 use App\GraphQL\SchemaFactory;
 use App\Http\GraphQLHandler;
+use App\Infrastructure\Processing\NullAssetStatusCache;
 use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
 use PHPUnit\Framework\Attributes\Test;
@@ -24,6 +30,8 @@ use Psr\Log\NullLogger;
 
 final class GraphQLHandlerTest extends TestCase
 {
+    private const UNKNOWN_ASSET_ID = '123e4567-e89b-42d3-a456-426614174000';
+
     #[Test]
     public function itExecutesStartUploadThroughTheLocalGraphQlHandler(): void
     {
@@ -402,35 +410,256 @@ GRAPHQL,
         self::assertSame((string) $asset->getId(), $decoded['assetId']);
     }
 
+    #[Test]
+    public function itReturnsCachedAssetStatusOnAssetQueryCacheHit(): void
+    {
+        // Arrange
+        $cache = new ConfigurableAssetStatusCache(lookupResult: AssetStatus::PROCESSING);
+        [$handler, $repository] = $this->createHandler(cache: $cache);
+        $asset = $this->createProcessingAsset();
+        $repository->save($asset);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody((string) $asset->getId()));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame(
+            [
+                'id' => (string) $asset->getId(),
+                'status' => 'PROCESSING',
+                'readSource' => 'FAST_CACHE',
+            ],
+            $payload['data']['asset'],
+        );
+        self::assertSame([(string) $asset->getId()], $cache->lookupCalls);
+        self::assertSame([], $cache->storeCalls);
+    }
+
+    #[Test]
+    public function itReturnsDurableAssetStatusAndRepairsTheCacheOnAssetQueryStatusMismatch(): void
+    {
+        // Arrange
+        $cache = new ConfigurableAssetStatusCache(lookupResult: AssetStatus::FAILED);
+        [$handler, $repository] = $this->createHandler(cache: $cache);
+        $asset = $this->createProcessingAsset();
+        $repository->save($asset);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody((string) $asset->getId()));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame(
+            [
+                'id' => (string) $asset->getId(),
+                'status' => 'PROCESSING',
+                'readSource' => 'DURABLE_STORE',
+            ],
+            $payload['data']['asset'],
+        );
+        self::assertSame([(string) $asset->getId()], $cache->lookupCalls);
+        self::assertCount(1, $cache->storeCalls);
+        self::assertSame((string) $asset->getId(), $cache->storeCalls[0]['assetId']);
+        self::assertSame(AssetStatus::PROCESSING, $cache->storeCalls[0]['status']);
+    }
+
+    #[Test]
+    public function itReturnsDurableAssetStatusAndSeedsTheCacheOnAssetQueryMiss(): void
+    {
+        // Arrange
+        $cache = new ConfigurableAssetStatusCache();
+        [$handler, $repository] = $this->createHandler(cache: $cache);
+        $asset = $this->createProcessingAsset();
+        $repository->save($asset);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody((string) $asset->getId()));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame(
+            [
+                'id' => (string) $asset->getId(),
+                'status' => 'PROCESSING',
+                'readSource' => 'DURABLE_STORE',
+            ],
+            $payload['data']['asset'],
+        );
+        self::assertSame([(string) $asset->getId()], $cache->lookupCalls);
+        self::assertCount(1, $cache->storeCalls);
+        self::assertSame((string) $asset->getId(), $cache->storeCalls[0]['assetId']);
+        self::assertSame(AssetStatus::PROCESSING, $cache->storeCalls[0]['status']);
+    }
+
+    #[Test]
+    public function itReturnsNullWithoutErrorsWhenTheAssetDoesNotExist(): void
+    {
+        // Arrange
+        $cache = new ConfigurableAssetStatusCache(lookupResult: AssetStatus::FAILED);
+        [$handler] = $this->createHandler(cache: $cache);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody(self::UNKNOWN_ASSET_ID));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertNull($payload['data']['asset']);
+        self::assertSame([], $cache->lookupCalls);
+        self::assertSame([], $cache->storeCalls);
+    }
+
+    #[Test]
+    public function itReturnsNullWithoutErrorsWhenTheAssetBelongsToAnotherAccount(): void
+    {
+        // Arrange
+        $cache = new ConfigurableAssetStatusCache(lookupResult: AssetStatus::FAILED);
+        [$handler, $repository] = $this->createHandler(cache: $cache);
+        $asset = $this->createProcessingAsset('another-account');
+        $repository->save($asset);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody((string) $asset->getId()));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertNull($payload['data']['asset']);
+        self::assertSame([], $cache->lookupCalls);
+        self::assertSame([], $cache->storeCalls);
+    }
+
+    #[Test]
+    public function itReturnsNullWithoutErrorsWhenTheAssetQueryReceivesAMalformedId(): void
+    {
+        // Arrange
+        [$handler] = $this->createHandler();
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody('not-a-uuid'));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertNull($payload['data']['asset']);
+    }
+
+    #[Test]
+    public function itSuppressesCacheSeedFailuresOnDurableAssetReads(): void
+    {
+        // Arrange
+        $cache = new ConfigurableAssetStatusCache(storeFailure: new \RuntimeException('cache unavailable'));
+        [$handler, $repository] = $this->createHandler(cache: $cache);
+        $asset = $this->createProcessingAsset();
+        $repository->save($asset);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody((string) $asset->getId()));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame(
+            [
+                'id' => (string) $asset->getId(),
+                'status' => 'PROCESSING',
+                'readSource' => 'DURABLE_STORE',
+            ],
+            $payload['data']['asset'],
+        );
+        self::assertSame([(string) $asset->getId()], $cache->lookupCalls);
+        self::assertCount(1, $cache->storeCalls);
+    }
+
     /**
      * @return array{0: GraphQLHandler, 1: InMemoryAssetRepository, 2: InMemoryOutboxRepository}
      */
-    private function createHandler(): array
+    private function createHandler(?AssetStatusCacheInterface $cache = null, string $accountId = 'local-test-account'): array
     {
         $repository = new InMemoryAssetRepository();
         $uploadGrantIssuer = new LocalUploadGrantIssuer('test-secret');
 
         $outbox = new InMemoryOutboxRepository();
         $transactionManager = $this->createMock(\App\Application\Transaction\TransactionManagerInterface::class);
+        $assetTerminalStatusCache = $cache ?? new NullAssetStatusCache();
 
         $startUploadService = new StartUploadService(
             $repository,
             new MockStorageAdapter(),
             $uploadGrantIssuer,
+            $assetTerminalStatusCache,
+        );
+        $getAssetService = new GetAssetService(
+            $repository,
+            $assetTerminalStatusCache,
         );
         $completeUploadService = new CompleteUploadService(
             $repository,
             $uploadGrantIssuer,
             $transactionManager,
             $outbox,
+            $assetTerminalStatusCache,
         );
         $schemaFactory = new SchemaFactory(
+            new GetAssetResolver($getAssetService),
             new StartUploadResolver($startUploadService),
             new StartUploadBatchResolver($startUploadService),
             new CompleteUploadResolver($completeUploadService),
         );
 
-        return [new GraphQLHandler($schemaFactory, 'local-test-account', new NullLogger()), $repository, $outbox];
+        return [new GraphQLHandler($schemaFactory, $accountId, new NullLogger()), $repository, $outbox];
+    }
+
+    private function assetQueryRequestBody(string $assetId): string
+    {
+        return json_encode([
+            'query' => <<<'GRAPHQL'
+query Asset($id: ID!) {
+  asset(id: $id) {
+    id
+    status
+    readSource
+  }
+}
+GRAPHQL,
+            'variables' => ['id' => $assetId],
+        ], JSON_THROW_ON_ERROR);
+    }
+
+    private function createPendingAsset(string $accountId = 'local-test-account'): Asset
+    {
+        return Asset::createPending(
+            UploadId::generate(),
+            new AccountId($accountId),
+            'report.pdf',
+            'application/pdf',
+        );
+    }
+
+    private function createProcessingAsset(string $accountId = 'local-test-account'): Asset
+    {
+        $asset = $this->createPendingAsset($accountId);
+        $asset->markProcessing(new UploadCompletionProofValue('etag-processing'));
+
+        return $asset;
     }
 }
 
@@ -504,5 +733,48 @@ final class InMemoryAssetRepository implements AssetRepositoryInterface
         }
 
         return null;
+    }
+}
+
+final class ConfigurableAssetStatusCache implements AssetStatusCacheInterface
+{
+    /**
+     * @var list<string>
+     */
+    public array $lookupCalls = [];
+
+    /**
+     * @var list<array{assetId: string, status: AssetStatus}>
+     */
+    public array $storeCalls = [];
+
+    public function __construct(
+        private readonly ?AssetStatus $lookupResult = null,
+        private readonly ?\Throwable $lookupFailure = null,
+        private readonly ?\Throwable $storeFailure = null,
+    ) {
+    }
+
+    public function lookup(AssetId $assetId): ?AssetStatus
+    {
+        $this->lookupCalls[] = (string) $assetId;
+
+        if ($this->lookupFailure !== null) {
+            throw $this->lookupFailure;
+        }
+
+        return $this->lookupResult;
+    }
+
+    public function store(AssetId $assetId, AssetStatus $status): void
+    {
+        $this->storeCalls[] = [
+            'assetId' => (string) $assetId,
+            'status' => $status,
+        ];
+
+        if ($this->storeFailure !== null) {
+            throw $this->storeFailure;
+        }
     }
 }

@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Processing;
 
-use App\Application\Asset\AssetTerminalStatusCacheInterface;
+use App\Application\Asset\AssetStatusCacheInterface;
 use App\Domain\Asset\AssetStatus;
 use App\Domain\Asset\ValueObject\AssetId;
-use App\Infrastructure\Processing\Exception\RedisAssetTerminalStatusCacheException;
+use App\Infrastructure\Processing\Exception\RedisAssetStatusCacheException;
 
-final class RedisAssetTerminalStatusCache implements AssetTerminalStatusCacheInterface
+final class RedisAssetStatusCache implements AssetStatusCacheInterface
 {
-    private const DEFAULT_KEY_PREFIX = 'asset-terminal-status:';
+    private const DEFAULT_KEY_PREFIX = 'asset-status:';
     private const DEFAULT_TTL_JITTER_SECONDS = 30;
     private const DEFAULT_TTL_SECONDS = 300;
 
@@ -68,7 +68,7 @@ final class RedisAssetTerminalStatusCache implements AssetTerminalStatusCacheInt
         }
 
         if (! is_string($cachedStatus)) {
-            throw RedisAssetTerminalStatusCacheException::lookupFailed();
+            throw RedisAssetStatusCacheException::lookupFailed();
         }
 
         return AssetStatus::tryFrom($cachedStatus);
@@ -83,7 +83,7 @@ final class RedisAssetTerminalStatusCache implements AssetTerminalStatusCacheInt
         );
 
         if ($written === false) {
-            throw RedisAssetTerminalStatusCacheException::storeFailed();
+            throw RedisAssetStatusCacheException::storeFailed();
         }
     }
 
@@ -92,17 +92,17 @@ final class RedisAssetTerminalStatusCache implements AssetTerminalStatusCacheInt
         $redisClass = 'Redis';
 
         if (! class_exists($redisClass)) {
-            throw RedisAssetTerminalStatusCacheException::extensionNotAvailable();
+            throw RedisAssetStatusCacheException::extensionNotAvailable();
         }
 
         $redis = new $redisClass();
 
         if (self::invokeRedisMethod($redis, 'connect', $host, $port) !== true) {
-            throw RedisAssetTerminalStatusCacheException::connectionFailed();
+            throw RedisAssetStatusCacheException::connectionFailed();
         }
 
         if ($password !== null && $password !== '' && self::invokeRedisMethod($redis, 'auth', $password) !== true) {
-            throw RedisAssetTerminalStatusCacheException::authenticationFailed();
+            throw RedisAssetStatusCacheException::authenticationFailed();
         }
 
         return $redis;
@@ -113,7 +113,7 @@ final class RedisAssetTerminalStatusCache implements AssetTerminalStatusCacheInt
         $result = self::invokeRedisMethod($redis, 'setEx', $key, $ttl, $value);
 
         if ($result !== true) {
-            throw RedisAssetTerminalStatusCacheException::storeFailed();
+            throw RedisAssetStatusCacheException::storeFailed();
         }
 
         return true;
@@ -128,7 +128,7 @@ final class RedisAssetTerminalStatusCache implements AssetTerminalStatusCacheInt
         }
 
         if (! is_string($result)) {
-            throw RedisAssetTerminalStatusCacheException::lookupFailed();
+            throw RedisAssetStatusCacheException::lookupFailed();
         }
 
         return $result;

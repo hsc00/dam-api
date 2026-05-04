@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\CompleteUploadService;
+use App\Application\Asset\GetAssetService;
 use App\Application\Asset\StartUploadService;
 use App\GraphQL\Resolver\CompleteUploadResolver;
+use App\GraphQL\Resolver\GetAssetResolver;
 use App\GraphQL\Resolver\StartUploadBatchResolver;
 use App\GraphQL\Resolver\StartUploadResolver;
 use App\GraphQL\SchemaFactory;
@@ -13,11 +16,12 @@ use App\Http\GraphQLHandler;
 use App\Infrastructure\Persistence\MySQLAssetRepository;
 use App\Infrastructure\Persistence\MySQLOutboxRepository;
 use App\Infrastructure\Persistence\PDOTransactionManager;
+use App\Infrastructure\Processing\NullAssetStatusCache;
+use App\Infrastructure\Processing\RedisAssetStatusCache;
 use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
-use PDO;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -62,12 +66,14 @@ if (is_file($envFile)) {
  */
 function requireEnv(string $name): string
 {
-    $val = $_ENV[$name] ?? getenv($name);
-    if ($val === false || $val === null || $val === '') {
+    $envValue = $_ENV[$name] ?? null;
+    $val = is_string($envValue) ? $envValue : getenv($name);
+
+    if ($val === false || $val === '') {
         throw MissingEnvironmentVariableException::forName($name);
     }
 
-    return (string) $val;
+    return $val;
 }
 
 /**
@@ -75,15 +81,38 @@ function requireEnv(string $name): string
  */
 function optionalEnv(string $name): ?string
 {
-    $val = $_ENV[$name] ?? getenv($name);
+    $envValue = $_ENV[$name] ?? null;
+    $val = is_string($envValue) ? $envValue : getenv($name);
 
-    if ($val === false || $val === null) {
+    if ($val === false) {
         return null;
     }
 
     $normalizedValue = trim((string) $val);
 
     return $normalizedValue === '' ? null : $normalizedValue;
+}
+
+function assetStatusCache(): AssetStatusCacheInterface
+{
+    $host = optionalEnv('REDIS_HOST');
+    $port = optionalEnv('REDIS_PORT');
+
+    if ($host === null || $port === null) {
+        return new NullAssetStatusCache();
+    }
+
+    $normalizedPort = filter_var($port, FILTER_VALIDATE_INT);
+
+    if (! is_int($normalizedPort) || $normalizedPort <= 0) {
+        return new NullAssetStatusCache();
+    }
+
+    return RedisAssetStatusCache::fromConnectionConfiguration(
+        $host,
+        $normalizedPort,
+        optionalEnv('REDIS_PASSWORD'),
+    );
 }
 
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';
@@ -130,10 +159,16 @@ try {
 
     $assetRepository = new MySQLAssetRepository($pdo);
     $uploadGrantIssuer = new LocalUploadGrantIssuer(requireEnv('UPLOAD_GRANT_SECRET'));
+    $assetStatusCache = assetStatusCache();
     $startUploadService = new StartUploadService(
         $assetRepository,
         new MockStorageAdapter(),
         $uploadGrantIssuer,
+        $assetStatusCache,
+    );
+    $getAssetService = new GetAssetService(
+        $assetRepository,
+        $assetStatusCache,
     );
     $transactionManager = new PDOTransactionManager($pdo);
     $outboxRepository = new MySQLOutboxRepository($pdo);
@@ -142,8 +177,10 @@ try {
         $uploadGrantIssuer,
         $transactionManager,
         $outboxRepository,
+        $assetStatusCache,
     );
     $schemaFactory = new SchemaFactory(
+        new GetAssetResolver($getAssetService),
         new StartUploadResolver($startUploadService),
         new StartUploadBatchResolver($startUploadService),
         new CompleteUploadResolver($completeUploadService),
@@ -163,18 +200,8 @@ try {
     try {
         $logger->error($exception->getMessage(), ['exception' => $exception]);
     } catch (\Throwable $suppressed) {
-        // Record suppressed logger failures so they are not lost during triage.
-        try {
-            if (isset($logger) && $logger instanceof \Psr\Log\LoggerInterface) {
-                $logger->error('Suppressed exception while logging primary error', ['suppressed' => $suppressed]);
-            } else {
-                error_log((string) $suppressed);
-            }
-        } catch (\Throwable $inner) {
-            // Last-resort fallback to PHP error log to ensure the suppressed
-            // exception details are preserved somewhere.
-            error_log((string) $suppressed);
-        }
+        // Fall back to the PHP error log when the structured logger itself fails.
+        error_log((string) $suppressed);
     }
 
     $response = internalServerErrorResponse();

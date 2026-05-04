@@ -19,9 +19,9 @@ final class CompleteUploadResolver
     }
 
     /**
-     * @param array<string,mixed> $args
-     * @return array{
-     *     success: array{asset: array{id: string, status: string}}|null,
+      * @param array<string,mixed> $args
+      * @return array{
+      *     success: array{asset: array{id: string, status: string}}|null,
      *     userErrors: list<array{code: string, message: string, field: string|null}>
      * }
      */
@@ -57,9 +57,7 @@ final class CompleteUploadResolver
         throw MissingAccountContextException::missing();
     }
 
-    /**
-     * @return array{asset: array{id: string, status: string}}
-     */
+    /** @return array{asset: array{id: string, status: string}} */
     private function mapSuccess(CompleteUploadSuccess $success): array
     {
         $asset = $success->asset;

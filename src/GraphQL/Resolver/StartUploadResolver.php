@@ -23,9 +23,9 @@ final class StartUploadResolver
     /**
      * @param array<string, mixed> $args
      *
-     * @return array{
-     *     success: array{
-     *         asset: array{id: string, status: string},
+    * @return array{
+    *     success: array{
+    *         asset: array{id: string, status: string},
      *         uploadTarget: array{
      *             url: string,
      *             method: string,

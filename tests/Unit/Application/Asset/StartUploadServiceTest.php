@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Application\Asset;
 
+use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\Command\StartUploadBatchCommand;
 use App\Application\Asset\Command\StartUploadBatchFileCommand;
 use App\Application\Asset\Command\StartUploadCommand;
@@ -11,12 +12,14 @@ use App\Application\Asset\StartUploadService;
 use App\Application\Asset\UploadGrantIssuerInterface;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
+use App\Domain\Asset\AssetStatus;
 use App\Domain\Asset\StorageAdapterInterface;
 use App\Domain\Asset\UploadCompletionProofSource;
 use App\Domain\Asset\UploadHttpMethod;
 use App\Domain\Asset\ValueObject\UploadCompletionProof;
 use App\Domain\Asset\ValueObject\UploadId;
 use App\Domain\Asset\ValueObject\UploadTarget;
+use App\Infrastructure\Processing\Exception\RedisAssetStatusCacheException;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -26,6 +29,7 @@ use PHPUnit\Framework\TestCase;
 final class StartUploadServiceTest extends TestCase
 {
     private AssetRepositoryInterface&MockObject $assets;
+    private AssetStatusCacheInterface&MockObject $assetTerminalStatusCache;
     private StorageAdapterInterface&MockObject $storage;
     private UploadGrantIssuerInterface&MockObject $uploadGrantIssuer;
     private StartUploadService $service;
@@ -35,9 +39,10 @@ final class StartUploadServiceTest extends TestCase
         parent::setUp();
 
         $this->assets = $this->createMock(AssetRepositoryInterface::class);
+        $this->assetTerminalStatusCache = $this->createMock(AssetStatusCacheInterface::class);
         $this->storage = $this->createMock(StorageAdapterInterface::class);
         $this->uploadGrantIssuer = $this->createMock(UploadGrantIssuerInterface::class);
-        $this->service = new StartUploadService($this->assets, $this->storage, $this->uploadGrantIssuer);
+        $this->service = new StartUploadService($this->assets, $this->storage, $this->uploadGrantIssuer, $this->assetTerminalStatusCache);
     }
 
     #[Test]
@@ -259,6 +264,13 @@ final class StartUploadServiceTest extends TestCase
             ->expects($this->once())
             ->method('issueForAsset')
             ->willReturn('grant-single');
+        $this->assetTerminalStatusCache
+            ->expects($this->once())
+            ->method('store')
+            ->with(
+                $this->isInstanceOf(\App\Domain\Asset\ValueObject\AssetId::class),
+                AssetStatus::PENDING,
+            );
 
         // Act
         $result = $this->service->startUpload(
@@ -278,6 +290,44 @@ final class StartUploadServiceTest extends TestCase
         self::assertStringContainsString('/chunk/0', $result->success->uploadTarget['url']);
         self::assertCount(1, $savedAssets);
         self::assertSame(1, $savedAssets[0]->getChunkCount());
+    }
+
+    #[Test]
+    public function itReturnsSuccessfulStartUploadWhenCachingPendingStatusFails(): void
+    {
+        // Arrange
+        $this->assets
+            ->expects($this->once())
+            ->method('save');
+        $this->storage
+            ->expects($this->once())
+            ->method('createUploadTargets')
+            ->willReturnCallback(fn (Asset $asset): array => $this->uploadTargetsFor((string) $asset->getUploadId(), $asset->getChunkCount()));
+        $this->uploadGrantIssuer
+            ->expects($this->once())
+            ->method('issueForAsset')
+            ->willReturn('grant-single');
+        $this->assetTerminalStatusCache
+            ->expects($this->once())
+            ->method('store')
+            ->with($this->anything(), AssetStatus::PENDING)
+            ->willThrowException(RedisAssetStatusCacheException::connectionFailed());
+
+        // Act
+        $result = $this->service->startUpload(
+            new StartUploadCommand(
+                accountId: 'account-123',
+                fileName: 'single.png',
+                mimeType: 'image/png',
+                fileSizeBytes: 42,
+                checksumSha256: 'checksum',
+            ),
+        );
+
+        // Assert
+        self::assertNotNull($result->success);
+        self::assertSame([], $result->userErrors);
+        self::assertSame(AssetStatus::PENDING, $result->success->asset['status']);
     }
 
     /**
