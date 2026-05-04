@@ -26,7 +26,7 @@ final class TerminalAssetPersistenceService
     {
         try {
             return $this->assets->findById($assetId);
-        } catch (\Throwable $exception) {
+        } catch (\Exception $exception) {
             throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $exception);
         }
     }
@@ -66,7 +66,7 @@ final class TerminalAssetPersistenceService
             $this->assets->save($asset);
         } catch (StaleAssetWriteException $exception) {
             return $this->staleResult($asset->getId(), $exception, $staleAssetResultFactory);
-        } catch (\Throwable $exception) {
+        } catch (\Exception $exception) {
             throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $exception);
         }
 
