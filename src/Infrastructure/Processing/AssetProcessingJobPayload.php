@@ -12,16 +12,15 @@ final readonly class AssetProcessingJobPayload
     private const INITIAL_RETRY_COUNT = 0;
     private const RETRY_COUNT_FIELD = 'retryCount';
 
-    private string $assetId;
+    private ?string $assetId;
     private int $retryCount;
 
-    public function __construct(string $assetId, int $retryCount)
+    public function __construct(?string $assetId, int $retryCount)
     {
         if ($retryCount < 0) {
             throw new \InvalidArgumentException('Retry count must be zero or greater.');
         }
-
-        $this->assetId = trim($assetId);
+        $this->assetId = $assetId === null ? null : trim($assetId);
         $this->retryCount = $retryCount;
     }
 
@@ -42,15 +41,22 @@ final readonly class AssetProcessingJobPayload
             return null;
         }
 
-        $assetId = $decodedPayload[self::ASSET_ID_FIELD] ?? null;
+        $rawAssetId = $decodedPayload[self::ASSET_ID_FIELD] ?? null;
+        $assetId = null;
+
+        if (is_string($rawAssetId)) {
+            $trimmed = trim($rawAssetId);
+            $assetId = $trimmed === '' ? null : $trimmed;
+        }
+
         $retryCount = $decodedPayload[self::RETRY_COUNT_FIELD] ?? null;
 
-        return is_string($assetId) && is_int($retryCount) && $retryCount >= 0
+        return is_int($retryCount) && $retryCount >= 0
             ? new self($assetId, $retryCount)
             : null;
     }
 
-    public function assetId(): string
+    public function assetId(): ?string
     {
         return $this->assetId;
     }
@@ -67,6 +73,10 @@ final readonly class AssetProcessingJobPayload
 
     public function toAssetId(): ?AssetId
     {
+        if ($this->assetId === null) {
+            return null;
+        }
+
         try {
             return new AssetId($this->assetId);
         } catch (\InvalidArgumentException $exception) {

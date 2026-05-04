@@ -43,7 +43,7 @@ final class HandleAssetProcessingRetryExhaustionServiceTest extends TestCase
     }
 
     #[Test]
-    public function itDiscardsUnknownAssetsCleanly(): void
+    public function itDoesNotProcessUnknownAssetsWhenAssetIsUnknown(): void
     {
         // Arrange
         $this->assets
@@ -69,7 +69,7 @@ final class HandleAssetProcessingRetryExhaustionServiceTest extends TestCase
 
     #[Test]
     #[DataProvider('nonProcessingStatusProvider')]
-    public function itSkipsAssetsThatAreNotInProcessingState(AssetStatus $status): void
+    public function itDoesNotProcessAssetsWhenAssetIsNotInProcessingState(AssetStatus $status): void
     {
         // Arrange
         $asset = $this->createAssetWithStatus($status);
@@ -97,7 +97,7 @@ final class HandleAssetProcessingRetryExhaustionServiceTest extends TestCase
     }
 
     #[Test]
-    public function itMarksProcessingAssetsAsFailedWhenRetryBudgetIsExhausted(): void
+    public function itReturnsMarkedAsFailedWhenRetryBudgetIsExhausted(): void
     {
         // Arrange
         $asset = $this->createAssetWithStatus(AssetStatus::PROCESSING);

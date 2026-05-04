@@ -83,11 +83,20 @@ final class AssetProcessingWorkerLoop
     private function finalizeReservation(ReservedAssetProcessingJob $reservation, AssetProcessingJobHandlingResult $result): void
     {
         match ($result->delivery) {
-            AssetProcessingJobDelivery::DEAD_LETTER => $reservation->deadLetter($result->queuePayload),
+            AssetProcessingJobDelivery::DEAD_LETTER => $reservation->deadLetter($this->requiredQueuePayload($result)),
             AssetProcessingJobDelivery::HANDLED => $reservation->acknowledge(),
             AssetProcessingJobDelivery::DISCARD => $reservation->discard(),
-            AssetProcessingJobDelivery::RETRY => $reservation->release($result->queuePayload),
+            AssetProcessingJobDelivery::RETRY => $reservation->release($this->requiredQueuePayload($result)),
         };
+    }
+
+    private function requiredQueuePayload(AssetProcessingJobHandlingResult $result): string
+    {
+        if ($result->queuePayload === null) {
+            throw new \LogicException('Queue payload is required for retry or dead-letter deliveries.');
+        }
+
+        return $result->queuePayload;
     }
 
     private function releaseReservationAfterHandlerFailure(ReservedAssetProcessingJob $reservation, \Throwable $exception): void

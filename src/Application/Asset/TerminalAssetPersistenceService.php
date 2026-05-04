@@ -96,7 +96,7 @@ final class TerminalAssetPersistenceService
         try {
             // Terminal status caching is best-effort after MySQL persistence succeeds.
             $this->assetTerminalStatusCache->store($asset->getId(), $asset->getStatus());
-        } catch (\Throwable $exception) {
+        } catch (\Exception $exception) {
             return TerminalStatusCacheStoreResult::failed($this->terminalStatusCacheError($exception));
         }
 
