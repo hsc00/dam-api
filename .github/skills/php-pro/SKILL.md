@@ -64,7 +64,7 @@ Load detailed guidance based on context:
 ## Exception Suppression
 
 - If an exception must be suppressed, log it when a logger is available.
-- If logging is not available, keep the reason in a comment and use `SuppressedFailure::acknowledge($suppressed)` only when that helper performs a real side effect, such as emitting a minimal fallback log entry.
+- If logging is not available, keep the reason in a comment and use `SuppressedFailure::acknowledge($suppressed)` only when that helper performs a real side effect, consistent with the repo's bounded in-process acknowledgement approach.
 - Do not implement acknowledgement helpers with pure/no-op calls like a bare `get_debug_type($suppressed);`.
 - Do not leave a catch block with comments alone; the suppression must be explicit in executable code.
 

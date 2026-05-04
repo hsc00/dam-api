@@ -7,11 +7,16 @@ namespace App\GraphQL\Resolver;
 use App\Application\Asset\Command\GetAssetQuery;
 use App\Application\Asset\GetAssetService;
 use App\GraphQL\Exception\MissingAccountContextException;
+use GraphQL\Error\Error;
 use GraphQL\Type\Definition\ResolveInfo;
-use InvalidArgumentException;
 
 final class GetAssetResolver
 {
+    private const INVALID_ASSET_ID_CODE = 'INVALID_INPUT';
+    private const INVALID_ASSET_ID_CATEGORY = 'validation';
+    private const INVALID_ASSET_ID_MESSAGE = 'Asset id must be a UUIDv4 string.';
+    private const UUID_V4_PATTERN = '/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/';
+
     public function __construct(
         private readonly GetAssetService $getAssetService,
     ) {
@@ -26,18 +31,12 @@ final class GetAssetResolver
     {
         unset($_rootValue, $_info);
 
-        $assetId = $args['id'] ?? null;
-
-        try {
-            $result = $this->getAssetService->getAsset(
-                new GetAssetQuery(
-                    accountId: $this->accountId($context),
-                    assetId: is_string($assetId) ? $assetId : '',
-                ),
-            );
-        } catch (InvalidArgumentException) {
-            return null;
-        }
+        $result = $this->getAssetService->getAsset(
+            new GetAssetQuery(
+                accountId: $this->accountId($context),
+                assetId: $this->validatedAssetId($args['id'] ?? null),
+            ),
+        );
 
         if ($result === null) {
             return null;
@@ -57,5 +56,20 @@ final class GetAssetResolver
         }
 
         throw MissingAccountContextException::missing();
+    }
+
+    private function validatedAssetId(mixed $assetId): string
+    {
+        if (is_string($assetId) && preg_match(self::UUID_V4_PATTERN, $assetId) === 1) {
+            return $assetId;
+        }
+
+        throw new Error(
+            message: self::INVALID_ASSET_ID_MESSAGE,
+            extensions: [
+                'code' => self::INVALID_ASSET_ID_CODE,
+                'category' => self::INVALID_ASSET_ID_CATEGORY,
+            ],
+        );
     }
 }

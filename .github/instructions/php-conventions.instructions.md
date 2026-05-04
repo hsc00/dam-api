@@ -72,9 +72,9 @@ final readonly class UploadId
 - `eval()` — forbidden entirely
 - Raw SQL string concatenation involving variables — use `PDO::prepare()` + named parameters
 - `$_GET`, `$_POST`, `$_SERVER` — forbidden outside `src/Http/`
-- `error_log()` — use Monolog structured logging in normal application code; the narrow
-  exception is the fallback inside `SuppressedFailure::acknowledge()` when no logger is
-  available for a suppressed secondary failure
+- `error_log()` — forbidden in production code paths, including suppression helpers; use
+  Monolog structured logging when a logger is available, or a bounded in-process
+  acknowledgement helper when it is not
 - `var_dump()`, `print_r()` — forbidden in production code paths
 - Static state (`static $x = ...`) — avoid; use constructor injection
 - `new` inside class bodies outside constructors/factories — prefer injected dependencies
@@ -103,8 +103,9 @@ try {
 }
 ```
 
-- When a logger is not available, `SuppressedFailure::acknowledge()` should emit a minimal
-  fallback log entry instead of using a fake acknowledgement helper.
+- When a logger is not available, `SuppressedFailure::acknowledge()` should record a minimal
+  in-process acknowledgement, such as a bounded request-scoped registry of compact failure
+  summaries, instead of using `error_log()` or a fake acknowledgement helper.
 
 - Prefer structured logging (Monolog/PSR-3). When possible include context and the
   exception object:

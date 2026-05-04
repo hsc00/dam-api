@@ -6,6 +6,7 @@ use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\CompleteUploadService;
 use App\Application\Asset\GetAssetService;
 use App\Application\Asset\StartUploadService;
+use App\Application\Exception\SuppressedFailure;
 use App\GraphQL\Resolver\CompleteUploadResolver;
 use App\GraphQL\Resolver\GetAssetResolver;
 use App\GraphQL\Resolver\StartUploadBatchResolver;
@@ -108,11 +109,19 @@ function assetStatusCache(): AssetStatusCacheInterface
         return new NullAssetStatusCache();
     }
 
-    return RedisAssetStatusCache::fromConnectionConfiguration(
-        $host,
-        $normalizedPort,
-        optionalEnv('REDIS_PASSWORD'),
-    );
+    $cache = new NullAssetStatusCache();
+
+    try {
+        $cache = RedisAssetStatusCache::fromConnectionConfiguration(
+            $host,
+            $normalizedPort,
+            optionalEnv('REDIS_PASSWORD'),
+        );
+    } catch (\Throwable $suppressed) {
+        SuppressedFailure::acknowledge($suppressed);
+    }
+
+    return $cache;
 }
 
 $requestPath = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/';

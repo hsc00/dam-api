@@ -14,6 +14,10 @@ final class GraphQLHandler
 {
     private const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
     private const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
+    private const INTERNAL_SERVER_ERROR_CODE = 'INTERNAL_SERVER_ERROR';
+    private const INTERNAL_SERVER_ERROR_CATEGORY = 'INTERNAL';
+    private const BAD_USER_INPUT_CODE = 'BAD_USER_INPUT';
+    private const DEFAULT_USER_ERROR_CATEGORY = 'USER';
 
     public function __construct(
         private readonly SchemaFactory $schemaFactory,
@@ -173,8 +177,8 @@ final class GraphQLHandler
                 return [
                     'message' => self::INTERNAL_SERVER_ERROR_MESSAGE,
                     'extensions' => [
-                        'code' => 'INTERNAL_SERVER_ERROR',
-                        'category' => 'INTERNAL',
+                        'code' => self::INTERNAL_SERVER_ERROR_CODE,
+                        'category' => self::INTERNAL_SERVER_ERROR_CATEGORY,
                     ],
                 ];
             }
@@ -184,8 +188,8 @@ final class GraphQLHandler
                 return [
                     'message' => self::INTERNAL_SERVER_ERROR_MESSAGE,
                     'extensions' => [
-                        'code' => 'INTERNAL_SERVER_ERROR',
-                        'category' => 'INTERNAL',
+                        'code' => self::INTERNAL_SERVER_ERROR_CODE,
+                        'category' => self::INTERNAL_SERVER_ERROR_CATEGORY,
                     ],
                 ];
             }
@@ -196,14 +200,20 @@ final class GraphQLHandler
             if (is_array($extensions) && isset($extensions['code']) && is_string($extensions['code']) && $extensions['code'] !== '') {
                 $code = $extensions['code'];
             } else {
-                $code = 'BAD_USER_INPUT';
+                $code = self::BAD_USER_INPUT_CODE;
+            }
+
+            if (is_array($extensions) && isset($extensions['category']) && is_string($extensions['category']) && $extensions['category'] !== '') {
+                $category = $extensions['category'];
+            } else {
+                $category = self::DEFAULT_USER_ERROR_CATEGORY;
             }
 
             return [
                 'message' => $error->getMessage(),
                 'extensions' => [
                     'code' => $code,
-                    'category' => 'USER',
+                    'category' => $category,
                 ],
             ];
         });

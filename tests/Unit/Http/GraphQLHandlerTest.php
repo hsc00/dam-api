@@ -544,7 +544,7 @@ GRAPHQL,
     }
 
     #[Test]
-    public function itReturnsNullWithoutErrorsWhenTheAssetQueryReceivesAMalformedId(): void
+    public function itReturnsValidationErrorWhenTheAssetQueryReceivesAMalformedId(): void
     {
         // Arrange
         [$handler] = $this->createHandler();
@@ -556,8 +556,17 @@ GRAPHQL,
 
         // Assert
         self::assertSame(200, $response['status']);
-        self::assertArrayNotHasKey('errors', $payload);
         self::assertNull($payload['data']['asset']);
+        self::assertSame(
+            [[
+                'message' => 'Asset id must be a UUIDv4 string.',
+                'extensions' => [
+                    'code' => 'INVALID_INPUT',
+                    'category' => 'validation',
+                ],
+            ]],
+            $payload['errors'],
+        );
     }
 
     #[Test]

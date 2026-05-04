@@ -6,14 +6,22 @@ namespace App\Application\Exception;
 
 final class SuppressedFailure
 {
-    private const LOG_MESSAGE_TEMPLATE = 'Suppressed secondary failure [%s]: %s';
+    private const MAX_ACKNOWLEDGED_FAILURES = 16;
+
+    /**
+     * @var list<array{type: string, message: string}>
+     */
+    private static array $acknowledgedFailures = [];
 
     public static function acknowledge(\Throwable $suppressed): void
     {
-        error_log(sprintf(
-            self::LOG_MESSAGE_TEMPLATE,
-            get_debug_type($suppressed),
-            $suppressed->getMessage(),
-        ));
+        self::$acknowledgedFailures[] = [
+            'type' => get_debug_type($suppressed),
+            'message' => $suppressed->getMessage(),
+        ];
+
+        if (count(self::$acknowledgedFailures) > self::MAX_ACKNOWLEDGED_FAILURES) {
+            array_shift(self::$acknowledgedFailures);
+        }
     }
 }
