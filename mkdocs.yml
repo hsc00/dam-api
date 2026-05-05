@@ -26,5 +26,6 @@ nav:
       - US-06 Mark Upload as Complete: logs/06-mark-upload-complete.md
       - US-07 Background Job Processing: logs/07-background-job-processing.md
       - US-08 Failed-job Handling: logs/08-failed-job-handling.md
+      - US-09 Check File Status: logs/09-check-file-status.md
 plugins:
   - search

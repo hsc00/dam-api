@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Infrastructure\Processing;
 
 use App\Application\Asset\AssetProcessorInterface;
-use App\Application\Asset\AssetTerminalStatusCacheInterface;
+use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\Exception\RetryableAssetProcessingException;
 use App\Application\Asset\Exception\TerminalAssetProcessingException;
 use App\Application\Asset\HandleAssetProcessingJobService;
@@ -30,7 +30,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
 {
     private AssetRepositoryInterface&MockObject $assets;
     private AssetProcessorInterface&MockObject $assetProcessor;
-    private AssetTerminalStatusCacheInterface&MockObject $assetTerminalStatusCache;
+    private AssetStatusCacheInterface&MockObject $assetTerminalStatusCache;
     private LoggerInterface&MockObject $logger;
     private HandleAssetProcessingJobService $service;
     private AssetProcessingJobWorker $worker;
@@ -41,7 +41,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
 
         $this->assets = $this->createMock(AssetRepositoryInterface::class);
         $this->assetProcessor = $this->createMock(AssetProcessorInterface::class);
-        $this->assetTerminalStatusCache = $this->createMock(AssetTerminalStatusCacheInterface::class);
+        $this->assetTerminalStatusCache = $this->createMock(AssetStatusCacheInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->service = new HandleAssetProcessingJobService(
             $this->assets,

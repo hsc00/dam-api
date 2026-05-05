@@ -16,9 +16,9 @@ final class HandleAssetProcessingRetryExhaustionService
 
     public function __construct(
         AssetRepositoryInterface $assets,
-        AssetTerminalStatusCacheInterface $assetTerminalStatusCache,
+        AssetStatusCacheInterface $assetStatusCache,
     ) {
-        $this->terminalAssetPersistence = new TerminalAssetPersistenceService($assets, $assetTerminalStatusCache);
+        $this->terminalAssetPersistence = new TerminalAssetPersistenceService($assets, $assetStatusCache);
     }
 
     public function handle(HandleAssetProcessingRetryExhaustionCommand $command): HandleAssetProcessingRetryExhaustionResult

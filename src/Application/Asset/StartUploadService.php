@@ -15,6 +15,7 @@ use App\Application\Asset\Result\StartUploadBatchResult;
 use App\Application\Asset\Result\StartUploadResult;
 use App\Application\Asset\Result\StartUploadSuccess;
 use App\Application\Asset\Result\UserError;
+use App\Application\Exception\SuppressedFailure;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\Exception\AssetDomainException;
@@ -51,6 +52,7 @@ final class StartUploadService
         private readonly AssetRepositoryInterface $assets,
         private readonly StorageAdapterInterface $storage,
         private readonly UploadGrantIssuerInterface $uploadGrantIssuer,
+        private readonly AssetStatusCacheInterface $assetStatusCache,
     ) {
     }
 
@@ -216,26 +218,35 @@ final class StartUploadService
                 $asset->markFailed();
                 $this->assets->save($asset);
             } catch (\Throwable $suppressed) {
+                SuppressedFailure::acknowledge($suppressed);
+
                 // If saving the failed state also fails, suppress secondary errors
                 // to preserve the original failure as the root cause.
-                unset($suppressed);
             }
 
             throw StorageUnavailableException::forReason('Storage adapter failure', $e);
         }
         $this->assertUploadTargetsMatchChunkCount($asset, $uploadTargets);
+        $uploadGrant = $this->uploadGrantIssuer->issueForAsset($asset);
+        $this->storeAssetStatusBestEffort($asset);
 
         return new StartUploadBatchFileSuccess(
-            asset: [
-                'id' => (string) $asset->getId(),
-                'status' => $asset->getStatus(),
-            ],
+            asset: $this->mapAsset($asset),
             uploadTargets: array_map(
                 fn (UploadTarget $uploadTarget): array => $this->mapUploadTarget($uploadTarget),
                 $uploadTargets,
             ),
-            uploadGrant: $this->uploadGrantIssuer->issueForAsset($asset),
+            uploadGrant: $uploadGrant,
         );
+    }
+
+    /** @return array{id: string, status: \App\Domain\Asset\AssetStatus} */
+    private function mapAsset(Asset $asset): array
+    {
+        return [
+            'id' => (string) $asset->getId(),
+            'status' => $asset->getStatus(),
+        ];
     }
 
     /**
@@ -312,6 +323,18 @@ final class StartUploadService
 
         if (count($distinctUrls) !== $expected) {
             throw UnexpectedTargetCountException::fromCounts($expected, count($distinctUrls));
+        }
+    }
+
+    private function storeAssetStatusBestEffort(Asset $asset): void
+    {
+        try {
+            $this->assetStatusCache->store($asset->getId(), $asset->getStatus());
+        } catch (\Throwable $cacheFailure) {
+            SuppressedFailure::acknowledge($cacheFailure);
+
+            // Suppress $cacheFailure because the status is already durably persisted
+            // and cache population must not change the command outcome.
         }
     }
 

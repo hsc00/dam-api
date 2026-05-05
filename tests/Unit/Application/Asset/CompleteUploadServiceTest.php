@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Application\Asset;
 
+use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\Command\CompleteUploadCommand;
 use App\Application\Asset\CompleteUploadService;
 use App\Application\Asset\UploadGrantIssuerInterface;
@@ -14,8 +15,10 @@ use App\Domain\Asset\AssetRepositoryInterface;
 use App\Domain\Asset\AssetStatus;
 use App\Domain\Asset\Exception\RepositoryUnavailableException;
 use App\Domain\Asset\ValueObject\AccountId;
+use App\Domain\Asset\ValueObject\AssetId;
 use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 use App\Domain\Asset\ValueObject\UploadId;
+use App\Infrastructure\Processing\Exception\RedisAssetStatusCacheException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -24,6 +27,7 @@ use PHPUnit\Framework\TestCase;
 final class CompleteUploadServiceTest extends TestCase
 {
     private AssetRepositoryInterface&MockObject $assets;
+    private AssetStatusCacheInterface&MockObject $assetTerminalStatusCache;
     private TransactionManagerInterface&MockObject $transactionManager;
     private OutboxRepositoryInterface&MockObject $outboxRepository;
     private UploadGrantIssuerInterface&MockObject $uploadGrantIssuer;
@@ -34,6 +38,7 @@ final class CompleteUploadServiceTest extends TestCase
         parent::setUp();
 
         $this->assets = $this->createMock(AssetRepositoryInterface::class);
+        $this->assetTerminalStatusCache = $this->createMock(AssetStatusCacheInterface::class);
         $this->transactionManager = $this->createMock(TransactionManagerInterface::class);
         $this->outboxRepository = $this->createMock(OutboxRepositoryInterface::class);
         $this->uploadGrantIssuer = $this->createMock(UploadGrantIssuerInterface::class);
@@ -42,6 +47,7 @@ final class CompleteUploadServiceTest extends TestCase
             $this->uploadGrantIssuer,
             $this->transactionManager,
             $this->outboxRepository,
+            $this->assetTerminalStatusCache,
         );
     }
 
@@ -77,6 +83,10 @@ final class CompleteUploadServiceTest extends TestCase
 
                 return isset($data['assetId']) && $data['assetId'] === (string) $asset->getId();
             }));
+        $this->assetTerminalStatusCache
+            ->expects($this->once())
+            ->method('store')
+            ->with($asset->getId(), AssetStatus::PROCESSING);
 
         // Act
         $result = $this->service->completeUpload(
@@ -95,6 +105,75 @@ final class CompleteUploadServiceTest extends TestCase
         self::assertCount(1, $savedAssets);
         self::assertSame(AssetStatus::PROCESSING, $savedAssets[0]->getStatus());
         self::assertSame('etag-123', $savedAssets[0]->getCompletionProof()?->value);
+    }
+
+    #[Test]
+    public function itReturnsSuccessfulCompletionWhenCachingProcessingStatusFails(): void
+    {
+        // Arrange
+        $asset = $this->createPendingAsset();
+        $savedAssets = [];
+        $transactionState = new class () {
+            public bool $committed = false;
+        };
+        $this->assets
+            ->expects($this->once())
+            ->method('findById')
+            ->willReturn($asset);
+        $this->assets
+            ->expects($this->once())
+            ->method('save')
+            ->willReturnCallback(static function (Asset $savedAsset) use (&$savedAssets): void {
+                $savedAssets[] = $savedAsset;
+            });
+        $this->uploadGrantIssuer
+            ->expects($this->once())
+            ->method('issueForAsset')
+            ->with($asset)
+            ->willReturn('grant-123');
+        $this->transactionManager->expects($this->once())->method('beginTransaction');
+        $this->transactionManager
+            ->expects($this->once())
+            ->method('commit')
+            ->willReturnCallback(static function () use ($transactionState): void {
+                $transactionState->committed = true;
+            });
+        $this->outboxRepository
+            ->expects($this->once())
+            ->method('enqueue')
+            ->with('asset-processing', $this->callback(static function (string $payload) use ($asset): bool {
+                /** @var array<string, mixed> $data */
+                $data = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+
+                return isset($data['assetId']) && $data['assetId'] === (string) $asset->getId();
+            }));
+        $this->assetTerminalStatusCache
+            ->expects($this->once())
+            ->method('store')
+            ->willReturnCallback(static function (AssetId $assetId, AssetStatus $status) use ($asset, $transactionState): void {
+                self::assertTrue($transactionState->committed);
+                self::assertSame((string) $asset->getId(), (string) $assetId);
+                self::assertSame(AssetStatus::PROCESSING, $status);
+
+                throw RedisAssetStatusCacheException::connectionFailed();
+            });
+
+        // Act
+        $result = $this->service->completeUpload(
+            new CompleteUploadCommand(
+                accountId: 'account-123',
+                assetId: (string) $asset->getId(),
+                uploadGrant: 'grant-123',
+                completionProof: 'etag-123',
+            ),
+        );
+
+        // Assert
+        self::assertNotNull($result->success);
+        self::assertSame([], $result->userErrors);
+        self::assertSame(AssetStatus::PROCESSING, $result->success->asset['status']);
+        self::assertCount(1, $savedAssets);
+        self::assertSame(AssetStatus::PROCESSING, $savedAssets[0]->getStatus());
     }
 
     #[Test]

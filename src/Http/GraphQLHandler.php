@@ -4,14 +4,30 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Application\Exception\SuppressedFailure;
 use App\GraphQL\SchemaFactory;
 use GraphQL\Error\Error as GraphQLError;
+use GraphQL\Error\FormattedError;
+use GraphQL\Executor\ExecutionResult;
 use GraphQL\GraphQL;
 use Psr\Log\LoggerInterface;
 
+/**
+ * @phpstan-type FormattedGraphQLError array{
+ *     message: string,
+ *     locations?: array<int, array{line: int, column: int}>,
+ *     path?: array<int, int|string>,
+ *     extensions?: array<string, mixed>
+ * }
+ */
 final class GraphQLHandler
 {
+    private const INTERNAL_SERVER_ERROR_MESSAGE = 'Internal server error';
     private const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
+    private const INTERNAL_SERVER_ERROR_CODE = 'INTERNAL_SERVER_ERROR';
+    private const INTERNAL_SERVER_ERROR_CATEGORY = 'INTERNAL';
+    private const BAD_USER_INPUT_CODE = 'BAD_USER_INPUT';
+    private const DEFAULT_USER_ERROR_CATEGORY = 'USER';
 
     public function __construct(
         private readonly SchemaFactory $schemaFactory,
@@ -25,48 +41,76 @@ final class GraphQLHandler
      */
     public function handle(string $method, string $path, string $rawBody): array
     {
-        // Default response: not found. We'll override for valid /graphql POST requests.
-        $response = [
-            'status' => 404,
-            'headers' => ['Content-Type' => 'text/plain; charset=utf-8'],
-            'body' => "Not found\n",
-        ];
-
-        if ($path === '/graphql') {
-            if (strtoupper($method) === 'POST') {
-                $operationName = null;
-
-                try {
-                    $payload = $this->decodeJsonPayload($rawBody);
-                    $query = $this->extractQuery($payload);
-                    $operationName = $this->extractOperationName($payload);
-                    $variables = $this->extractVariables($payload);
-
-                    $result = $this->executeGraphQLQuery($query, $variables, $operationName);
-
-                    $response = $this->jsonResponse(200, $result);
-                } catch (\InvalidArgumentException $e) {
-                    $response = $this->jsonResponse(400, ['errors' => [['message' => $e->getMessage()]]]);
-                } catch (\Throwable $e) {
-                    try {
-                        $this->logger->error('GraphQL handler error', ['exception' => $e, 'operation' => $operationName]);
-                    } catch (\Throwable $suppressed) {
-                        unset($suppressed);
-                    }
-
-                    $response = $this->jsonResponse(500, ['errors' => [['message' => 'Internal server error']]]);
-                }
-            } else {
-                $response = $this->jsonResponse(405, [
-                    'errors' => [
-                        ['message' => 'Only POST /graphql is supported.'],
-                    ],
-                ]);
-            }
+        if ($path !== '/graphql') {
+            return [
+                'status' => 404,
+                'headers' => ['Content-Type' => 'text/plain; charset=utf-8'],
+                'body' => "Not found\n",
+            ];
         }
 
-        return $response;
+        if (strtoupper($method) !== 'POST') {
+            return $this->graphQLErrorResponse(405, new GraphQLError('Only POST /graphql is supported.'));
+        }
+
+        return $this->handleGraphQLRequest($rawBody);
     }
+
+    /**
+     * @return array{status: int, headers: array<string, string>, body: string}
+     */
+    private function handleGraphQLRequest(string $rawBody): array
+    {
+        $operationName = null;
+
+        try {
+            $payload = $this->decodeJsonPayload($rawBody);
+            $query = $this->extractQuery($payload);
+            $operationName = $this->extractOperationName($payload);
+            $variables = $this->extractVariables($payload);
+
+            $result = $this->executeGraphQLQuery($query, $variables, $operationName);
+
+            return $this->jsonResponse(200, $result);
+        } catch (\Throwable $e) {
+            return $this->graphQLRequestErrorResponse($e, $operationName);
+        }
+    }
+
+    /**
+     * @return array{status: int, headers: array<string, string>, body: string}
+     */
+    private function graphQLRequestErrorResponse(\Throwable $error, ?string $operationName): array
+    {
+        if ($error instanceof \InvalidArgumentException) {
+            return $this->graphQLErrorResponse(400, new GraphQLError($error->getMessage()));
+        }
+
+        if ($error instanceof GraphQLError) {
+            return $this->jsonResponse(200, $this->graphQLErrorResult($error));
+        }
+
+        try {
+            $this->logger->error('GraphQL handler error', ['exception' => $error, 'operation' => $operationName]);
+        } catch (\Throwable $suppressed) {
+            SuppressedFailure::acknowledge($suppressed);
+        }
+
+        return $this->graphQLErrorResponse(500, $error);
+    }
+
+    /**
+     * @return array{status: int, headers: array<string, string>, body: string}
+     */
+    private function graphQLErrorResponse(int $status, \Throwable $error): array
+    {
+        return $this->jsonResponse($status, [
+            'errors' => [
+                $this->formatGraphQLError($error),
+            ],
+        ]);
+    }
+
     /**
      * @param array<string, mixed> $payload
      *
@@ -165,47 +209,121 @@ final class GraphQLHandler
             $variables,
             $operationName,
         );
-        $result->setErrorFormatter(function (\Throwable $error): array {
-            // If this is not a GraphQL\Error\Error, treat it as internal.
-            if (! $error instanceof GraphQLError) {
-                return [
-                    'message' => 'Internal server error',
-                    'extensions' => [
-                        'code' => 'INTERNAL_SERVER_ERROR',
-                        'category' => 'INTERNAL',
-                    ],
-                ];
-            }
-
-            // If the GraphQL Error wraps an internal exception, return a sanitized payload.
-            if ($error->getPrevious() !== null) {
-                return [
-                    'message' => 'Internal server error',
-                    'extensions' => [
-                        'code' => 'INTERNAL_SERVER_ERROR',
-                        'category' => 'INTERNAL',
-                    ],
-                ];
-            }
-
-            // Prefer a semantic code from the error extensions when available.
-            $extensions = $error->getExtensions();
-
-            if (is_array($extensions) && isset($extensions['code']) && is_string($extensions['code']) && $extensions['code'] !== '') {
-                $code = $extensions['code'];
-            } else {
-                $code = 'BAD_USER_INPUT';
-            }
-
-            return [
-                'message' => $error->getMessage(),
-                'extensions' => [
-                    'code' => $code,
-                    'category' => 'USER',
-                ],
-            ];
-        });
+        $result->setErrorFormatter($this->formatGraphQLError(...));
 
         return $result->toArray();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function graphQLErrorResult(GraphQLError $error): array
+    {
+        $result = new ExecutionResult(
+            data: $this->dataWithNullAtPath($error->getPath()),
+            errors: [$error],
+        );
+        $result->setErrorFormatter($this->formatGraphQLError(...));
+
+        return $result->toArray();
+    }
+
+    /**
+     * @param list<int|string>|null $path
+     *
+     * @return array<string, mixed>|null
+     */
+    private function dataWithNullAtPath(?array $path): ?array
+    {
+        if ($path === null || $path === []) {
+            return null;
+        }
+
+        $rootSegment = $path[0];
+
+        if (! is_string($rootSegment)) {
+            return null;
+        }
+
+        /** @var mixed $data */
+        $data = null;
+
+        for ($index = count($path) - 1; $index >= 1; --$index) {
+            $segment = $path[$index];
+
+            if (is_int($segment)) {
+                $list = array_fill(0, $segment + 1, null);
+                $list[$segment] = $data;
+                $data = $list;
+
+                continue;
+            }
+
+            $data = [$segment => $data];
+        }
+
+        return [$rootSegment => $data];
+    }
+
+    /**
+     * @return FormattedGraphQLError
+     */
+    private function formatGraphQLError(\Throwable $error): array
+    {
+        // If this is not a GraphQL\Error\Error, treat it as internal.
+        if (! $error instanceof GraphQLError) {
+            return [
+                'message' => self::INTERNAL_SERVER_ERROR_MESSAGE,
+                'extensions' => [
+                    'code' => self::INTERNAL_SERVER_ERROR_CODE,
+                    'category' => self::INTERNAL_SERVER_ERROR_CATEGORY,
+                ],
+            ];
+        }
+
+        // Non-client-safe GraphQL errors wrap internal failures and must stay sanitized.
+        if (! $error->isClientSafe()) {
+            return [
+                'message' => self::INTERNAL_SERVER_ERROR_MESSAGE,
+                'extensions' => [
+                    'code' => self::INTERNAL_SERVER_ERROR_CODE,
+                    'category' => self::INTERNAL_SERVER_ERROR_CATEGORY,
+                ],
+            ];
+        }
+
+        // Start from the library-formatted error to preserve locations/path and
+        // any other metadata; then override message and extensions with
+        // sanitized values.
+        $formatted = FormattedError::createFromException($error);
+
+        $formatted['extensions'] = $this->buildExtensions($formatted['extensions'] ?? $error->getExtensions());
+
+        $formatted['message'] = $error->getMessage();
+
+        return $formatted;
+    }
+
+    /**
+     * Normalize and validate the extensions array we expose to clients.
+     *
+     * @param array<string, mixed>|null $originalExtensions
+     * @return array<string, string>
+     */
+    private function buildExtensions(?array $originalExtensions): array
+    {
+        if (is_array($originalExtensions) && isset($originalExtensions['code']) && is_string($originalExtensions['code']) && $originalExtensions['code'] !== '') {
+            $code = $originalExtensions['code'];
+        } else {
+            $code = self::BAD_USER_INPUT_CODE;
+        }
+
+        if (is_array($originalExtensions) && isset($originalExtensions['category']) && is_string($originalExtensions['category']) && $originalExtensions['category'] !== '') {
+            $category = $originalExtensions['category'];
+        } else {
+            $category = self::DEFAULT_USER_ERROR_CATEGORY;
+        }
+
+        return ['code' => $code, 'category' => $category];
     }
 }

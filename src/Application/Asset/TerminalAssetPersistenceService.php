@@ -18,7 +18,7 @@ final class TerminalAssetPersistenceService
 
     public function __construct(
         private readonly AssetRepositoryInterface $assets,
-        private readonly AssetTerminalStatusCacheInterface $assetTerminalStatusCache,
+        private readonly AssetStatusCacheInterface $assetStatusCache,
     ) {
     }
 
@@ -94,8 +94,8 @@ final class TerminalAssetPersistenceService
     private function cacheTerminalStatus(Asset $asset): TerminalStatusCacheStoreResult
     {
         try {
-            // Terminal status caching is best-effort after MySQL persistence succeeds.
-            $this->assetTerminalStatusCache->store($asset->getId(), $asset->getStatus());
+            // Asset status caching is best-effort after MySQL persistence succeeds.
+            $this->assetStatusCache->store($asset->getId(), $asset->getStatus());
         } catch (\Exception $exception) {
             return TerminalStatusCacheStoreResult::failed($this->terminalStatusCacheError($exception));
         }

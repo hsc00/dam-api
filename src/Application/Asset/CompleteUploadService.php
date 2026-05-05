@@ -8,6 +8,7 @@ use App\Application\Asset\Command\CompleteUploadCommand;
 use App\Application\Asset\Result\CompleteUploadResult;
 use App\Application\Asset\Result\CompleteUploadSuccess;
 use App\Application\Asset\Result\UserError;
+use App\Application\Exception\SuppressedFailure;
 use App\Application\Outbox\OutboxRepositoryInterface;
 use App\Application\Transaction\TransactionManagerInterface;
 use App\Domain\Asset\Asset;
@@ -40,6 +41,7 @@ final class CompleteUploadService
         private readonly UploadGrantIssuerInterface $uploadGrantIssuer,
         private readonly TransactionManagerInterface $transactionManager,
         private readonly OutboxRepositoryInterface $outboxRepository,
+        private readonly AssetStatusCacheInterface $assetStatusCache,
     ) {
     }
 
@@ -77,6 +79,7 @@ final class CompleteUploadService
                 $userErrors[] = new UserError(self::INVALID_UPLOAD_GRANT_CODE, self::INVALID_UPLOAD_GRANT_MESSAGE, 'uploadGrant');
             } else {
                 $this->markProcessingAndDispatch($asset, $completionProof);
+                $this->storeAssetStatusBestEffort($asset);
                 $success = new CompleteUploadSuccess($this->mapAsset($asset));
             }
         } catch (RepositoryUnavailableException $exception) {
@@ -111,10 +114,11 @@ final class CompleteUploadService
             try {
                 $this->transactionManager->rollBack();
             } catch (\Throwable $suppressed) {
+                SuppressedFailure::acknowledge($suppressed);
+
                 // Suppressed intentionally: the primary failure $e is already
                 // captured and will be rethrown below. A rollback failure here
                 // is a secondary cleanup error and must not replace the root cause.
-                unset($suppressed);
             }
 
             throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $e);
@@ -139,6 +143,18 @@ final class CompleteUploadService
         }
     }
 
+    private function storeAssetStatusBestEffort(Asset $asset): void
+    {
+        try {
+            $this->assetStatusCache->store($asset->getId(), $asset->getStatus());
+        } catch (\Throwable $cacheFailure) {
+            SuppressedFailure::acknowledge($cacheFailure);
+
+            // Suppress $cacheFailure because the status transition is already
+            // committed and cache population must not change the command outcome.
+        }
+    }
+
     private function mapDomainException(AssetDomainException $exception): UserError
     {
         return match ($exception->getMessage()) {
@@ -150,9 +166,7 @@ final class CompleteUploadService
         };
     }
 
-    /**
-     * @return array{id: string, status: \App\Domain\Asset\AssetStatus}
-     */
+    /** @return array{id: string, status: \App\Domain\Asset\AssetStatus} */
     private function mapAsset(Asset $asset): array
     {
         return [
