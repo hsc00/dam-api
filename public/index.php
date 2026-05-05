@@ -23,8 +23,11 @@ use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
 use Monolog\Handler\StreamHandler;
 use Monolog\Logger;
+use Psr\Log\LoggerInterface;
 
 require_once __DIR__ . '/../vendor/autoload.php';
+
+\call_user_func([SuppressedFailure::class, 'clearAcknowledgements']);
 
 $logger = new Logger('public');
 $logger->pushHandler(new StreamHandler('php://stderr', Logger::ERROR));
@@ -94,7 +97,7 @@ function optionalEnv(string $name): ?string
     return $normalizedValue === '' ? null : $normalizedValue;
 }
 
-function assetStatusCache(): AssetStatusCacheInterface
+function assetStatusCache(LoggerInterface $logger): AssetStatusCacheInterface
 {
     $host = optionalEnv('REDIS_HOST');
     $port = optionalEnv('REDIS_PORT');
@@ -118,6 +121,19 @@ function assetStatusCache(): AssetStatusCacheInterface
             optionalEnv('REDIS_PASSWORD'),
         );
     } catch (\Throwable $suppressed) {
+        try {
+            $logger->error(
+                'Failed to initialize Redis asset status cache; falling back to null cache.',
+                [
+                    'redis_host' => $host,
+                    'redis_port' => $normalizedPort,
+                    'exception' => $suppressed,
+                ],
+            );
+        } catch (\Throwable $loggingFailure) {
+            SuppressedFailure::acknowledge($loggingFailure);
+        }
+
         SuppressedFailure::acknowledge($suppressed);
     }
 
@@ -168,7 +184,7 @@ try {
 
     $assetRepository = new MySQLAssetRepository($pdo);
     $uploadGrantIssuer = new LocalUploadGrantIssuer(requireEnv('UPLOAD_GRANT_SECRET'));
-    $assetStatusCache = assetStatusCache();
+    $assetStatusCache = assetStatusCache($logger);
     $startUploadService = new StartUploadService(
         $assetRepository,
         new MockStorageAdapter(),
@@ -209,8 +225,7 @@ try {
     try {
         $logger->error($exception->getMessage(), ['exception' => $exception]);
     } catch (\Throwable $suppressed) {
-        // Fall back to the PHP error log when the structured logger itself fails.
-        error_log((string) $suppressed);
+        SuppressedFailure::acknowledge($suppressed);
     }
 
     $response = internalServerErrorResponse();

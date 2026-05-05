@@ -49,11 +49,7 @@ final class GraphQLHandler
         }
 
         if (strtoupper($method) !== 'POST') {
-            return $this->jsonResponse(405, [
-                'errors' => [
-                    ['message' => 'Only POST /graphql is supported.'],
-                ],
-            ]);
+            return $this->graphQLErrorResponse(405, new GraphQLError('Only POST /graphql is supported.'));
         }
 
         return $this->handleGraphQLRequest($rawBody);
@@ -86,7 +82,7 @@ final class GraphQLHandler
     private function graphQLRequestErrorResponse(\Throwable $error, ?string $operationName): array
     {
         if ($error instanceof \InvalidArgumentException) {
-            return $this->jsonResponse(400, ['errors' => [['message' => $error->getMessage()]]]);
+            return $this->graphQLErrorResponse(400, new GraphQLError($error->getMessage()));
         }
 
         if ($error instanceof GraphQLError) {
@@ -99,7 +95,19 @@ final class GraphQLHandler
             SuppressedFailure::acknowledge($suppressed);
         }
 
-        return $this->jsonResponse(500, ['errors' => [['message' => self::INTERNAL_SERVER_ERROR_MESSAGE]]]);
+        return $this->graphQLErrorResponse(500, $error);
+    }
+
+    /**
+     * @return array{status: int, headers: array<string, string>, body: string}
+     */
+    private function graphQLErrorResponse(int $status, \Throwable $error): array
+    {
+        return $this->jsonResponse($status, [
+            'errors' => [
+                $this->formatGraphQLError($error),
+            ],
+        ]);
     }
 
     /**

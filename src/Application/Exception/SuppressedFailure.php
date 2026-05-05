@@ -9,7 +9,7 @@ final class SuppressedFailure
     private const MAX_ACKNOWLEDGED_FAILURES = 16;
 
     /**
-     * @var list<array{type: string, message: string}>
+     * @var list<array{type: string}>
      */
     private static array $acknowledgedFailures = [];
 
@@ -17,11 +17,15 @@ final class SuppressedFailure
     {
         self::$acknowledgedFailures[] = [
             'type' => get_debug_type($suppressed),
-            'message' => $suppressed->getMessage(),
         ];
 
         if (count(self::$acknowledgedFailures) > self::MAX_ACKNOWLEDGED_FAILURES) {
             array_shift(self::$acknowledgedFailures);
         }
+    }
+
+    public static function clearAcknowledgements(): void
+    {
+        self::$acknowledgedFailures = [];
     }
 }

@@ -33,6 +33,98 @@ final class GraphQLHandlerTest extends TestCase
     private const UNKNOWN_ASSET_ID = '123e4567-e89b-42d3-a456-426614174000';
 
     #[Test]
+    public function itReturnsGraphQlErrorExtensionsWhenTheRequestUsesANonPostMethod(): void
+    {
+        // Arrange
+        [$handler] = $this->createHandler();
+
+        // Act
+        $response = $handler->handle('GET', '/graphql', '{}');
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(405, $response['status']);
+        self::assertSame('application/json; charset=utf-8', $response['headers']['Content-Type']);
+        self::assertSame(
+            [[
+                'message' => 'Only POST /graphql is supported.',
+                'extensions' => [
+                    'code' => 'BAD_USER_INPUT',
+                    'category' => 'USER',
+                ],
+            ]],
+            $payload['errors'],
+        );
+    }
+
+    #[Test]
+    public function itReturnsGraphQlErrorExtensionsWhenTheRequestPayloadFailsValidation(): void
+    {
+        // Arrange
+        [$handler] = $this->createHandler();
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', '{}');
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(400, $response['status']);
+        self::assertSame(
+            [[
+                'message' => 'GraphQL requests must include a non-empty query string.',
+                'extensions' => [
+                    'code' => 'BAD_USER_INPUT',
+                    'category' => 'USER',
+                ],
+            ]],
+            $payload['errors'],
+        );
+    }
+
+    #[Test]
+    public function itReturnsGraphQlErrorExtensionsWhenAnInternalFailureOccursBeforeExecution(): void
+    {
+        // Arrange
+        [$handler] = $this->createHandler();
+        $schemaPath = dirname(__DIR__, 3) . '/src/GraphQL/Schema/schema.graphql';
+        $backupPath = $schemaPath . '.' . uniqid('backup-', true);
+
+        self::assertFileExists($schemaPath);
+        self::assertTrue(rename($schemaPath, $backupPath));
+        set_error_handler(
+            static function (int $severity, string $message, string $file, int $line): never {
+                throw SchemaFileAccessWarning::fromPhpWarning($message, $file, $line, $severity);
+            },
+        );
+
+        try {
+            // Act
+            $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody(self::UNKNOWN_ASSET_ID));
+        } finally {
+            restore_error_handler();
+            self::assertTrue(rename($backupPath, $schemaPath));
+        }
+
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(500, $response['status']);
+        self::assertSame(
+            [[
+                'message' => 'Internal server error',
+                'extensions' => [
+                    'code' => 'INTERNAL_SERVER_ERROR',
+                    'category' => 'INTERNAL',
+                ],
+            ]],
+            $payload['errors'],
+        );
+    }
+
+    #[Test]
     public function itExecutesStartUploadThroughTheLocalGraphQlHandler(): void
     {
         // Arrange
@@ -669,6 +761,14 @@ GRAPHQL,
         $asset->markProcessing(new UploadCompletionProofValue('etag-processing'));
 
         return $asset;
+    }
+}
+
+final class SchemaFileAccessWarning extends \RuntimeException
+{
+    public static function fromPhpWarning(string $message, string $file, int $line, int $severity): self
+    {
+        return new self(sprintf('%s in %s on line %d', $message, $file, $line), $severity);
     }
 }
 
