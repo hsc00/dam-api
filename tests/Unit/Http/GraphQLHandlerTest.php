@@ -86,26 +86,17 @@ final class GraphQLHandlerTest extends TestCase
     #[Test]
     public function itReturnsGraphQlErrorExtensionsWhenAnInternalFailureOccursBeforeExecution(): void
     {
-        // Arrange
-        [$handler] = $this->createHandler();
-        $schemaPath = dirname(__DIR__, 3) . '/src/GraphQL/Schema/schema.graphql';
-        $backupPath = $schemaPath . '.' . uniqid('backup-', true);
-
-        self::assertFileExists($schemaPath);
-        self::assertTrue(rename($schemaPath, $backupPath));
-        set_error_handler(
-            static function (int $severity, string $message, string $file, int $line): never {
-                throw SchemaFileAccessWarning::fromPhpWarning($message, $file, $line, $severity);
-            },
+        // Arrange — inject a SchemaFactory stub that throws when create() is called,
+        // avoiding mutating checked-in files.
+        $schemaFactory = $this->createMock(SchemaFactory::class);
+        $schemaFactory->method('create')->willThrowException(
+            SchemaFileAccessWarning::fromPhpWarning('schema access warning', 'schema.graphql', 1, E_WARNING)
         );
 
-        try {
-            // Act
-            $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody(self::UNKNOWN_ASSET_ID));
-        } finally {
-            restore_error_handler();
-            self::assertTrue(rename($backupPath, $schemaPath));
-        }
+        $handler = new GraphQLHandler($schemaFactory, 'local-test-account', new NullLogger());
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->assetQueryRequestBody(self::UNKNOWN_ASSET_ID));
 
         $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
         self::assertIsArray($payload);
@@ -649,15 +640,11 @@ GRAPHQL,
         // Assert
         self::assertSame(200, $response['status']);
         self::assertNull($payload['data']['asset']);
+        self::assertCount(1, $payload['errors']);
+        self::assertSame('Asset id must be a UUIDv4 string.', $payload['errors'][0]['message']);
         self::assertSame(
-            [[
-                'message' => 'Asset id must be a UUIDv4 string.',
-                'extensions' => [
-                    'code' => 'INVALID_INPUT',
-                    'category' => 'validation',
-                ],
-            ]],
-            $payload['errors'],
+            ['code' => 'INVALID_INPUT', 'category' => 'validation'],
+            $payload['errors'][0]['extensions'],
         );
     }
 

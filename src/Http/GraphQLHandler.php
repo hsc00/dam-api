@@ -7,6 +7,7 @@ namespace App\Http;
 use App\Application\Exception\SuppressedFailure;
 use App\GraphQL\SchemaFactory;
 use GraphQL\Error\Error as GraphQLError;
+use GraphQL\Error\FormattedError;
 use GraphQL\Executor\ExecutionResult;
 use GraphQL\GraphQL;
 use Psr\Log\LoggerInterface;
@@ -291,27 +292,38 @@ final class GraphQLHandler
             ];
         }
 
-        // Prefer a semantic code from the error extensions when available.
-        $extensions = $error->getExtensions();
+        // Start from the library-formatted error to preserve locations/path and
+        // any other metadata; then override message and extensions with
+        // sanitized values.
+        $formatted = FormattedError::createFromException($error);
 
-        if (is_array($extensions) && isset($extensions['code']) && is_string($extensions['code']) && $extensions['code'] !== '') {
-            $code = $extensions['code'];
+        $formatted['extensions'] = $this->buildExtensions($formatted['extensions'] ?? $error->getExtensions());
+
+        $formatted['message'] = $error->getMessage();
+
+        return $formatted;
+    }
+
+    /**
+     * Normalize and validate the extensions array we expose to clients.
+     *
+     * @param array<string, mixed>|null $originalExtensions
+     * @return array<string, string>
+     */
+    private function buildExtensions(?array $originalExtensions): array
+    {
+        if (is_array($originalExtensions) && isset($originalExtensions['code']) && is_string($originalExtensions['code']) && $originalExtensions['code'] !== '') {
+            $code = $originalExtensions['code'];
         } else {
             $code = self::BAD_USER_INPUT_CODE;
         }
 
-        if (is_array($extensions) && isset($extensions['category']) && is_string($extensions['category']) && $extensions['category'] !== '') {
-            $category = $extensions['category'];
+        if (is_array($originalExtensions) && isset($originalExtensions['category']) && is_string($originalExtensions['category']) && $originalExtensions['category'] !== '') {
+            $category = $originalExtensions['category'];
         } else {
             $category = self::DEFAULT_USER_ERROR_CATEGORY;
         }
 
-        return [
-            'message' => $error->getMessage(),
-            'extensions' => [
-                'code' => $code,
-                'category' => $category,
-            ],
-        ];
+        return ['code' => $code, 'category' => $category];
     }
 }

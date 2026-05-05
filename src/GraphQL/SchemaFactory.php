@@ -18,7 +18,7 @@ use GraphQL\Type\Definition\ResolveInfo;
 use GraphQL\Type\Schema;
 use GraphQL\Utils\BuildSchema;
 
-final class SchemaFactory
+class SchemaFactory
 {
     public function __construct(
         private readonly GetAssetResolver $getAssetResolver,
