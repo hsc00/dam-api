@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Infrastructure\Persistence;
 
 use App\Domain\Asset\Asset;
+use App\Domain\Asset\AssetRepositoryInterface;
+use App\Domain\Asset\AssetStatus;
 use App\Domain\Asset\ValueObject\AccountId;
 use App\Domain\Asset\ValueObject\AssetId;
 use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
@@ -17,6 +19,7 @@ use PHPUnit\Framework\Attributes\Test;
 final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
 {
     private const CREATED_AT_2026_04_01_1300 = '2026-04-01 13:00:00.000000';
+    private const PADDED_REPORT_QUERY = '  repORT  ';
 
     #[Test]
     public function itReturnsAssetWhenSavingAndReadingAPendingAsset(): void
@@ -265,7 +268,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
     }
 
     #[Test]
-    public function itReturnsMatchingAssetsWhenSearchingByFileNameWithinAccountUsingDeterministicOrdering(): void
+    public function itReturnsMatchingAssetsWhenSearchingByFileNameWithinAccountAndStatusUsingDeterministicOrdering(): void
     {
         $this->withTemporaryDatabase(function (PDO $connection): void {
             // Arrange
@@ -279,19 +282,29 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 completionProof: 'etag-quarterly-report',
                 persistedState: $this->persistedState('2026-04-01 14:00:00.000000', 1, '2026-04-01 14:05:00.000000'),
             );
-            $expectedSecond = $this->pendingAsset(
+            $expectedSecond = $this->uploadedAsset(
                 assetId: '11111111-aaaa-4111-8111-111111111111',
                 uploadId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
                 accountId: (string) $accountId,
                 fileName: 'report-draft.png',
-                createdAt: self::CREATED_AT_2026_04_01_1300,
+                completionProof: 'etag-report-draft',
+                persistedState: $this->persistedState(self::CREATED_AT_2026_04_01_1300, 1, '2026-04-01 13:05:00.000000'),
             );
-            $expectedThird = $this->pendingAsset(
+            $expectedThird = $this->uploadedAsset(
                 assetId: '22222222-bbbb-4222-8222-222222222222',
                 uploadId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
                 accountId: (string) $accountId,
                 fileName: 'REPORT-appendix.png',
-                createdAt: self::CREATED_AT_2026_04_01_1300,
+                completionProof: 'etag-report-appendix',
+                persistedState: $this->persistedState(self::CREATED_AT_2026_04_01_1300, 1, '2026-04-01 13:05:00.000000'),
+            );
+            $sameAccountStatusMismatch = $this->processingAsset(
+                assetId: '23232323-bcbc-4232-8232-232323232323',
+                uploadId: 'cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd',
+                accountId: (string) $accountId,
+                fileName: 'report-processing.png',
+                completionProof: 'etag-report-processing',
+                persistedState: $this->persistedState('2026-04-01 15:00:00.000000', 1, '2026-04-01 15:05:00.000000'),
             );
             $sameAccountNonMatch = $this->pendingAsset(
                 assetId: '33333333-cccc-4333-8333-333333333333',
@@ -308,6 +321,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 createdAt: '2026-04-01 16:00:00.000000',
             );
 
+            $repository->save($sameAccountStatusMismatch);
             $repository->save($expectedThird);
             $repository->save($otherAccountMatch);
             $repository->save($expectedFirst);
@@ -315,13 +329,88 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             $repository->save($expectedSecond);
 
             // Act
-            $results = $repository->searchByFileName($accountId, '  repORT  ');
+            $totalCount = $repository->countByFileName($accountId, self::PADDED_REPORT_QUERY, AssetStatus::UPLOADED);
+            $results = $repository->searchByFileName($accountId, self::PADDED_REPORT_QUERY, AssetStatus::UPLOADED, 0, 10);
+            $pagedResults = $repository->searchByFileName($accountId, self::PADDED_REPORT_QUERY, AssetStatus::UPLOADED, 1, 1);
 
             // Assert
+            self::assertSame(3, $totalCount);
             self::assertCount(3, $results);
             $this->assertAssetMatches($expectedFirst, $results[0]);
             $this->assertAssetMatches($expectedSecond, $results[1]);
             $this->assertAssetMatches($expectedThird, $results[2]);
+            self::assertCount(1, $pagedResults);
+            $this->assertAssetMatches($expectedSecond, $pagedResults[0]);
+        });
+    }
+
+    #[Test]
+    public function itTreatsPercentAndUnderscoreSearchTermsAsLiterals(): void
+    {
+        $this->withTemporaryDatabase(function (PDO $connection): void {
+            // Arrange
+            $repository = $this->createRepository($connection);
+            $accountId = new AccountId('account-literal-like');
+            $percentMatch = $this->uploadedAsset(
+                assetId: '77777777-7777-4777-8777-777777777777',
+                uploadId: '78787878-7878-4787-8787-787878787878',
+                accountId: (string) $accountId,
+                fileName: 'budget 100% complete.pdf',
+                completionProof: 'etag-budget-percent',
+                persistedState: $this->persistedState('2026-04-01 12:00:00.000000', 1, '2026-04-01 12:05:00.000000'),
+            );
+            $percentWildcardFalsePositive = $this->uploadedAsset(
+                assetId: '88888888-8888-4888-8888-888888888888',
+                uploadId: '89898989-8989-4898-8989-898989898989',
+                accountId: (string) $accountId,
+                fileName: 'budget 100 percent complete.pdf',
+                completionProof: 'etag-budget-plain',
+                persistedState: $this->persistedState('2026-04-01 12:10:00.000000', 1, '2026-04-01 12:15:00.000000'),
+            );
+            $underscoreMatch = $this->uploadedAsset(
+                assetId: '99999999-aaaa-4999-8999-999999999999',
+                uploadId: '9a9a9a9a-9a9a-49a9-89a9-9a9a9a9a9a9a',
+                accountId: (string) $accountId,
+                fileName: 'report_2026.pdf',
+                completionProof: 'etag-report-underscore',
+                persistedState: $this->persistedState('2026-04-01 12:20:00.000000', 1, '2026-04-01 12:25:00.000000'),
+            );
+            $underscoreWildcardFalsePositive = $this->uploadedAsset(
+                assetId: 'aaaaaaaa-bbbb-4aaa-8aaa-aaaaaaaaaaaa',
+                uploadId: 'abababab-abab-4bab-8bab-abababababab',
+                accountId: (string) $accountId,
+                fileName: 'report-2026.pdf',
+                completionProof: 'etag-report-hyphen',
+                persistedState: $this->persistedState('2026-04-01 12:30:00.000000', 1, '2026-04-01 12:35:00.000000'),
+            );
+            $otherAccountLiteral = $this->uploadedAsset(
+                assetId: 'bbbbbbbb-cccc-4bbb-8bbb-bbbbbbbbbbbb',
+                uploadId: 'bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc',
+                accountId: 'account-other-literal-like',
+                fileName: 'shared_2026%.pdf',
+                completionProof: 'etag-other-account-literal',
+                persistedState: $this->persistedState('2026-04-01 12:40:00.000000', 1, '2026-04-01 12:45:00.000000'),
+            );
+
+            $repository->save($percentMatch);
+            $repository->save($percentWildcardFalsePositive);
+            $repository->save($underscoreMatch);
+            $repository->save($underscoreWildcardFalsePositive);
+            $repository->save($otherAccountLiteral);
+
+            // Act
+            $percentCount = $repository->countByFileName($accountId, '%', AssetStatus::UPLOADED);
+            $percentResults = $repository->searchByFileName($accountId, '%', AssetStatus::UPLOADED, 0, 10);
+            $underscoreCount = $repository->countByFileName($accountId, '_', AssetStatus::UPLOADED);
+            $underscoreResults = $repository->searchByFileName($accountId, '_', AssetStatus::UPLOADED, 0, 10);
+
+            // Assert
+            self::assertSame(1, $percentCount);
+            self::assertCount(1, $percentResults);
+            $this->assertAssetMatches($percentMatch, $percentResults[0]);
+            self::assertSame(1, $underscoreCount);
+            self::assertCount(1, $underscoreResults);
+            $this->assertAssetMatches($underscoreMatch, $underscoreResults[0]);
         });
     }
 
@@ -333,9 +422,11 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             $repository = $this->createRepository($connection);
 
             // Act
-            $results = $repository->searchByFileName(new AccountId('account-empty-search'), " \n\t ");
+            $totalCount = $repository->countByFileName(new AccountId('account-empty-search'), " \n\t ", AssetStatus::UPLOADED);
+            $results = $repository->searchByFileName(new AccountId('account-empty-search'), " \n\t ", AssetStatus::UPLOADED, 0, 10);
 
             // Assert
+            self::assertSame(0, $totalCount);
             self::assertSame([], $results);
         }, false);
     }
@@ -376,7 +467,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
         });
     }
 
-    private function createRepository(PDO $connection): MySQLAssetRepository
+    private function createRepository(PDO $connection): AssetRepositoryInterface
     {
         return new MySQLAssetRepository($connection);
     }
@@ -388,7 +479,7 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
         $this->assertAssetMatches($expectedAsset, $actualAsset);
     }
 
-    private function assertFoundByIdAndUploadId(MySQLAssetRepository $repository, Asset $asset): void
+    private function assertFoundByIdAndUploadId(AssetRepositoryInterface $repository, Asset $asset): void
     {
         $foundById = $repository->findById($asset->getId());
         $foundByUploadId = $repository->findByUploadId($asset->getUploadId());

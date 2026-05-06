@@ -296,9 +296,68 @@ type CompleteUploadPayload {
   userErrors: [UserError!]!
 }
 
+"""
+One searchable asset returned by `searchAssets`.
+
+Results are limited to assets with status `UPLOADED` (see `AssetStatus` and
+the `status` field below). The `status` field still reflects the current
+upload status for the returned asset.
+"""
+type SearchAssetsFile {
+  "Asset identifier."
+  id: ID!
+
+  "Original client file name."
+  fileName: String!
+
+  "Client-supplied media type."
+  mimeType: String!
+
+  "Current upload status."
+  status: AssetStatus!
+}
+
+"""
+Pagination metadata returned by searchAssets.
+"""
+type SearchAssetsPageInfo {
+  "Current one-based page number."
+  page: Int!
+
+  "Effective page size after server-side validation/clamping (capped at MAX_PAGE_SIZE)."
+  pageSize: Int!
+
+  "Total number of pages for this result set."
+  totalPages: Int!
+}
+
+"""
+Payload for searchAssets.
+"""
+type SearchAssetsPayload {
+  "Matching assets for the authenticated account."
+  files: [SearchAssetsFile!]!
+
+  "Total number of assets with status UPLOADED that matched before pagination."
+  totalCount: Int!
+
+  "Pagination metadata for this search result."
+  pageInfo: SearchAssetsPageInfo!
+
+  "Business validation errors."
+  userErrors: [UserError!]!
+}
+
 type Query {
   "Fetch the status of one asset by id."
   asset(id: ID!): AssetStatusSnapshot
+
+  "Search assets for the authenticated account by file name."
+  searchAssets(
+    query: String!
+    page: Int = 1
+    pageSize: Int = 10
+  ): SearchAssetsPayload!
 }
 
 type Mutation {

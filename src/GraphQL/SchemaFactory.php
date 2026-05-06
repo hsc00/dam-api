@@ -7,6 +7,7 @@ namespace App\GraphQL;
 use App\GraphQL\Exception\SchemaLoadException;
 use App\GraphQL\Resolver\CompleteUploadResolver;
 use App\GraphQL\Resolver\GetAssetResolver;
+use App\GraphQL\Resolver\SearchAssetsResolver;
 use App\GraphQL\Resolver\StartUploadBatchResolver;
 use App\GraphQL\Resolver\StartUploadResolver;
 use DateTimeImmutable;
@@ -22,6 +23,7 @@ class SchemaFactory
 {
     public function __construct(
         private readonly GetAssetResolver $getAssetResolver,
+        private readonly SearchAssetsResolver $searchAssetsResolver,
         private readonly StartUploadResolver $startUploadResolver,
         private readonly StartUploadBatchResolver $startUploadBatchResolver,
         private readonly CompleteUploadResolver $completeUploadResolver,
@@ -60,6 +62,7 @@ class SchemaFactory
         $typeConfig['resolveField'] = function (mixed $source, array $args, mixed $contextValue, ResolveInfo $resolveInfo): mixed {
             return match ($resolveInfo->fieldName) {
                 'asset' => $this->getAssetResolver->resolve($source, $args, $contextValue, $resolveInfo),
+                'searchAssets' => $this->searchAssetsResolver->resolve($args, $contextValue),
                 default => null,
             };
         };
