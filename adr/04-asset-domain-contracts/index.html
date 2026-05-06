@@ -1063,6 +1063,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logs/10-search-files-by-name/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-10 Search Files by Name
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1198,14 +1226,19 @@
 <td>The upload identifier is part of the upload flow contract and supports retry-safe lookup.</td>
 </tr>
 <tr>
-<td><code>searchByFileName(AccountId $accountId, string $query): array</code></td>
-<td>Return only assets for the supplied account whose <code>fileName</code> contains the trimmed query as a plain-text, case-insensitive substring. Results are ordered by <code>createdAt</code> descending, then <code>id</code> ascending. Return an empty list when the trimmed query is empty.</td>
-<td>Search flows need deterministic account-scoped matching without turning an empty query into a full scan.</td>
+<td><code>searchByFileName(AccountId $accountId, string $query, AssetStatus $status, int $offset, int $limit): array</code></td>
+<td>Return only assets for the supplied account and exact <code>status</code> whose <code>fileName</code> contains the trimmed query as a plain-text, case-insensitive substring. Results are ordered by <code>createdAt</code> descending, then <code>id</code> ascending, and then bounded using zero-based <code>offset</code> and <code>limit</code>. Return an empty list when the trimmed query is empty or when <code>offset</code> exceeds the total count.</td>
+<td>Search flows need deterministic account-scoped matching with repository-owned pagination instead of loading extra rows into PHP.</td>
+</tr>
+<tr>
+<td><code>countByFileName(AccountId $accountId, string $query, AssetStatus $status): int</code></td>
+<td>Return the count of assets that match the same account, status, and plain-text file-name search semantics. Return <code>0</code> when the trimmed query is empty.</td>
+<td>Search flows need pagination metadata without counting filtered rows in application code.</td>
 </tr>
 </tbody>
 </table>
-<p>Persistence must store <code>accountId</code>, <code>fileName</code>, <code>mimeType</code>, and uploaded-state <code>completionProof</code> values without truncating them to an undocumented 255-character ceiling. In this chunk the domain still models those fields as trimmed non-empty text, so persistence must preserve the full value it receives.</p>
-<p>Persistence must store <code>chunkCount</code> as a positive integer and <code>updatedAt</code> as a timestamp that is never earlier than <code>createdAt</code>. Newly created pending assets start with <code>chunkCount = 1</code> and <code>updatedAt === createdAt</code>; successful status transitions advance <code>updatedAt</code> monotonically and never move it backward.</p>
+<p>Persistence must store <code>accountId</code>, <code>fileName</code>, <code>mimeType</code>, and uploaded-state <code>completionProof</code> values without imposing arbitrary length limits (such as a VARCHAR(255) ceiling). In this chunk the domain still models those fields as trimmed non-empty text, so persistence must preserve the full value it receives.
+Persistence must store <code>chunkCount</code> as a positive integer and <code>updatedAt</code> as a timestamp that is never earlier than <code>createdAt</code>. Newly created pending assets start with <code>chunkCount = 1</code> and <code>updatedAt === createdAt</code>; successful status transitions advance <code>updatedAt</code> monotonically and never move it backward.</p>
 <p>Repository implementations must also preserve the uploaded-state invariant during reads.</p>
 <ul>
 <li><code>PENDING</code> and <code>FAILED</code> assets are reconstituted with <code>Asset::reconstitute(...)</code>, including persisted <code>chunkCount</code>, <code>createdAt</code>, and <code>updatedAt</code>.</li>
@@ -1256,7 +1289,8 @@
 <p>The accepted delivery extended slightly beyond the original story so the domain contract would be complete.</p>
 <ul>
 <li><code>findByUploadId(...)</code> was added to the repository contract so upload flows can resolve an asset by upload identifier.</li>
-<li><code>searchByFileName(...)</code> was added to the repository contract so account-scoped file-name search has deterministic semantics before the repository implementation lands.</li>
+<li><code>searchByFileName(...)</code> was refined so repository implementations own status scoping and bounded pagination for account-scoped file-name search.</li>
+<li><code>countByFileName(...)</code> was added to the repository contract so search can compute page metadata without counting filtered rows in application code.</li>
 <li><code>StorageAdapterInterface</code> and the typed upload-target model were added so upload instructions are represented as domain types instead of untyped infrastructure payloads.</li>
 <li>A completion-proof requirement was added to both upload completion and uploaded-state reconstitution so <code>UPLOADED</code> cannot exist without proof.</li>
 </ul>
