@@ -6,12 +6,6 @@
 
 US-10 added the `searchAssets(query, page, pageSize)` GraphQL query for account-scoped file-name search. The accepted implementation returns `files`, `totalCount`, `pageInfo`, and `userErrors`, searches only uploaded assets, trims the plain-text query, and rejects an empty post-trim query with a friendly user error instead of a GraphQL transport failure. Pagination stays repository-owned, and result ordering is deterministic.
 
-## Status
-
-- **Delivery:** Implementation complete; unit and focused integration tests passed.
-- **Integration:** Full MySQL integration verified inside Docker (see Validation).
-- **PR:** Creation in progress.
-
 ## Implementation Details
 
 - Added `SearchAssetsQuery`, `SearchAssetsService`, and dedicated result types so the application layer owns trimmed query validation, page-size capping, total-count calculation, and repository-failure translation.

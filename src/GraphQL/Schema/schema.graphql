@@ -324,7 +324,7 @@ type SearchAssetsPageInfo {
   "Current one-based page number."
   page: Int!
 
-  "Requested page size."
+  "Effective page size after server-side validation/clamping (capped at MAX_PAGE_SIZE)."
   pageSize: Int!
 
   "Total number of pages for this result set."

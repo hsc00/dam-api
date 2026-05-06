@@ -45,6 +45,16 @@ final class SearchAssetsService
         try {
             $totalCount = $this->assets->countByFileName($accountId, $trimmedQuery, AssetStatus::UPLOADED);
             $pageInfo = SearchAssetsPageInfo::fromTotalCount($query->page, $query->pageSize, $totalCount);
+            
+            if ($totalCount === 0) {
+                return new SearchAssetsResult(
+                    files: [],
+                    totalCount: 0,
+                    pageInfo: $pageInfo,
+                    userErrors: [],
+                );
+            }
+
             $offset = ($pageInfo->page - 1) * $pageInfo->pageSize;
 
             $assets = $this->assets->searchByFileName(
