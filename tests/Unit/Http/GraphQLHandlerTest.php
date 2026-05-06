@@ -7,6 +7,8 @@ namespace App\Tests\Unit\Http;
 use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\CompleteUploadService;
 use App\Application\Asset\GetAssetService;
+use App\Application\Asset\Result\SearchAssetsPageInfo;
+use App\Application\Asset\SearchAssetsService;
 use App\Application\Asset\StartUploadService;
 use App\Domain\Asset\Asset;
 use App\Domain\Asset\AssetRepositoryInterface;
@@ -17,6 +19,7 @@ use App\Domain\Asset\ValueObject\UploadCompletionProofValue;
 use App\Domain\Asset\ValueObject\UploadId;
 use App\GraphQL\Resolver\CompleteUploadResolver;
 use App\GraphQL\Resolver\GetAssetResolver;
+use App\GraphQL\Resolver\SearchAssetsResolver;
 use App\GraphQL\Resolver\StartUploadBatchResolver;
 use App\GraphQL\Resolver\StartUploadResolver;
 use App\GraphQL\SchemaFactory;
@@ -24,6 +27,7 @@ use App\Http\GraphQLHandler;
 use App\Infrastructure\Processing\NullAssetStatusCache;
 use App\Infrastructure\Storage\MockStorageAdapter;
 use App\Infrastructure\Upload\LocalUploadGrantIssuer;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -627,6 +631,281 @@ GRAPHQL,
     }
 
     #[Test]
+    public function itSearchesUploadedAssetsForTheAuthenticatedAccountWithExplicitGraphQlDefaults(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+        $repository->save($this->reconstituteUploadedAsset(
+            '123e4567-e89b-42d3-a456-426614174031',
+            'Report Alpha.pdf',
+            'local-test-account',
+            '2026-05-01T10:00:00+00:00',
+        ));
+        $repository->save($this->reconstituteProcessingAsset(
+            '123e4567-e89b-42d3-a456-426614174030',
+            'REPORT in progress.pdf',
+            'local-test-account',
+            '2026-05-05T10:00:00+00:00',
+        ));
+        $repository->save($this->reconstituteUploadedAsset(
+            '123e4567-e89b-42d3-a456-426614174010',
+            'Quarterly Report.pdf',
+            'local-test-account',
+            '2026-05-04T09:00:00+00:00',
+        ));
+        $repository->save($this->reconstituteUploadedAsset(
+            '123e4567-e89b-42d3-a456-426614174009',
+            'report appendix.pdf',
+            'local-test-account',
+            '2026-05-04T09:00:00+00:00',
+        ));
+        $repository->save($this->reconstituteFailedAsset(
+            '123e4567-e89b-42d3-a456-426614174050',
+            'report failed.pdf',
+            'local-test-account',
+            '2026-05-03T10:00:00+00:00',
+        ));
+        $repository->save($this->reconstituteUploadedAsset(
+            '123e4567-e89b-42d3-a456-426614174060',
+            'report foreign-account.pdf',
+            'another-account',
+            '2026-05-06T10:00:00+00:00',
+        ));
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->searchAssetsRequestBody('report'));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['searchAssets']['userErrors']);
+        self::assertSame(3, $payload['data']['searchAssets']['totalCount']);
+        self::assertSame(
+            ['page' => 1, 'pageSize' => 10, 'totalPages' => 1],
+            $payload['data']['searchAssets']['pageInfo'],
+        );
+        self::assertSame(
+            [
+                [
+                    'id' => '123e4567-e89b-42d3-a456-426614174009',
+                    'fileName' => 'report appendix.pdf',
+                    'mimeType' => 'application/pdf',
+                    'status' => 'UPLOADED',
+                ],
+                [
+                    'id' => '123e4567-e89b-42d3-a456-426614174010',
+                    'fileName' => 'Quarterly Report.pdf',
+                    'mimeType' => 'application/pdf',
+                    'status' => 'UPLOADED',
+                ],
+                [
+                    'id' => '123e4567-e89b-42d3-a456-426614174031',
+                    'fileName' => 'Report Alpha.pdf',
+                    'mimeType' => 'application/pdf',
+                    'status' => 'UPLOADED',
+                ],
+            ],
+            $payload['data']['searchAssets']['files'],
+        );
+    }
+
+    #[Test]
+    public function itUsesExplicitSearchPaginationAtTheGraphQlBoundary(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+        $repository->save($this->reconstituteUploadedAsset(
+            '123e4567-e89b-42d3-a456-426614174031',
+            'Report Alpha.pdf',
+            'local-test-account',
+            '2026-05-01T10:00:00+00:00',
+        ));
+        $repository->save($this->reconstituteUploadedAsset(
+            '123e4567-e89b-42d3-a456-426614174010',
+            'Quarterly Report.pdf',
+            'local-test-account',
+            '2026-05-04T09:00:00+00:00',
+        ));
+        $repository->save($this->reconstituteUploadedAsset(
+            '123e4567-e89b-42d3-a456-426614174009',
+            'report appendix.pdf',
+            'local-test-account',
+            '2026-05-04T09:00:00+00:00',
+        ));
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->searchAssetsRequestBody('report', 2, 1));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['searchAssets']['userErrors']);
+        self::assertSame(3, $payload['data']['searchAssets']['totalCount']);
+        self::assertSame(
+            ['page' => 2, 'pageSize' => 1, 'totalPages' => 3],
+            $payload['data']['searchAssets']['pageInfo'],
+        );
+        self::assertSame(
+            [[
+                'id' => '123e4567-e89b-42d3-a456-426614174010',
+                'fileName' => 'Quarterly Report.pdf',
+                'mimeType' => 'application/pdf',
+                'status' => 'UPLOADED',
+            ]],
+            $payload['data']['searchAssets']['files'],
+        );
+    }
+
+    #[Test]
+    public function itCapsExplicitSearchPageSizeAtTheConfiguredMaximum(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+
+        foreach (range(1, SearchAssetsPageInfo::MAX_PAGE_SIZE + 1) as $index) {
+            $repository->save($this->reconstituteUploadedAsset(
+                sprintf('123e4567-e89b-42d3-a456-%012d', $index),
+                sprintf('report-%02d.pdf', $index),
+                'local-test-account',
+                '2026-05-04T09:00:00+00:00',
+            ));
+        }
+
+        // Act
+        $response = $handler->handle(
+            'POST',
+            '/graphql',
+            $this->searchAssetsRequestBody('report', 1, SearchAssetsPageInfo::MAX_PAGE_SIZE + 1),
+        );
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['searchAssets']['userErrors']);
+        self::assertSame(SearchAssetsPageInfo::MAX_PAGE_SIZE + 1, $payload['data']['searchAssets']['totalCount']);
+        self::assertSame(
+            [
+                'page' => 1,
+                'pageSize' => SearchAssetsPageInfo::MAX_PAGE_SIZE,
+                'totalPages' => 2,
+            ],
+            $payload['data']['searchAssets']['pageInfo'],
+        );
+        self::assertCount(SearchAssetsPageInfo::MAX_PAGE_SIZE, $payload['data']['searchAssets']['files']);
+    }
+
+    #[Test]
+    public function itReturnsPayloadLevelUserErrorsForWhitespaceOnlySearchQueries(): void
+    {
+        // Arrange
+        [$handler] = $this->createHandler();
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->searchAssetsRequestBody(" \n\t "));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['searchAssets']['files']);
+        self::assertSame(0, $payload['data']['searchAssets']['totalCount']);
+        self::assertSame(
+            ['page' => 1, 'pageSize' => 10, 'totalPages' => 0],
+            $payload['data']['searchAssets']['pageInfo'],
+        );
+        self::assertSame(
+            [[
+                'code' => 'EMPTY_QUERY',
+                'message' => 'Enter a file name to search.',
+                'field' => 'query',
+            ]],
+            $payload['data']['searchAssets']['userErrors'],
+        );
+    }
+
+    #[Test]
+    public function itReturnsASanitizedGraphQlErrorWhenSearchAssetsCountFailsDuringExecution(): void
+    {
+        // Arrange
+        $searchAssetsRepository = $this->createMock(AssetRepositoryInterface::class);
+        $searchAssetsRepository
+            ->expects($this->once())
+            ->method('countByFileName')
+            ->willThrowException(new \RuntimeException('database unavailable during count'));
+        $searchAssetsRepository
+            ->expects($this->never())
+            ->method('searchByFileName');
+
+        $searchAssetsService = new SearchAssetsService($searchAssetsRepository);
+        [$handler] = $this->createHandler(searchAssetsService: $searchAssetsService);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->searchAssetsRequestBody('report'));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('data', $payload);
+        self::assertSame(
+            [[
+                'message' => 'Internal server error',
+                'extensions' => [
+                    'code' => 'INTERNAL_SERVER_ERROR',
+                    'category' => 'INTERNAL',
+                ],
+            ]],
+            $payload['errors'],
+        );
+        self::assertStringNotContainsString('database unavailable during count', $response['body']);
+    }
+
+    #[Test]
+    public function itReturnsASanitizedGraphQlErrorWhenSearchAssetsFailsDuringExecution(): void
+    {
+        // Arrange
+        $searchAssetsRepository = $this->createMock(AssetRepositoryInterface::class);
+        $searchAssetsRepository
+            ->expects($this->once())
+            ->method('countByFileName')
+            ->willReturn(1);
+        $searchAssetsRepository
+            ->expects($this->once())
+            ->method('searchByFileName')
+            ->willThrowException(new \RuntimeException('database unavailable'));
+
+        $searchAssetsService = new SearchAssetsService($searchAssetsRepository);
+        [$handler] = $this->createHandler(searchAssetsService: $searchAssetsService);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $this->searchAssetsRequestBody('report'));
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('data', $payload);
+        self::assertSame(
+            [[
+                'message' => 'Internal server error',
+                'extensions' => [
+                    'code' => 'INTERNAL_SERVER_ERROR',
+                    'category' => 'INTERNAL',
+                ],
+            ]],
+            $payload['errors'],
+        );
+        self::assertStringNotContainsString('database unavailable', $response['body']);
+    }
+
+    #[Test]
     public function itReturnsValidationErrorWhenTheAssetQueryReceivesAMalformedId(): void
     {
         // Arrange
@@ -680,7 +959,11 @@ GRAPHQL,
     /**
      * @return array{0: GraphQLHandler, 1: InMemoryAssetRepository, 2: InMemoryOutboxRepository}
      */
-    private function createHandler(?AssetStatusCacheInterface $cache = null, string $accountId = 'local-test-account'): array
+    private function createHandler(
+        ?AssetStatusCacheInterface $cache = null,
+        string $accountId = 'local-test-account',
+        ?SearchAssetsService $searchAssetsService = null,
+    ): array
     {
         $repository = new InMemoryAssetRepository();
         $uploadGrantIssuer = new LocalUploadGrantIssuer('test-secret');
@@ -699,6 +982,7 @@ GRAPHQL,
             $repository,
             $assetTerminalStatusCache,
         );
+        $searchAssetsService ??= new SearchAssetsService($repository);
         $completeUploadService = new CompleteUploadService(
             $repository,
             $uploadGrantIssuer,
@@ -708,6 +992,7 @@ GRAPHQL,
         );
         $schemaFactory = new SchemaFactory(
             new GetAssetResolver($getAssetService),
+            new SearchAssetsResolver($searchAssetsService),
             new StartUploadResolver($startUploadService),
             new StartUploadBatchResolver($startUploadService),
             new CompleteUploadResolver($completeUploadService),
@@ -732,6 +1017,46 @@ GRAPHQL,
         ], JSON_THROW_ON_ERROR);
     }
 
+    private function searchAssetsRequestBody(string $query, ?int $page = null, ?int $pageSize = null): string
+    {
+        $variables = ['query' => $query];
+
+        if ($page !== null) {
+            $variables['page'] = $page;
+        }
+
+        if ($pageSize !== null) {
+            $variables['pageSize'] = $pageSize;
+        }
+
+        return json_encode([
+            'query' => <<<'GRAPHQL'
+query SearchAssets($query: String!, $page: Int, $pageSize: Int) {
+    searchAssets(query: $query, page: $page, pageSize: $pageSize) {
+        files {
+            id
+            fileName
+            mimeType
+            status
+        }
+        totalCount
+        pageInfo {
+            page
+            pageSize
+            totalPages
+        }
+        userErrors {
+            code
+            message
+            field
+        }
+    }
+}
+GRAPHQL,
+            'variables' => $variables,
+        ], JSON_THROW_ON_ERROR);
+    }
+
     private function createPendingAsset(string $accountId = 'local-test-account'): Asset
     {
         return Asset::createPending(
@@ -748,6 +1073,45 @@ GRAPHQL,
         $asset->markProcessing(new UploadCompletionProofValue('etag-processing'));
 
         return $asset;
+    }
+
+    private function reconstituteUploadedAsset(string $assetId, string $fileName, string $accountId, string $createdAt): Asset
+    {
+        return Asset::reconstituteUploaded(
+            new AssetId($assetId),
+            UploadId::generate(),
+            new AccountId($accountId),
+            $fileName,
+            'application/pdf',
+            new UploadCompletionProofValue('etag-uploaded'),
+            ['createdAt' => new DateTimeImmutable($createdAt)],
+        );
+    }
+
+    private function reconstituteProcessingAsset(string $assetId, string $fileName, string $accountId, string $createdAt): Asset
+    {
+        return Asset::reconstituteProcessing(
+            new AssetId($assetId),
+            UploadId::generate(),
+            new AccountId($accountId),
+            $fileName,
+            'application/pdf',
+            new UploadCompletionProofValue('etag-processing'),
+            ['createdAt' => new DateTimeImmutable($createdAt)],
+        );
+    }
+
+    private function reconstituteFailedAsset(string $assetId, string $fileName, string $accountId, string $createdAt): Asset
+    {
+        return Asset::reconstitute(
+            new AssetId($assetId),
+            UploadId::generate(),
+            new AccountId($accountId),
+            $fileName,
+            'application/pdf',
+            AssetStatus::FAILED,
+            ['createdAt' => new DateTimeImmutable($createdAt)],
+        );
     }
 }
 
@@ -804,9 +1168,59 @@ final class InMemoryAssetRepository implements AssetRepositoryInterface
         );
     }
 
-    public function searchByFileName(AccountId $accountId, string $query): array
+    public function countByFileName(AccountId $accountId, string $query, AssetStatus $status): int
     {
-        return [];
+        return count($this->matchingAssetsByFileName($accountId, $query, $status));
+    }
+
+    /**
+     * @return list<Asset>
+     */
+    public function searchByFileName(AccountId $accountId, string $query, AssetStatus $status, int $offset, int $limit): array
+    {
+        if ($limit < 1) {
+            return [];
+        }
+
+        return array_slice(
+            $this->matchingAssetsByFileName($accountId, $query, $status),
+            max(0, $offset),
+            $limit,
+        );
+    }
+
+    /**
+     * @return list<Asset>
+     */
+    private function matchingAssetsByFileName(AccountId $accountId, string $query, AssetStatus $status): array
+    {
+        $trimmedQuery = trim($query);
+
+        if ($trimmedQuery === '') {
+            return [];
+        }
+
+        $matchingAssets = array_values(array_filter(
+            $this->savedAssets,
+            static fn (Asset $asset): bool => (string) $asset->getAccountId() === (string) $accountId
+                && $asset->getStatus() === $status
+                && stripos($asset->getFileName(), $trimmedQuery) !== false,
+        ));
+
+        usort(
+            $matchingAssets,
+            static function (Asset $left, Asset $right): int {
+                $createdAtComparison = $right->getCreatedAt() <=> $left->getCreatedAt();
+
+                if ($createdAtComparison !== 0) {
+                    return $createdAtComparison;
+                }
+
+                return (string) $left->getId() <=> (string) $right->getId();
+            },
+        );
+
+        return $matchingAssets;
     }
 
     private function findSavedAssetIndex(AssetId $assetId): ?int

@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\CompleteUploadService;
 use App\Application\Asset\GetAssetService;
+use App\Application\Asset\SearchAssetsService;
 use App\Application\Asset\StartUploadService;
 use App\Application\Exception\SuppressedFailure;
 use App\GraphQL\Resolver\CompleteUploadResolver;
 use App\GraphQL\Resolver\GetAssetResolver;
+use App\GraphQL\Resolver\SearchAssetsResolver;
 use App\GraphQL\Resolver\StartUploadBatchResolver;
 use App\GraphQL\Resolver\StartUploadResolver;
 use App\GraphQL\SchemaFactory;
@@ -195,6 +197,7 @@ try {
         $assetRepository,
         $assetStatusCache,
     );
+    $searchAssetsService = new SearchAssetsService($assetRepository);
     $transactionManager = new PDOTransactionManager($pdo);
     $outboxRepository = new MySQLOutboxRepository($pdo);
     $completeUploadService = new CompleteUploadService(
@@ -206,6 +209,7 @@ try {
     );
     $schemaFactory = new SchemaFactory(
         new GetAssetResolver($getAssetService),
+        new SearchAssetsResolver($searchAssetsService),
         new StartUploadResolver($startUploadService),
         new StartUploadBatchResolver($startUploadService),
         new CompleteUploadResolver($completeUploadService),

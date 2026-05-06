@@ -114,30 +114,67 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
         );
     }
 
+    public function countByFileName(AccountId $accountId, string $query, AssetStatus $status): int
+    {
+        $likeQuery = $this->likeSearchQuery($query);
+
+        if ($likeQuery === null) {
+            return 0;
+        }
+
+        $statement = $this->connection->prepare(sprintf(
+            "SELECT COUNT(*)
+             FROM assets
+             WHERE account_id = :account_id
+               AND status = :status
+               AND file_name COLLATE %s LIKE :file_name_query ESCAPE '%s'",
+            self::FILE_NAME_COLLATION,
+            self::LIKE_ESCAPE_CHARACTER,
+        ));
+
+        $statement->execute([
+            'account_id' => (string) $accountId,
+            'status' => $status->value,
+            'file_name_query' => $likeQuery,
+        ]);
+
+        $count = $statement->fetchColumn();
+
+        if ($count === false) {
+            throw new UnexpectedValueException(self::UNEXPECTED_ROW_SHAPE_MESSAGE);
+        }
+
+        return (int) $count;
+    }
+
     /**
      * @return list<Asset>
      */
-    public function searchByFileName(AccountId $accountId, string $query): array
+    public function searchByFileName(AccountId $accountId, string $query, AssetStatus $status, int $offset, int $limit): array
     {
-        $trimmedQuery = trim($query);
+        $likeQuery = $this->likeSearchQuery($query);
 
-        if ($trimmedQuery === '') {
+        if ($likeQuery === null || $limit < 1) {
             return [];
         }
 
         $statement = $this->connection->prepare(sprintf(
             "SELECT id, upload_id, account_id, file_name, mime_type, status, chunk_count, completion_proof, created_at, updated_at
-                         FROM assets
-                         WHERE account_id = :account_id
-                             AND file_name COLLATE %s LIKE :file_name_query ESCAPE '%s'
-                         ORDER BY created_at DESC, id ASC",
+             FROM assets
+             WHERE account_id = :account_id
+               AND status = :status
+               AND file_name COLLATE %s LIKE :file_name_query ESCAPE '%s'
+             ORDER BY created_at DESC, id ASC
+             LIMIT :limit OFFSET :offset",
             self::FILE_NAME_COLLATION,
             self::LIKE_ESCAPE_CHARACTER,
         ));
-        $statement->execute([
-            'account_id' => (string) $accountId,
-            'file_name_query' => '%' . $this->escapeLikePattern($trimmedQuery) . '%',
-        ]);
+        $statement->bindValue(':account_id', (string) $accountId);
+        $statement->bindValue(':status', $status->value);
+        $statement->bindValue(':file_name_query', $likeQuery);
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+        $statement->execute();
 
         $assets = [];
 
@@ -414,5 +451,16 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
             ],
             $value,
         );
+    }
+
+    private function likeSearchQuery(string $query): ?string
+    {
+        $trimmedQuery = trim($query);
+
+        if ($trimmedQuery === '') {
+            return null;
+        }
+
+        return '%' . $this->escapeLikePattern($trimmedQuery) . '%';
     }
 }
