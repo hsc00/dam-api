@@ -963,8 +963,7 @@ GRAPHQL,
         ?AssetStatusCacheInterface $cache = null,
         string $accountId = 'local-test-account',
         ?SearchAssetsService $searchAssetsService = null,
-    ): array
-    {
+    ): array {
         $repository = new InMemoryAssetRepository();
         $uploadGrantIssuer = new LocalUploadGrantIssuer('test-secret');
 
