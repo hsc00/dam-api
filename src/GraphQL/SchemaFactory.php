@@ -97,6 +97,8 @@ class SchemaFactory
     private function decorateByteCountScalar(array $typeConfig): array
     {
         $typeConfig['serialize'] = static fn (mixed $value): string => self::normalizeByteCount($value);
+        // Validate and normalize input values consistently for both runtime values
+        // and AST literals so invalid inputs are rejected at the scalar boundary.
         $typeConfig['parseValue'] = static fn (mixed $value): string => self::normalizeByteCount($value);
         $typeConfig['parseLiteral'] = static function (Node $valueNode): string {
             if ($valueNode instanceof IntValueNode || $valueNode instanceof StringValueNode) {

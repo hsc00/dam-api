@@ -17,12 +17,18 @@ interface AssetRepositoryInterface
     public function findByUploadId(UploadId $uploadId): ?Asset;
 
     /**
-     * Performs an account-scoped, status-scoped search using the trimmed query
-     * as a plain-text, case-insensitive substring match against fileName.
-     * Results are ordered by createdAt descending, then id ascending.
-     * Implementations must return an empty list when the trimmed query is empty.
-     *
-     * @return list<Asset>
+    * Performs an account-scoped, status-scoped search using the trimmed query
+    * as a plain-text, case-insensitive substring match against fileName.
+    * Results are ordered by createdAt descending, then id ascending.
+    * The offset is zero-based. Implementations must return an empty list when
+    * the trimmed query is empty, when limit is 0, or when offset exceeds the
+    * total number of matches.
+    *
+    * Implementations MUST throw a native `\InvalidArgumentException` when
+    * `offset` or `limit` are negative.
+    *
+    * @return list<Asset>
+    * @throws \InvalidArgumentException When `offset` or `limit` are negative.
      */
     public function searchByFileName(AccountId $accountId, string $query, AssetStatus $status, int $offset, int $limit): array;
 

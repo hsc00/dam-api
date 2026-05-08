@@ -159,6 +159,36 @@ final class SearchAssetsServiceTest extends TestCase
     }
 
     #[Test]
+    public function itReturnsAnEmptyResultAndSkipsRepositorySearchWhenNoAssetsMatch(): void
+    {
+        // Arrange
+        $this->assets
+            ->expects($this->once())
+            ->method('countByFileName')
+            ->with(
+                $this->callback(static fn (AccountId $accountId): bool => (string) $accountId === 'account-123'),
+                'report',
+                AssetStatus::UPLOADED,
+            )
+            ->willReturn(0);
+
+        $this->assets
+            ->expects($this->never())
+            ->method('searchByFileName');
+
+        // Act
+        $result = $this->service->searchAssets(new SearchAssetsQuery('account-123', '  report  ', 1, 10));
+
+        // Assert
+        self::assertSame([], $result->userErrors);
+        self::assertSame([], $result->files);
+        self::assertSame(0, $result->totalCount);
+        self::assertSame(1, $result->pageInfo->page);
+        self::assertSame(10, $result->pageInfo->pageSize);
+        self::assertSame(0, $result->pageInfo->totalPages);
+    }
+
+    #[Test]
     public function itReturnsMaxPageSizeWhenRequestedSizeExceedsLimit(): void
     {
         // Arrange
@@ -265,11 +295,19 @@ final class SearchAssetsServiceTest extends TestCase
             ->expects($this->never())
             ->method('searchByFileName');
 
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('AccountId cannot be empty');
-
         // Act
-        $this->service->searchAssets(new SearchAssetsQuery(" \n\t ", 'report', 1, 10));
+        $result = $this->service->searchAssets(new SearchAssetsQuery(" \n\t ", 'report', 1, 10));
+
+        // Assert
+        self::assertSame([], $result->files);
+        self::assertSame(0, $result->totalCount);
+        self::assertSame(1, $result->pageInfo->page);
+        self::assertSame(10, $result->pageInfo->pageSize);
+        self::assertSame(0, $result->pageInfo->totalPages);
+        self::assertCount(1, $result->userErrors);
+        self::assertSame('INVALID_ACCOUNT_ID', $result->userErrors[0]->code);
+        self::assertSame('AccountId cannot be empty', $result->userErrors[0]->message);
+        self::assertSame('accountId', $result->userErrors[0]->field);
     }
 
     private function createPendingAsset(string $fileName, string $accountId = 'account-123'): Asset

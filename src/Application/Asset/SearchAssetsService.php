@@ -19,6 +19,7 @@ final class SearchAssetsService
 {
     private const EMPTY_QUERY_CODE = 'EMPTY_QUERY';
     private const EMPTY_QUERY_MESSAGE = 'Enter a file name to search.';
+    private const INVALID_ACCOUNT_ID_CODE = 'INVALID_ACCOUNT_ID';
     private const REPOSITORY_FAILURE_REASON = 'Repository failure';
 
     public function __construct(
@@ -31,41 +32,38 @@ final class SearchAssetsService
         $trimmedQuery = trim($query->query);
         $pageInfo = SearchAssetsPageInfo::fromTotalCount($query->page, $query->pageSize, 0);
 
+        $assets = [];
+        $totalCount = 0;
+        $userErrors = [];
+
         if ($trimmedQuery === '') {
-            return new SearchAssetsResult(
-                files: [],
-                totalCount: 0,
-                pageInfo: $pageInfo,
-                userErrors: [new UserError(self::EMPTY_QUERY_CODE, self::EMPTY_QUERY_MESSAGE, 'query')],
-            );
-        }
+            $userErrors = [new UserError(self::EMPTY_QUERY_CODE, self::EMPTY_QUERY_MESSAGE, 'query')];
+        } else {
+            try {
+                $accountId = AccountId::fromString($query->accountId);
 
-        $accountId = new AccountId($query->accountId);
+                try {
+                    $totalCount = $this->assets->countByFileName($accountId, $trimmedQuery, AssetStatus::UPLOADED);
+                    $pageInfo = SearchAssetsPageInfo::fromTotalCount($query->page, $query->pageSize, $totalCount);
 
-        try {
-            $totalCount = $this->assets->countByFileName($accountId, $trimmedQuery, AssetStatus::UPLOADED);
-            $pageInfo = SearchAssetsPageInfo::fromTotalCount($query->page, $query->pageSize, $totalCount);
+                    if ($totalCount > 0) {
+                        $offset = ($pageInfo->page - 1) * $pageInfo->pageSize;
 
-            if ($totalCount === 0) {
-                return new SearchAssetsResult(
-                    files: [],
-                    totalCount: 0,
-                    pageInfo: $pageInfo,
-                    userErrors: [],
-                );
+                        $assets = $this->assets->searchByFileName(
+                            $accountId,
+                            $trimmedQuery,
+                            AssetStatus::UPLOADED,
+                            $offset,
+                            $pageInfo->pageSize,
+                        );
+                    }
+                } catch (\Exception $exception) {
+                    throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $exception);
+                }
+            } catch (\InvalidArgumentException $exception) {
+                // Catching the base exception here maps malformed account identifiers to a user error.
+                $userErrors = [new UserError(self::INVALID_ACCOUNT_ID_CODE, $exception->getMessage(), 'accountId')];
             }
-
-            $offset = ($pageInfo->page - 1) * $pageInfo->pageSize;
-
-            $assets = $this->assets->searchByFileName(
-                $accountId,
-                $trimmedQuery,
-                AssetStatus::UPLOADED,
-                $offset,
-                $pageInfo->pageSize,
-            );
-        } catch (\Throwable $exception) {
-            throw RepositoryUnavailableException::forReason(self::REPOSITORY_FAILURE_REASON, $exception);
         }
 
         return new SearchAssetsResult(
@@ -75,7 +73,7 @@ final class SearchAssetsService
             ),
             totalCount: $totalCount,
             pageInfo: $pageInfo,
-            userErrors: [],
+            userErrors: $userErrors,
         );
     }
 }
