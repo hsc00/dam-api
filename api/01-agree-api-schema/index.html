@@ -388,7 +388,18 @@
   <a href="#startuploadinput-startuploadinput-startuploadpayload" class="md-nav__link">
     <span class="md-ellipsis">
       
-        startUpload(input: StartUploadInput!): StartUploadPayload!
+        startUpload(input: StartUploadInput): StartUploadPayload!
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchinput-startuploadbatchinput-startuploadbatchpayload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        startUploadBatch(input: StartUploadBatchInput): StartUploadBatchPayload!
       
     </span>
   </a>
@@ -399,7 +410,7 @@
   <a href="#completeuploadinput-completeuploadinput-completeuploadpayload" class="md-nav__link">
     <span class="md-ellipsis">
       
-        completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!
+        completeUpload(input: CompleteUploadInput): CompleteUploadPayload!
       
     </span>
   </a>
@@ -555,6 +566,50 @@
     <span class="md-ellipsis">
       
         StartUploadPayload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchinput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StartUploadBatchInput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchfileinput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StartUploadBatchFileInput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchsuccess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StartUploadBatchSuccess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchpayload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StartUploadBatchPayload
       
     </span>
   </a>
@@ -1313,6 +1368,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../logs/11-consistent-mutation-responses/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    US-11 Consistent Mutation Responses
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1401,7 +1484,18 @@
   <a href="#startuploadinput-startuploadinput-startuploadpayload" class="md-nav__link">
     <span class="md-ellipsis">
       
-        startUpload(input: StartUploadInput!): StartUploadPayload!
+        startUpload(input: StartUploadInput): StartUploadPayload!
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchinput-startuploadbatchinput-startuploadbatchpayload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        startUploadBatch(input: StartUploadBatchInput): StartUploadBatchPayload!
       
     </span>
   </a>
@@ -1412,7 +1506,7 @@
   <a href="#completeuploadinput-completeuploadinput-completeuploadpayload" class="md-nav__link">
     <span class="md-ellipsis">
       
-        completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!
+        completeUpload(input: CompleteUploadInput): CompleteUploadPayload!
       
     </span>
   </a>
@@ -1575,6 +1669,50 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#startuploadbatchinput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StartUploadBatchInput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchfileinput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StartUploadBatchFileInput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchsuccess" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StartUploadBatchSuccess
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#startuploadbatchpayload" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StartUploadBatchPayload
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#completeuploadsuccess" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1695,8 +1833,9 @@ revises the schema.</p>
 }
 </code></pre>
 <h2 id="mutations">Mutations</h2>
-<h3 id="startuploadinput-startuploadinput-startuploadpayload"><code>startUpload(input: StartUploadInput!): StartUploadPayload!</code></h3>
+<h3 id="startuploadinput-startuploadinput-startuploadpayload"><code>startUpload(input: StartUploadInput): StartUploadPayload!</code></h3>
 <p>Starts one upload and returns the instructions the client needs to upload the file.</p>
+<p>The <code>StartUploadInput</code> fields are business-required. The schema intentionally accepts omitted or <code>null</code> values so the server can report friendly validation failures in <code>userErrors</code> instead of surfacing GraphQL transport errors for routine request problems.</p>
 <p><strong>Input Fields</strong></p>
 <table>
 <thead>
@@ -1766,10 +1905,12 @@ revises the schema.</p>
 </tr>
 </tbody>
 </table>
+<p><strong>Upload pattern</strong></p>
+<p>Use <code>startUpload</code> for a single complete-file upload when the client already knows the final <code>fileSizeBytes</code> and <code>checksumSha256</code> for the whole file. The business-required fields for this path are <code>fileName</code>, <code>mimeType</code>, <code>fileSizeBytes</code>, and <code>checksumSha256</code>.</p>
 <p><strong>Return semantics</strong></p>
 <p>Clients should treat the payload as a success/userErrors pair: the <code>success</code> field is non-null only when the operation completed successfully; in that case <code>userErrors</code> MUST be an empty list. Conversely, when business validation prevents the request from succeeding, <code>success</code> will be <code>null</code> and <code>userErrors</code> will contain one or more <code>UserError</code> objects describing the problem(s). Clients MUST check <code>success</code> before reading <code>success.asset</code>, <code>success.uploadTarget</code>, or <code>success.uploadGrant</code>.</p>
 <p><strong>Example</strong></p>
-<pre><code class="language-graphql">mutation StartUpload($input: StartUploadInput!) {
+<pre><code class="language-graphql">mutation StartUpload($input: StartUploadInput) {
   startUpload(input: $input) {
     success {
       asset {
@@ -1799,8 +1940,204 @@ revises the schema.</p>
   }
 }
 </code></pre>
-<h3 id="completeuploadinput-completeuploadinput-completeuploadpayload"><code>completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!</code></h3>
+<p><strong>Business Error Codes</strong></p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INVALID_FILE_NAME</code></td>
+<td>The supplied <code>fileName</code> is missing or failed domain validation.</td>
+</tr>
+<tr>
+<td><code>INVALID_MIME_TYPE</code></td>
+<td>The supplied <code>mimeType</code> is missing or failed validation.</td>
+</tr>
+<tr>
+<td><code>INVALID_FILE_SIZE</code></td>
+<td><code>fileSizeBytes</code> is not a non-negative integer or exceeds limits.</td>
+</tr>
+<tr>
+<td><code>INVALID_CHECKSUM</code></td>
+<td><code>checksumSha256</code> is missing or invalid.</td>
+</tr>
+<tr>
+<td><code>MISSING_REQUIRED_FIELD</code></td>
+<td>A required input field was omitted or provided as blank.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="startuploadbatchinput-startuploadbatchinput-startuploadbatchpayload"><code>startUploadBatch(input: StartUploadBatchInput): StartUploadBatchPayload!</code></h3>
+<p>Starts multiple uploads in one request and returns one per-file outcome in request order.</p>
+<p>The <code>StartUploadBatchInput.files</code> list and each <code>StartUploadBatchFileInput</code> field are business-required. The schema intentionally accepts omitted or <code>null</code> values so the server can report friendly validation failures in <code>userErrors</code> instead of surfacing GraphQL transport errors for routine request problems.</p>
+<p><strong>Input Fields</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files[].clientFileId</code></td>
+<td><code>String</code></td>
+<td>Yes</td>
+<td>Client correlation identifier echoed back in the response.</td>
+</tr>
+<tr>
+<td><code>files[].fileName</code></td>
+<td><code>String</code></td>
+<td>Yes</td>
+<td>Original client file name.</td>
+</tr>
+<tr>
+<td><code>files[].mimeType</code></td>
+<td><code>String</code></td>
+<td>Yes</td>
+<td>Media type declared by the client.</td>
+</tr>
+<tr>
+<td><code>files[].chunkCount</code></td>
+<td><code>Int</code></td>
+<td>Yes</td>
+<td>Number of upload chunks the client will send for the file.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Returns</strong></p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files[].clientFileId</code></td>
+<td><code>String!</code></td>
+<td>Client correlation identifier echoed from the request.</td>
+</tr>
+<tr>
+<td><code>files[].success.asset</code></td>
+<td><code>Asset</code></td>
+<td>Created asset for one accepted file.</td>
+</tr>
+<tr>
+<td><code>files[].success.uploadGrant</code></td>
+<td><code>String</code></td>
+<td>Server-issued grant required to complete that file upload later.</td>
+</tr>
+<tr>
+<td><code>files[].success.uploadTargets</code></td>
+<td><code>[UploadTarget!]!</code></td>
+<td>One upload target per declared chunk for that accepted file.</td>
+</tr>
+<tr>
+<td><code>files[].userErrors</code></td>
+<td><code>[UserError!]!</code></td>
+<td>Business validation errors for that specific file.</td>
+</tr>
+<tr>
+<td><code>userErrors</code></td>
+<td><code>[UserError!]!</code></td>
+<td>Whole-batch business validation errors that apply to the full call.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Upload pattern</strong></p>
+<p>Use <code>startUploadBatch</code> for chunked or multipart uploads, or when the client wants to initiate multiple files in one request. Each <code>files[]</code> item is business-required to include <code>clientFileId</code>, <code>fileName</code>, <code>mimeType</code>, and <code>chunkCount</code>, and each accepted file returns one <code>uploadTargets</code> entry per declared chunk.</p>
+<p><strong>Return semantics</strong></p>
+<p>Clients should treat <code>startUploadBatch</code> as a mixed-outcome payload. Top-level <code>userErrors</code> reports whole-request failures such as an empty or oversized batch; in that case <code>files</code> will be empty and no file work will be performed. When the batch is accepted, top-level <code>userErrors</code> will be empty and each entry in <code>files</code> must be inspected independently: a file-level <code>success</code> value is present only for accepted files, and rejected files will instead report one or more <code>files[].userErrors</code>.</p>
+<p><strong>Business Error Codes</strong></p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>EMPTY_BATCH</code></td>
+<td>The request did not include any files.</td>
+</tr>
+<tr>
+<td><code>BATCH_TOO_LARGE</code></td>
+<td>The request exceeded the server limit of 20 files.</td>
+</tr>
+<tr>
+<td><code>INVALID_CLIENT_FILE_ID</code></td>
+<td>A file omitted <code>clientFileId</code> or supplied it as blank/whitespace.</td>
+</tr>
+<tr>
+<td><code>DUPLICATE_CLIENT_FILE_ID</code></td>
+<td>Multiple files in the same batch reused the same <code>clientFileId</code>.</td>
+</tr>
+<tr>
+<td><code>INVALID_FILE_NAME</code></td>
+<td>A file name was missing or failed domain validation.</td>
+</tr>
+<tr>
+<td><code>INVALID_MIME_TYPE</code></td>
+<td>A MIME type was missing or failed domain validation.</td>
+</tr>
+<tr>
+<td><code>INVALID_CHUNK_COUNT</code></td>
+<td>A file declared a chunk count outside the accepted range of <code>1..100</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Example</strong></p>
+<pre><code class="language-graphql">mutation StartUploadBatch($input: StartUploadBatchInput) {
+  startUploadBatch(input: $input) {
+    userErrors {
+      code
+      message
+      field
+    }
+    files {
+      clientFileId
+      success {
+        asset {
+          id
+          status
+        }
+        uploadGrant
+        uploadTargets {
+          url
+          method
+          completionProof {
+            name
+            source
+          }
+          signedHeaders {
+            name
+            value
+          }
+          expiresAt
+        }
+      }
+      userErrors {
+        code
+        message
+        field
+      }
+    }
+  }
+}
+</code></pre>
+<h3 id="completeuploadinput-completeuploadinput-completeuploadpayload"><code>completeUpload(input: CompleteUploadInput): CompleteUploadPayload!</code></h3>
 <p>Completes one upload after the client has sent the file and captured the required completion proof. When accepted, the asset moves into background processing immediately.</p>
+<p>The <code>CompleteUploadInput</code> fields are business-required. The schema intentionally accepts omitted or <code>null</code> values so the server can report friendly validation failures in <code>userErrors</code> instead of surfacing GraphQL transport errors for routine request problems.</p>
 <p><strong>Input Fields</strong></p>
 <table>
 <thead>
@@ -1886,7 +2223,7 @@ revises the schema.</p>
 </tbody>
 </table>
 <p><strong>Example</strong></p>
-<pre><code class="language-graphql">mutation CompleteUpload($input: CompleteUploadInput!) {
+<pre><code class="language-graphql">mutation CompleteUpload($input: CompleteUploadInput) {
   completeUpload(input: $input) {
     success {
       asset {
@@ -2115,6 +2452,111 @@ revises the schema.</p>
 <td><code>userErrors</code></td>
 <td><code>[UserError!]!</code></td>
 <td>Business validation errors.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="startuploadbatchinput"><code>StartUploadBatchInput</code></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files</code></td>
+<td><code>[StartUploadBatchFileInput!]!</code></td>
+<td>Yes</td>
+<td>Files to initiate in this batch (in request order).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="startuploadbatchfileinput"><code>StartUploadBatchFileInput</code></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>clientFileId</code></td>
+<td><code>String</code></td>
+<td>Yes</td>
+<td>Client correlation identifier echoed back in the response.</td>
+</tr>
+<tr>
+<td><code>fileName</code></td>
+<td><code>String</code></td>
+<td>Yes</td>
+<td>Original client file name.</td>
+</tr>
+<tr>
+<td><code>mimeType</code></td>
+<td><code>String</code></td>
+<td>Yes</td>
+<td>Media type declared by the client.</td>
+</tr>
+<tr>
+<td><code>chunkCount</code></td>
+<td><code>Int</code></td>
+<td>Yes</td>
+<td>Number of chunks the client will upload for this file (range: <code>1..100</code>).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="startuploadbatchsuccess"><code>StartUploadBatchSuccess</code></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>asset</code></td>
+<td><code>Asset!</code></td>
+<td>Created asset for the accepted file.</td>
+</tr>
+<tr>
+<td><code>uploadTargets</code></td>
+<td><code>[UploadTarget!]!</code></td>
+<td>One <code>UploadTarget</code> per declared chunk for that file.</td>
+</tr>
+<tr>
+<td><code>uploadGrant</code></td>
+<td><code>String!</code></td>
+<td>Server-issued grant required to complete the file upload later.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="startuploadbatchpayload"><code>StartUploadBatchPayload</code></h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>files</code></td>
+<td><code>[StartUploadBatchFilePayload!]!</code></td>
+<td>Per-file outcomes in request order (each item exposes <code>clientFileId</code>, optional <code>success</code>, and <code>userErrors</code>).</td>
+</tr>
+<tr>
+<td><code>userErrors</code></td>
+<td><code>[UserError!]!</code></td>
+<td>Whole-batch business validation errors that apply to the full call (e.g., empty batch or too many files).</td>
 </tr>
 </tbody>
 </table>
