@@ -118,6 +118,35 @@ final class GraphQLHandler
      */
     private function jsonResponse(int $status, array $payload): array
     {
+        if (isset($payload['errors']) && is_array($payload['errors'])) {
+            $errorCount = count($payload['errors']);
+
+            $first = $payload['errors'][0] ?? null;
+            $firstMessage = null;
+            $firstCode = null;
+
+            if (is_array($first)) {
+                $firstMessage = isset($first['message']) && is_string($first['message'])
+                    ? mb_substr($first['message'], 0, 200)
+                    : null;
+
+                $firstCode = $first['extensions']['code'] ?? null;
+                if (! is_string($firstCode)) {
+                    $firstCode = null;
+                }
+            }
+
+            try {
+                $this->logger->error('GraphQL execution returned errors', [
+                    'errorCount' => $errorCount,
+                    'firstMessage' => $firstMessage,
+                    'firstCode' => $firstCode,
+                ]);
+            } catch (\Throwable $suppressed) {
+                SuppressedFailure::acknowledge($suppressed);
+            }
+        }
+
         return [
             'status' => $status,
             'headers' => ['Content-Type' => self::JSON_CONTENT_TYPE],

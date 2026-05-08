@@ -14,6 +14,7 @@ use App\Domain\Asset\ValueObject\UploadId;
 use App\Infrastructure\Persistence\MySQLAssetRepository;
 use PDO;
 use PDOException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 
 final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
@@ -429,6 +430,71 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
             self::assertSame(0, $totalCount);
             self::assertSame([], $results);
         }, false);
+    }
+
+    #[Test]
+    #[DataProvider('searchPaginationBoundaryProvider')]
+    public function itHandlesSearchPaginationBoundaries(
+        int $offset,
+        int $limit,
+        bool $expectException,
+        ?string $exceptionClass,
+        ?string $exceptionMessage,
+        bool $needsAsset,
+    ): void {
+        $this->withTemporaryDatabase(function (PDO $connection) use ($offset, $limit, $expectException, $exceptionClass, $exceptionMessage, $needsAsset): void {
+            // Arrange
+            $repository = $this->createRepository($connection);
+            $accountId = new AccountId('account-pagination-boundary');
+
+            if ($needsAsset) {
+                $asset = $this->uploadedAsset(
+                    assetId: 'cccccccc-dddd-4ccc-8ccc-cccccccccccc',
+                    uploadId: 'cdcdcdcd-dede-4dcd-8dcd-cdcdcdcdcdcd',
+                    accountId: (string) $accountId,
+                    fileName: 'report.pdf',
+                    completionProof: 'etag-report',
+                    persistedState: $this->persistedState('2026-04-01 17:00:00.000000', 1, '2026-04-01 17:05:00.000000'),
+                );
+                $repository->save($asset);
+            }
+
+            if ($expectException) {
+                // Assert
+                assert(is_string($exceptionClass));
+                assert(is_string($exceptionMessage));
+                /** @var class-string<\Throwable> $exceptionClass */
+                /** @var string $exceptionMessage */
+
+                // Assert
+                $this->expectException($exceptionClass);
+                $this->expectExceptionMessage($exceptionMessage);
+
+                // Act
+                $repository->searchByFileName($accountId, 'report', AssetStatus::UPLOADED, $offset, $limit);
+
+                return;
+            }
+
+            // Act
+            $results = $repository->searchByFileName($accountId, 'report', AssetStatus::UPLOADED, $offset, $limit);
+
+            // Assert
+            self::assertSame([], $results);
+        });
+    }
+
+    /**
+     * @return array<string, array{int, int, bool, ?class-string<\Throwable>, ?string, bool}>
+     */
+    public static function searchPaginationBoundaryProvider(): array
+    {
+        return [
+            'limit-zero' => [0, 0, false, null, null, true],
+            'offset-exceeds-total' => [5, 10, false, null, null, true],
+            'negative-offset' => [-1, 10, true, \InvalidArgumentException::class, 'Search offset cannot be negative.', false],
+            'negative-limit' => [0, -1, true, \InvalidArgumentException::class, 'Search limit cannot be negative.', false],
+        ];
     }
 
     #[Test]

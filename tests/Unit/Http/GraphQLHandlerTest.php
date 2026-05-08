@@ -186,6 +186,106 @@ GRAPHQL,
     }
 
     #[Test]
+    public function itReturnsPayloadLevelUserErrorsWhenStartUploadInputFailsValidation(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+        $requestBody = json_encode([
+            'query' => <<<'GRAPHQL'
+mutation StartUpload($input: StartUploadInput!) {
+    startUpload(input: $input) {
+        success {
+            asset {
+                id
+            }
+        }
+        userErrors {
+            code
+            message
+            field
+        }
+    }
+}
+GRAPHQL,
+            'variables' => [
+                'input' => [
+                    'mimeType' => 'image/png',
+                    'fileSizeBytes' => 'not-a-number',
+                    'checksumSha256' => 'checksum',
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $requestBody);
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertNull($payload['data']['startUpload']['success']);
+        self::assertSame(
+            [
+                [
+                    'code' => 'INVALID_FILE_NAME',
+                    'message' => 'fileName is required',
+                    'field' => 'fileName',
+                ],
+                [
+                    'code' => 'INVALID_FILE_SIZE',
+                    'message' => 'fileSizeBytes must be a non-negative integer',
+                    'field' => 'fileSizeBytes',
+                ],
+            ],
+            $payload['data']['startUpload']['userErrors'],
+        );
+        self::assertCount(0, $repository->savedAssets);
+    }
+
+    #[Test]
+    public function itReturnsPayloadLevelUserErrorsWhenStartUploadBatchOmitsInput(): void
+    {
+        // Arrange
+        [$handler, $repository] = $this->createHandler();
+        $requestBody = json_encode([
+            'query' => <<<'GRAPHQL'
+mutation StartUploadBatch {
+    startUploadBatch {
+        files {
+            clientFileId
+        }
+        userErrors {
+            code
+            message
+            field
+        }
+    }
+}
+GRAPHQL,
+        ], JSON_THROW_ON_ERROR);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $requestBody);
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertSame([], $payload['data']['startUploadBatch']['files']);
+        self::assertSame(
+            [[
+                'code' => 'EMPTY_BATCH',
+                'message' => 'At least one file is required.',
+                'field' => 'files',
+            ]],
+            $payload['data']['startUploadBatch']['userErrors'],
+        );
+        self::assertCount(0, $repository->savedAssets);
+    }
+
+    #[Test]
     public function itExecutesStartUploadBatchWithPerFilePartialSuccess(): void
     {
         // Arrange
@@ -438,6 +538,63 @@ GRAPHQL,
         self::assertSame('chunkCount', $payload['data']['startUploadBatch']['files'][1]['userErrors'][0]['field']);
         self::assertCount(1, $repository->savedAssets);
         self::assertSame(100, $repository->savedAssets[0]->getChunkCount());
+    }
+
+    #[Test]
+    public function itReturnsPayloadLevelUserErrorsWhenCompleteUploadOmitsInput(): void
+    {
+        // Arrange
+        [$handler, $repository, $outbox] = $this->createHandler();
+        $requestBody = json_encode([
+            'query' => <<<'GRAPHQL'
+mutation CompleteUpload {
+    completeUpload {
+        success {
+            asset {
+                id
+            }
+        }
+        userErrors {
+            code
+            message
+            field
+        }
+    }
+}
+GRAPHQL,
+        ], JSON_THROW_ON_ERROR);
+
+        // Act
+        $response = $handler->handle('POST', '/graphql', $requestBody);
+        $payload = json_decode($response['body'], true, 512, JSON_THROW_ON_ERROR);
+        self::assertIsArray($payload);
+
+        // Assert
+        self::assertSame(200, $response['status']);
+        self::assertArrayNotHasKey('errors', $payload);
+        self::assertNull($payload['data']['completeUpload']['success']);
+        self::assertSame(
+            [
+                [
+                    'code' => 'INVALID_ASSET_ID',
+                    'message' => 'assetId must be a valid asset id.',
+                    'field' => 'assetId',
+                ],
+                [
+                    'code' => 'INVALID_UPLOAD_GRANT',
+                    'message' => 'uploadGrant is required.',
+                    'field' => 'uploadGrant',
+                ],
+                [
+                    'code' => 'INVALID_COMPLETION_PROOF',
+                    'message' => 'completionProof is required.',
+                    'field' => 'completionProof',
+                ],
+            ],
+            $payload['data']['completeUpload']['userErrors'],
+        );
+        self::assertCount(0, $repository->savedAssets);
+        self::assertSame([], $outbox->messages);
     }
 
     #[Test]

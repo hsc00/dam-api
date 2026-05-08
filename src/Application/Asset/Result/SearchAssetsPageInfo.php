@@ -8,7 +8,7 @@ final readonly class SearchAssetsPageInfo
 {
     public const MAX_PAGE_SIZE = 50;
 
-    public function __construct(
+    private function __construct(
         public int $page,
         public int $pageSize,
         public int $totalPages,

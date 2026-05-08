@@ -152,9 +152,11 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
      */
     public function searchByFileName(AccountId $accountId, string $query, AssetStatus $status, int $offset, int $limit): array
     {
+        $this->assertValidSearchPagination($offset, $limit);
+
         $likeQuery = $this->likeSearchQuery($query);
 
-        if ($likeQuery === null || $limit < 1) {
+        if ($likeQuery === null || $limit === 0) {
             return [];
         }
 
@@ -173,7 +175,7 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
         $statement->bindValue(':status', $status->value);
         $statement->bindValue(':file_name_query', $likeQuery);
         $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
-        $statement->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+        $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
         $statement->execute();
 
         $assets = [];
@@ -187,6 +189,17 @@ final class MySQLAssetRepository implements AssetRepositoryInterface
         }
 
         return $assets;
+    }
+
+    private function assertValidSearchPagination(int $offset, int $limit): void
+    {
+        if ($offset < 0) {
+            throw new \InvalidArgumentException('Search offset cannot be negative.');
+        }
+
+        if ($limit < 0) {
+            throw new \InvalidArgumentException('Search limit cannot be negative.');
+        }
     }
 
     /**

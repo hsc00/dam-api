@@ -5,30 +5,13 @@ schema {
   query: Query
   mutation: Mutation
 }
-
-"""
-ISO 8601 timestamp.
-"""
-scalar DateTime
-
-"""
-Non-negative file size in bytes. Supports values beyond GraphQL Int range.
-Transmitted as JSON string to preserve precision for values > 2^53-1.
-Clients MUST encode fileSizeBytes as a string, e.g. "12345678901234567890".
-"""
-scalar ByteCount
-
-"""
-Lifecycle status of an asset in the upload flow.
-"""
 enum AssetStatus {
   "The upload has started but is not complete."
   PENDING
 
-  "The upload completed and background processing has started."
+  "The upload is being processed after successful upload."
   PROCESSING
 
-  "The upload has been completed successfully."
   UPLOADED
 
   "The upload failed."
@@ -56,6 +39,9 @@ Where the client reads the completion proof from in v1.
 enum UploadCompletionProofSource {
   RESPONSE_HEADER
 }
+
+scalar DateTime
+scalar ByteCount
 
 """
 One required name/value pair for an upload request.
@@ -162,16 +148,16 @@ Input for starting one upload.
 """
 input StartUploadInput {
   "Original client file name."
-  fileName: String!
+  fileName: String
 
   "Client-supplied media type."
-  mimeType: String!
+  mimeType: String
 
   "Declared file size in bytes."
-  fileSizeBytes: ByteCount!
+  fileSizeBytes: ByteCount
 
   "Base64-encoded SHA-256 checksum of the file content."
-  checksumSha256: String!
+  checksumSha256: String
 }
 
 """
@@ -179,16 +165,16 @@ One file within a chunk-aware upload batch.
 """
 input StartUploadBatchFileInput {
   "Client-supplied correlation identifier for this file."
-  clientFileId: String!
+  clientFileId: String
 
   "Original client file name."
-  fileName: String!
+  fileName: String
 
   "Client-supplied media type."
-  mimeType: String!
+  mimeType: String
 
   "Number of upload chunks the client will send for this file."
-  chunkCount: Int!
+  chunkCount: Int
 }
 
 """
@@ -196,7 +182,7 @@ Input for starting multiple uploads at once.
 """
 input StartUploadBatchInput {
   "Files to initiate in this batch."
-  files: [StartUploadBatchFileInput!]!
+  files: [StartUploadBatchFileInput!]
 }
 
 """
@@ -268,13 +254,13 @@ Input for completing one upload.
 """
 input CompleteUploadInput {
   "Asset identifier returned by startUpload."
-  assetId: ID!
+  assetId: ID
 
   "Server-issued grant returned by startUpload."
-  uploadGrant: String!
+  uploadGrant: String
 
   "Captured upload proof value named by uploadTarget.completionProof."
-  completionProof: String!
+  completionProof: String
 }
 
 """
@@ -352,7 +338,12 @@ type Query {
   "Fetch the status of one asset by id."
   asset(id: ID!): AssetStatusSnapshot
 
-  "Search assets for the authenticated account by file name."
+  """
+  Search assets for the authenticated account by file name and return a SearchAssetsPayload.
+  `page` is one-based and values lower than `1` are clamped to `1`.
+  `pageSize` is clamped to the current server range of `1..50`.
+  Empty or whitespace-only `query` values return a SearchAssetsPayload with an empty `files` list and a `userErrors` entry instead of matching all assets.
+  """
   searchAssets(
     query: String!
     page: Int = 1
@@ -362,11 +353,11 @@ type Query {
 
 type Mutation {
   "Start one upload and receive its upload target."
-  startUpload(input: StartUploadInput!): StartUploadPayload!
+  startUpload(input: StartUploadInput): StartUploadPayload!
 
   "Start multiple uploads and receive one upload target per chunk for each accepted file."
-  startUploadBatch(input: StartUploadBatchInput!): StartUploadBatchPayload!
+  startUploadBatch(input: StartUploadBatchInput): StartUploadBatchPayload!
 
   "Complete one upload after the file is sent and move it into processing."
-  completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!
+  completeUpload(input: CompleteUploadInput): CompleteUploadPayload!
 }

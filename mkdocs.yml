@@ -28,5 +28,6 @@ nav:
       - US-08 Failed-job Handling: logs/08-failed-job-handling.md
       - US-09 Check File Status: logs/09-check-file-status.md
       - US-10 Search Files by Name: logs/10-search-files-by-name.md
+      - US-11 Consistent Mutation Responses: logs/11-consistent-mutation-responses.md
 plugins:
   - search

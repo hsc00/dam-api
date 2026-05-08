@@ -45,9 +45,11 @@ query GetAssetStatus($assetId: ID!) {
 
 ## Mutations
 
-### `startUpload(input: StartUploadInput!): StartUploadPayload!`
+### `startUpload(input: StartUploadInput): StartUploadPayload!`
 
 Starts one upload and returns the instructions the client needs to upload the file.
+
+The `StartUploadInput` fields are business-required. The schema intentionally accepts omitted or `null` values so the server can report friendly validation failures in `userErrors` instead of surfacing GraphQL transport errors for routine request problems.
 
 **Input Fields**
 
@@ -67,6 +69,10 @@ Starts one upload and returns the instructions the client needs to upload the fi
 | `success.uploadGrant`  | `String`        | Server-issued grant required by `completeUpload`.               |
 | `userErrors`           | `[UserError!]!` | Business validation errors when the request cannot be accepted. |
 
+**Upload pattern**
+
+Use `startUpload` for a single complete-file upload when the client already knows the final `fileSizeBytes` and `checksumSha256` for the whole file. The business-required fields for this path are `fileName`, `mimeType`, `fileSizeBytes`, and `checksumSha256`.
+
 **Return semantics**
 
 Clients should treat the payload as a success/userErrors pair: the `success` field is non-null only when the operation completed successfully; in that case `userErrors` MUST be an empty list. Conversely, when business validation prevents the request from succeeding, `success` will be `null` and `userErrors` will contain one or more `UserError` objects describing the problem(s). Clients MUST check `success` before reading `success.asset`, `success.uploadTarget`, or `success.uploadGrant`.
@@ -74,7 +80,7 @@ Clients should treat the payload as a success/userErrors pair: the `success` fie
 **Example**
 
 ```graphql
-mutation StartUpload($input: StartUploadInput!) {
+mutation StartUpload($input: StartUploadInput) {
   startUpload(input: $input) {
     success {
       asset {
@@ -105,9 +111,109 @@ mutation StartUpload($input: StartUploadInput!) {
 }
 ```
 
-### `completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!`
+**Business Error Codes**
+
+| Code                     | Meaning                                                          |
+| ------------------------ | ---------------------------------------------------------------- |
+| `INVALID_FILE_NAME`      | The supplied `fileName` is missing or failed domain validation.  |
+| `INVALID_MIME_TYPE`      | The supplied `mimeType` is missing or failed validation.         |
+| `INVALID_FILE_SIZE`      | `fileSizeBytes` is not a non-negative integer or exceeds limits. |
+| `INVALID_CHECKSUM`       | `checksumSha256` is missing or invalid.                          |
+| `MISSING_REQUIRED_FIELD` | A required input field was omitted or provided as blank.         |
+
+### `startUploadBatch(input: StartUploadBatchInput): StartUploadBatchPayload!`
+
+Starts multiple uploads in one request and returns one per-file outcome in request order.
+
+The `StartUploadBatchInput.files` list and each `StartUploadBatchFileInput` field are business-required. The schema intentionally accepts omitted or `null` values so the server can report friendly validation failures in `userErrors` instead of surfacing GraphQL transport errors for routine request problems.
+
+**Input Fields**
+
+| Field                  | Type     | Required | Description                                                |
+| ---------------------- | -------- | -------- | ---------------------------------------------------------- |
+| `files[].clientFileId` | `String` | Yes      | Client correlation identifier echoed back in the response. |
+| `files[].fileName`     | `String` | Yes      | Original client file name.                                 |
+| `files[].mimeType`     | `String` | Yes      | Media type declared by the client.                         |
+| `files[].chunkCount`   | `Int`    | Yes      | Number of upload chunks the client will send for the file. |
+
+**Returns**
+
+| Field                           | Type               | Description                                                         |
+| ------------------------------- | ------------------ | ------------------------------------------------------------------- |
+| `files[].clientFileId`          | `String!`          | Client correlation identifier echoed from the request.              |
+| `files[].success.asset`         | `Asset`            | Created asset for one accepted file.                                |
+| `files[].success.uploadGrant`   | `String`           | Server-issued grant required to complete that file upload later.    |
+| `files[].success.uploadTargets` | `[UploadTarget!]!` | One upload target per declared chunk for that accepted file.        |
+| `files[].userErrors`            | `[UserError!]!`    | Business validation errors for that specific file.                  |
+| `userErrors`                    | `[UserError!]!`    | Whole-batch business validation errors that apply to the full call. |
+
+**Upload pattern**
+
+Use `startUploadBatch` for chunked or multipart uploads, or when the client wants to initiate multiple files in one request. Each `files[]` item is business-required to include `clientFileId`, `fileName`, `mimeType`, and `chunkCount`, and each accepted file returns one `uploadTargets` entry per declared chunk.
+
+**Return semantics**
+
+Clients should treat `startUploadBatch` as a mixed-outcome payload. Top-level `userErrors` reports whole-request failures such as an empty or oversized batch; in that case `files` will be empty and no file work will be performed. When the batch is accepted, top-level `userErrors` will be empty and each entry in `files` must be inspected independently: a file-level `success` value is present only for accepted files, and rejected files will instead report one or more `files[].userErrors`.
+
+**Business Error Codes**
+
+| Code                       | Meaning                                                               |
+| -------------------------- | --------------------------------------------------------------------- |
+| `EMPTY_BATCH`              | The request did not include any files.                                |
+| `BATCH_TOO_LARGE`          | The request exceeded the server limit of 20 files.                    |
+| `INVALID_CLIENT_FILE_ID`   | A file omitted `clientFileId` or supplied it as blank/whitespace.     |
+| `DUPLICATE_CLIENT_FILE_ID` | Multiple files in the same batch reused the same `clientFileId`.      |
+| `INVALID_FILE_NAME`        | A file name was missing or failed domain validation.                  |
+| `INVALID_MIME_TYPE`        | A MIME type was missing or failed domain validation.                  |
+| `INVALID_CHUNK_COUNT`      | A file declared a chunk count outside the accepted range of `1..100`. |
+
+**Example**
+
+```graphql
+mutation StartUploadBatch($input: StartUploadBatchInput) {
+  startUploadBatch(input: $input) {
+    userErrors {
+      code
+      message
+      field
+    }
+    files {
+      clientFileId
+      success {
+        asset {
+          id
+          status
+        }
+        uploadGrant
+        uploadTargets {
+          url
+          method
+          completionProof {
+            name
+            source
+          }
+          signedHeaders {
+            name
+            value
+          }
+          expiresAt
+        }
+      }
+      userErrors {
+        code
+        message
+        field
+      }
+    }
+  }
+}
+```
+
+### `completeUpload(input: CompleteUploadInput): CompleteUploadPayload!`
 
 Completes one upload after the client has sent the file and captured the required completion proof. When accepted, the asset moves into background processing immediately.
+
+The `CompleteUploadInput` fields are business-required. The schema intentionally accepts omitted or `null` values so the server can report friendly validation failures in `userErrors` instead of surfacing GraphQL transport errors for routine request problems.
 
 **Input Fields**
 
@@ -137,7 +243,7 @@ Completes one upload after the client has sent the file and captured the require
 **Example**
 
 ```graphql
-mutation CompleteUpload($input: CompleteUploadInput!) {
+mutation CompleteUpload($input: CompleteUploadInput) {
   completeUpload(input: $input) {
     success {
       asset {
@@ -234,6 +340,36 @@ Clients must perform a network upload only when `UploadTarget.url` uses `https:/
 | ------------ | -------------------- | ----------------------------------------------------------------------- |
 | `success`    | `StartUploadSuccess` | Successful result when the operation completes without business errors. |
 | `userErrors` | `[UserError!]!`      | Business validation errors.                                             |
+
+### `StartUploadBatchInput`
+
+| Field   | Type                            | Required | Description                                         |
+| ------- | ------------------------------- | -------- | --------------------------------------------------- |
+| `files` | `[StartUploadBatchFileInput!]!` | Yes      | Files to initiate in this batch (in request order). |
+
+### `StartUploadBatchFileInput`
+
+| Field          | Type     | Required | Description                                                              |
+| -------------- | -------- | -------- | ------------------------------------------------------------------------ |
+| `clientFileId` | `String` | Yes      | Client correlation identifier echoed back in the response.               |
+| `fileName`     | `String` | Yes      | Original client file name.                                               |
+| `mimeType`     | `String` | Yes      | Media type declared by the client.                                       |
+| `chunkCount`   | `Int`    | Yes      | Number of chunks the client will upload for this file (range: `1..100`). |
+
+### `StartUploadBatchSuccess`
+
+| Field           | Type               | Description                                                     |
+| --------------- | ------------------ | --------------------------------------------------------------- |
+| `asset`         | `Asset!`           | Created asset for the accepted file.                            |
+| `uploadTargets` | `[UploadTarget!]!` | One `UploadTarget` per declared chunk for that file.            |
+| `uploadGrant`   | `String!`          | Server-issued grant required to complete the file upload later. |
+
+### `StartUploadBatchPayload`
+
+| Field        | Type                              | Description                                                                                                  |
+| ------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `files`      | `[StartUploadBatchFilePayload!]!` | Per-file outcomes in request order (each item exposes `clientFileId`, optional `success`, and `userErrors`). |
+| `userErrors` | `[UserError!]!`                   | Whole-batch business validation errors that apply to the full call (e.g., empty batch or too many files).    |
 
 ### `CompleteUploadSuccess`
 

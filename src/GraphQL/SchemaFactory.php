@@ -97,10 +97,26 @@ class SchemaFactory
     private function decorateByteCountScalar(array $typeConfig): array
     {
         $typeConfig['serialize'] = static fn (mixed $value): string => self::normalizeByteCount($value);
-        $typeConfig['parseValue'] = static fn (mixed $value): string => self::normalizeByteCount($value);
-        $typeConfig['parseLiteral'] = static function (Node $valueNode): string {
+        // Both parseValue (runtime variables) and parseLiteral (inline literals)
+        // are intentionally permissive: if normalization fails, the original/raw
+        // value is passed through to the resolver so that application-level
+        // validation can convert it into a payload-level userError instead of
+        // a GraphQL transport error.
+        $typeConfig['parseValue'] = static function (mixed $value): mixed {
+            try {
+                return self::normalizeByteCount($value);
+            } catch (Error $e) {
+                return $value;
+            }
+        };
+
+        $typeConfig['parseLiteral'] = static function (Node $valueNode): mixed {
             if ($valueNode instanceof IntValueNode || $valueNode instanceof StringValueNode) {
-                return self::normalizeByteCount($valueNode->value);
+                try {
+                    return self::normalizeByteCount($valueNode->value);
+                } catch (Error $e) {
+                    return $valueNode->value;
+                }
             }
 
             throw new Error('ByteCount must be a non-negative integer string.');
