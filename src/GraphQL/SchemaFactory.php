@@ -99,10 +99,24 @@ class SchemaFactory
         $typeConfig['serialize'] = static fn (mixed $value): string => self::normalizeByteCount($value);
         // Validate and normalize input values consistently for both runtime values
         // and AST literals so invalid inputs are rejected at the scalar boundary.
-        $typeConfig['parseValue'] = static fn (mixed $value): string => self::normalizeByteCount($value);
-        $typeConfig['parseLiteral'] = static function (Node $valueNode): string {
+        // For runtime variable values, be permissive: return the original
+        // value if it cannot be normalized. Application-level validation
+        // (in resolvers) will convert these into payload-level userErrors.
+        $typeConfig['parseValue'] = static function (mixed $value): mixed {
+            try {
+                return self::normalizeByteCount($value);
+            } catch (Error $e) {
+                return $value;
+            }
+        };
+
+        $typeConfig['parseLiteral'] = static function (Node $valueNode): mixed {
             if ($valueNode instanceof IntValueNode || $valueNode instanceof StringValueNode) {
-                return self::normalizeByteCount($valueNode->value);
+                try {
+                    return self::normalizeByteCount($valueNode->value);
+                } catch (Error $e) {
+                    return $valueNode->value;
+                }
             }
 
             throw new Error('ByteCount must be a non-negative integer string.');

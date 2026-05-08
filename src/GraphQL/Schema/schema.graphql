@@ -4,16 +4,13 @@ Minimal upload contract for the DAM API.
 schema {
   query: Query
   mutation: Mutation
-  """
-  Search assets for the authenticated account by file name and return a SearchAssetsPayload.
-  `page` is one-based and values lower than `1` are clamped to `1`.
-  `pageSize` is clamped to the current server range of `1..50`.
-  Empty or whitespace-only `query` values return a SearchAssetsPayload with an empty `files` list and a `userErrors` entry instead of matching all assets.
-  """
-"""
+}
 enum AssetStatus {
   "The upload has started but is not complete."
   PENDING
+
+  "The upload is being processed after successful upload."
+  PROCESSING
 
   UPLOADED
 
@@ -42,6 +39,9 @@ Where the client reads the completion proof from in v1.
 enum UploadCompletionProofSource {
   RESPONSE_HEADER
 }
+
+scalar DateTime
+scalar ByteCount
 
 """
 One required name/value pair for an upload request.
@@ -353,11 +353,11 @@ type Query {
 
 type Mutation {
   "Start one upload and receive its upload target."
-  startUpload(input: StartUploadInput!): StartUploadPayload!
+  startUpload(input: StartUploadInput): StartUploadPayload!
 
   "Start multiple uploads and receive one upload target per chunk for each accepted file."
-  startUploadBatch(input: StartUploadBatchInput!): StartUploadBatchPayload!
+  startUploadBatch(input: StartUploadBatchInput): StartUploadBatchPayload!
 
   "Complete one upload after the file is sent and move it into processing."
-  completeUpload(input: CompleteUploadInput!): CompleteUploadPayload!
+  completeUpload(input: CompleteUploadInput): CompleteUploadPayload!
 }

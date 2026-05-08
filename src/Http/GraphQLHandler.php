@@ -118,6 +118,13 @@ final class GraphQLHandler
      */
     private function jsonResponse(int $status, array $payload): array
     {
+        if (isset($payload['errors'])) {
+            try {
+                @file_put_contents(__DIR__ . '/../../build/graphql_debug.json', json_encode($payload, JSON_THROW_ON_ERROR));
+            } catch (\Throwable $e) {
+                // best-effort debugging; do not interfere with normal error handling
+            }
+        }
         return [
             'status' => $status,
             'headers' => ['Content-Type' => self::JSON_CONTENT_TYPE],
