@@ -459,12 +459,14 @@ final class MySQLAssetRepositoryTest extends BaseMySQLAssetRepositoryTestCase
                 $repository->save($asset);
             }
 
-            // Assert
-            assert(is_string($exceptionClass));
-            assert(is_string($exceptionMessage));
-            /** @var class-string<\Throwable> $exceptionClass */
-            /** @var string $exceptionMessage */
             if ($expectException) {
+                // Assert
+                assert(is_string($exceptionClass));
+                assert(is_string($exceptionMessage));
+                /** @var class-string<\Throwable> $exceptionClass */
+                /** @var string $exceptionMessage */
+
+                // Assert
                 $this->expectException($exceptionClass);
                 $this->expectExceptionMessage($exceptionMessage);
 

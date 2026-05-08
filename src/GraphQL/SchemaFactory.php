@@ -97,11 +97,11 @@ class SchemaFactory
     private function decorateByteCountScalar(array $typeConfig): array
     {
         $typeConfig['serialize'] = static fn (mixed $value): string => self::normalizeByteCount($value);
-        // Validate and normalize input values consistently for both runtime values
-        // and AST literals so invalid inputs are rejected at the scalar boundary.
-        // For runtime variable values, be permissive: return the original
-        // value if it cannot be normalized. Application-level validation
-        // (in resolvers) will convert these into payload-level userErrors.
+        // Both parseValue (runtime variables) and parseLiteral (inline literals)
+        // are intentionally permissive: if normalization fails, the original/raw
+        // value is passed through to the resolver so that application-level
+        // validation can convert it into a payload-level userError instead of
+        // a GraphQL transport error.
         $typeConfig['parseValue'] = static function (mixed $value): mixed {
             try {
                 return self::normalizeByteCount($value);
