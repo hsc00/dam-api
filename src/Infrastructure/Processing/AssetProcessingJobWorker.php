@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Processing;
 
+use App\Application\Asset\AssetProcessingMetricCounter;
+use App\Application\Asset\AssetProcessingMetricsInterface;
 use App\Application\Asset\Command\HandleAssetProcessingJobCommand;
 use App\Application\Asset\Command\HandleAssetProcessingRetryExhaustionCommand;
 use App\Application\Asset\Exception\RetryableAssetProcessingException;
@@ -26,11 +28,15 @@ final class AssetProcessingJobWorker implements \App\Infrastructure\Processing\A
     private const TERMINAL_STATUS_CACHE_FAILED_MESSAGE = 'Persisted asset terminal state but failed to cache terminal status.';
     private const UNKNOWN_ASSET_MESSAGE = 'Discarded asset processing job for unknown asset.';
 
+    private readonly AssetProcessingMetricsInterface $metrics;
+
     public function __construct(
         private readonly HandleAssetProcessingJobService $service,
         private readonly HandleAssetProcessingRetryExhaustionService $retryExhaustionService,
         private readonly LoggerInterface $logger,
+        ?AssetProcessingMetricsInterface $metrics = null,
     ) {
+        $this->metrics = $metrics ?? new NullAssetProcessingMetrics();
     }
 
     public function consume(string $payload): AssetProcessingJobHandlingResult
@@ -39,25 +45,21 @@ final class AssetProcessingJobWorker implements \App\Infrastructure\Processing\A
 
         if ($decodedPayload === null) {
             $result = AssetProcessingJobHandlingResult::discardedMalformedPayload();
-            $this->logOutcome($result, $payload);
 
-            return $result;
+            return $this->reportOutcome($result, $payload);
         }
 
         $assetId = $decodedPayload->toAssetId();
 
         if ($assetId === null) {
             $result = AssetProcessingJobHandlingResult::discardedInvalidAssetId();
-            $this->logOutcome($result, $payload);
 
-            return $result;
+            return $this->reportOutcome($result, $payload);
         }
 
         $result = $this->handleCommand(new HandleAssetProcessingJobCommand($assetId), $decodedPayload);
 
-        $this->logOutcome($result, $payload);
-
-        return $result;
+        return $this->reportOutcome($result, $payload);
     }
 
     private function handleCommand(
@@ -120,6 +122,40 @@ final class AssetProcessingJobWorker implements \App\Infrastructure\Processing\A
                 $assetId,
                 $retryExhaustionResult->assetStatus ?? AssetStatus::PENDING,
             ),
+        };
+    }
+
+    private function reportOutcome(AssetProcessingJobHandlingResult $result, string $payload): AssetProcessingJobHandlingResult
+    {
+        foreach ($this->countersForOutcome($result->outcome) as $counter) {
+            $this->metrics->incrementCounter($counter);
+        }
+
+        $this->logOutcome($result, $payload);
+
+        return $result;
+    }
+
+    /**
+     * @return list<AssetProcessingMetricCounter>
+     */
+    private function countersForOutcome(AssetProcessingJobHandlingOutcome $outcome): array
+    {
+        return match ($outcome) {
+            AssetProcessingJobHandlingOutcome::DISCARDED_INVALID_ASSET_ID,
+            AssetProcessingJobHandlingOutcome::DISCARDED_MALFORMED_PAYLOAD,
+            AssetProcessingJobHandlingOutcome::DISCARDED_UNKNOWN_ASSET,
+            AssetProcessingJobHandlingOutcome::SKIPPED_ASSET_NOT_PROCESSING => [AssetProcessingMetricCounter::DISCARDED_TOTAL],
+            AssetProcessingJobHandlingOutcome::PROCESSED_ASSET_UPLOADED => [
+                AssetProcessingMetricCounter::PROCESSED_TOTAL,
+                AssetProcessingMetricCounter::PROCESSED_SUCCESS_TOTAL,
+            ],
+            AssetProcessingJobHandlingOutcome::DEAD_LETTERED,
+            AssetProcessingJobHandlingOutcome::PROCESSED_ASSET_FAILED => [
+                AssetProcessingMetricCounter::PROCESSED_TOTAL,
+                AssetProcessingMetricCounter::PROCESSED_FAILURE_TOTAL,
+            ],
+            AssetProcessingJobHandlingOutcome::RETRYABLE_PROCESSING_FAILURE => [AssetProcessingMetricCounter::RETRY_TOTAL],
         };
     }
 
