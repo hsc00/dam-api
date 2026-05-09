@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Infrastructure\Processing;
 
 use App\Application\Asset\AssetProcessorInterface;
+use App\Application\Asset\AssetProcessingMetricCounter;
+use App\Application\Asset\AssetProcessingMetricsInterface;
 use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\Exception\RetryableAssetProcessingException;
 use App\Application\Asset\Exception\TerminalAssetProcessingException;
@@ -30,10 +32,13 @@ final class AssetProcessingJobWorkerTest extends TestCase
 {
     private AssetRepositoryInterface&MockObject $assets;
     private AssetProcessorInterface&MockObject $assetProcessor;
+    private AssetProcessingMetricsInterface&MockObject $metrics;
     private AssetStatusCacheInterface&MockObject $assetTerminalStatusCache;
     private LoggerInterface&MockObject $logger;
     private HandleAssetProcessingJobService $service;
     private AssetProcessingJobWorker $worker;
+    /** @var list<AssetProcessingMetricCounter> */
+    private array $recordedCounters;
 
     protected function setUp(): void
     {
@@ -41,8 +46,15 @@ final class AssetProcessingJobWorkerTest extends TestCase
 
         $this->assets = $this->createMock(AssetRepositoryInterface::class);
         $this->assetProcessor = $this->createMock(AssetProcessorInterface::class);
+        $this->metrics = $this->createMock(AssetProcessingMetricsInterface::class);
         $this->assetTerminalStatusCache = $this->createMock(AssetStatusCacheInterface::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+        $this->recordedCounters = [];
+        $this->metrics
+            ->method('incrementCounter')
+            ->willReturnCallback(function (AssetProcessingMetricCounter $counter): void {
+                $this->recordedCounters[] = $counter;
+            });
         $this->service = new HandleAssetProcessingJobService(
             $this->assets,
             $this->assetProcessor,
@@ -52,6 +64,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
             $this->service,
             new HandleAssetProcessingRetryExhaustionService($this->assets, $this->assetTerminalStatusCache),
             $this->logger,
+            $this->metrics,
         );
     }
 
@@ -79,12 +92,17 @@ final class AssetProcessingJobWorkerTest extends TestCase
                 'payloadLength' => strlen($payload),
                 'payloadSha256' => hash('sha256', $payload),
             ]);
+        $this->metrics
+            ->expects($this->once())
+            ->method('incrementCounter')
+            ->with(AssetProcessingMetricCounter::DISCARDED_TOTAL);
 
         // Act
         $result = $this->worker->consume($payload);
 
         // Assert
         self::assertSame(AssetProcessingJobHandlingOutcome::DISCARDED_MALFORMED_PAYLOAD, $result->outcome);
+        self::assertSame([AssetProcessingMetricCounter::DISCARDED_TOTAL], $this->recordedCounters);
     }
 
     #[Test]
@@ -111,12 +129,17 @@ final class AssetProcessingJobWorkerTest extends TestCase
                 'payloadLength' => strlen($payload),
                 'payloadSha256' => hash('sha256', $payload),
             ]);
+        $this->metrics
+            ->expects($this->once())
+            ->method('incrementCounter')
+            ->with(AssetProcessingMetricCounter::DISCARDED_TOTAL);
 
         // Act
         $result = $this->worker->consume($payload);
 
         // Assert
         self::assertSame(AssetProcessingJobHandlingOutcome::DISCARDED_INVALID_ASSET_ID, $result->outcome);
+        self::assertSame([AssetProcessingMetricCounter::DISCARDED_TOTAL], $this->recordedCounters);
     }
 
     #[Test]
@@ -149,6 +172,10 @@ final class AssetProcessingJobWorkerTest extends TestCase
         $this->logger
             ->expects($this->never())
             ->method('info');
+        $this->metrics
+            ->expects($this->once())
+            ->method('incrementCounter')
+            ->with(AssetProcessingMetricCounter::DISCARDED_TOTAL);
 
         // Act
         $result = $this->worker->consume($payload);
@@ -157,6 +184,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame(AssetProcessingJobHandlingOutcome::DISCARDED_UNKNOWN_ASSET, $result->outcome);
         self::assertSame(AssetProcessingJobDelivery::DISCARD, $result->delivery);
         self::assertSame($assetId, $result->assetId);
+        self::assertSame([AssetProcessingMetricCounter::DISCARDED_TOTAL], $this->recordedCounters);
     }
 
     #[Test]
@@ -185,12 +213,17 @@ final class AssetProcessingJobWorkerTest extends TestCase
                 'assetId' => (string) $asset->getId(),
                 'status' => 'FAILED',
             ]);
+        $this->metrics
+            ->expects($this->once())
+            ->method('incrementCounter')
+            ->with(AssetProcessingMetricCounter::DISCARDED_TOTAL);
 
         // Act
         $result = $this->worker->consume($payload);
 
         // Assert
         self::assertSame(AssetProcessingJobHandlingOutcome::SKIPPED_ASSET_NOT_PROCESSING, $result->outcome);
+        self::assertSame([AssetProcessingMetricCounter::DISCARDED_TOTAL], $this->recordedCounters);
     }
 
     #[Test]
@@ -224,6 +257,9 @@ final class AssetProcessingJobWorkerTest extends TestCase
         $this->logger
             ->expects($this->never())
             ->method('warning');
+        $this->metrics
+            ->expects($this->exactly(2))
+            ->method('incrementCounter');
 
         // Act
         $result = $this->worker->consume($payload);
@@ -232,6 +268,10 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame(AssetProcessingJobHandlingOutcome::PROCESSED_ASSET_UPLOADED, $result->outcome);
         self::assertSame(AssetProcessingJobDelivery::HANDLED, $result->delivery);
         self::assertTrue($result->terminalStatusCached);
+        self::assertSame([
+            AssetProcessingMetricCounter::PROCESSED_TOTAL,
+            AssetProcessingMetricCounter::PROCESSED_SUCCESS_TOTAL,
+        ], $this->recordedCounters);
     }
 
     #[Test]
@@ -272,6 +312,9 @@ final class AssetProcessingJobWorkerTest extends TestCase
         $this->logger
             ->expects($this->never())
             ->method('info');
+        $this->metrics
+            ->expects($this->exactly(2))
+            ->method('incrementCounter');
 
         // Act
         $result = $this->worker->consume($payload);
@@ -280,6 +323,10 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame(AssetProcessingJobHandlingOutcome::PROCESSED_ASSET_FAILED, $result->outcome);
         self::assertSame(AssetProcessingJobDelivery::HANDLED, $result->delivery);
         self::assertTrue($result->terminalStatusCached);
+        self::assertSame([
+            AssetProcessingMetricCounter::PROCESSED_TOTAL,
+            AssetProcessingMetricCounter::PROCESSED_FAILURE_TOTAL,
+        ], $this->recordedCounters);
     }
 
     #[Test]
@@ -316,6 +363,10 @@ final class AssetProcessingJobWorkerTest extends TestCase
         $this->logger
             ->expects($this->never())
             ->method('info');
+        $this->metrics
+            ->expects($this->once())
+            ->method('incrementCounter')
+            ->with(AssetProcessingMetricCounter::RETRY_TOTAL);
 
         // Act
         $result = $this->worker->consume($payload);
@@ -326,6 +377,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame((string) $asset->getId(), $result->assetId);
         self::assertSame('temporary processor outage', $result->processingErrorMessage);
         self::assertSame(self::payload((string) $asset->getId(), 2), $result->queuedPayload());
+        self::assertSame([AssetProcessingMetricCounter::RETRY_TOTAL], $this->recordedCounters);
     }
 
     #[Test]
@@ -369,6 +421,9 @@ final class AssetProcessingJobWorkerTest extends TestCase
         $this->logger
             ->expects($this->never())
             ->method('info');
+        $this->metrics
+            ->expects($this->exactly(2))
+            ->method('incrementCounter');
 
         // Act
         $result = $this->worker->consume($payload);
@@ -381,6 +436,10 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertTrue($result->terminalStatusCached);
         self::assertSame('temporary processor outage', $result->processingErrorMessage);
         self::assertSame(self::payload((string) $asset->getId(), 3), $result->queuedPayload());
+        self::assertSame([
+            AssetProcessingMetricCounter::PROCESSED_TOTAL,
+            AssetProcessingMetricCounter::PROCESSED_FAILURE_TOTAL,
+        ], $this->recordedCounters);
     }
 
     #[Test]
@@ -414,6 +473,10 @@ final class AssetProcessingJobWorkerTest extends TestCase
         $this->logger
             ->expects($this->never())
             ->method('info');
+        $this->metrics
+            ->expects($this->once())
+            ->method('incrementCounter')
+            ->with(AssetProcessingMetricCounter::DISCARDED_TOTAL);
 
         // Act
         $result = $this->worker->consume($payload);
@@ -423,6 +486,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame(AssetProcessingJobDelivery::DISCARD, $result->delivery);
         self::assertSame((string) $asset->getId(), $result->assetId);
         self::assertNull($result->queuedPayload());
+        self::assertSame([AssetProcessingMetricCounter::DISCARDED_TOTAL], $this->recordedCounters);
     }
 
     #[Test]
@@ -460,6 +524,10 @@ final class AssetProcessingJobWorkerTest extends TestCase
         $this->logger
             ->expects($this->never())
             ->method('error');
+        $this->metrics
+            ->expects($this->once())
+            ->method('incrementCounter')
+            ->with(AssetProcessingMetricCounter::DISCARDED_TOTAL);
 
         // Act
         $result = $this->worker->consume($payload);
@@ -470,6 +538,7 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame((string) $processingAsset->getId(), $result->assetId);
         self::assertSame(AssetStatus::FAILED, $result->assetStatus);
         self::assertNull($result->queuedPayload());
+        self::assertSame([AssetProcessingMetricCounter::DISCARDED_TOTAL], $this->recordedCounters);
     }
 
     #[Test]
@@ -505,6 +574,9 @@ final class AssetProcessingJobWorkerTest extends TestCase
         $this->logger
             ->expects($this->never())
             ->method('info');
+        $this->metrics
+            ->expects($this->exactly(2))
+            ->method('incrementCounter');
 
         // Act
         $result = $this->worker->consume($payload);
@@ -513,6 +585,10 @@ final class AssetProcessingJobWorkerTest extends TestCase
         self::assertSame(AssetProcessingJobHandlingOutcome::PROCESSED_ASSET_UPLOADED, $result->outcome);
         self::assertSame(AssetProcessingJobDelivery::HANDLED, $result->delivery);
         self::assertFalse($result->terminalStatusCached);
+        self::assertSame([
+            AssetProcessingMetricCounter::PROCESSED_TOTAL,
+            AssetProcessingMetricCounter::PROCESSED_SUCCESS_TOTAL,
+        ], $this->recordedCounters);
     }
 
     private static function payload(string $assetId, int $retryCount = 0): string
