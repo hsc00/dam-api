@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Infrastructure\Processing;
 
-use App\Application\Asset\AssetProcessorInterface;
 use App\Application\Asset\AssetProcessingMetricCounter;
 use App\Application\Asset\AssetProcessingMetricsInterface;
+use App\Application\Asset\AssetProcessorInterface;
 use App\Application\Asset\AssetStatusCacheInterface;
 use App\Application\Asset\Exception\RetryableAssetProcessingException;
 use App\Application\Asset\Exception\TerminalAssetProcessingException;
